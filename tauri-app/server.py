@@ -189,7 +189,7 @@ def run_query(req: RunRequest):
         results[doc_name] = {
             "tree": raw_tree,
             "retrieved_ids": [n.node_id for n in nodes],
-            "node_reasons": node_reasons,
+            "node_meta": node_reasons,  # {node_id: {reason, quote}}
             "nodes": [
                 {
                     "node_id": n.node_id,
@@ -198,7 +198,8 @@ def run_query(req: RunRequest):
                     "synthetic": n.synthetic,
                     "heading_level": n.heading_level,
                     "summary": n.summary,
-                    "reason": node_reasons.get(n.node_id, ""),
+                    "reason": (node_reasons.get(n.node_id) or {}).get("reason", ""),
+                    "quote":  (node_reasons.get(n.node_id) or {}).get("quote",  ""),
                 }
                 for n in nodes
             ],

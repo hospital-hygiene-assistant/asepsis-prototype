@@ -9,13 +9,16 @@ const state = {
   currentQuery: '',
 };
 
-// ── Tooltip ──────────────────────────────────────────────────
-const _tooltip = (() => {
-  const div = document.createElement('div');
-  div.id = 'tree-tooltip';
-  document.body.appendChild(div);
-  return div;
-})();
+// ── Tooltip (created after DOM is ready — see init()) ────────
+let _tooltip = null;
+function getTooltip() {
+  if (!_tooltip) {
+    _tooltip = document.createElement('div');
+    _tooltip.id = 'tree-tooltip';
+    document.body.appendChild(_tooltip);
+  }
+  return _tooltip;
+}
 
 // ── API ──────────────────────────────────────────────────────
 async function apiGet(path) {
@@ -259,7 +262,7 @@ function showDocTree(docName, data) {
     new Set((tr.expected     || {})[docName] || []),
     new Set((tr.expected_any || {})[docName] || []),
     new Set((tr.forbidden    || {})[docName] || []),
-    docData.node_reasons || {},
+    docData.node_meta || {},
   );
 }
 
@@ -372,25 +375,25 @@ function renderTree(rawTree, retrievedSet, expectedSet, expectedAnySet, forbidde
       const id = d.data.nodeId;
       if (!id || id === '_root') return;
       const isRetrieved = retrievedSet.has(id);
-      const reason = nodeReasons[id];
-      let html = `<div class="tt-title">${d.data.title || id}</div>`;
-      if (isRetrieved && reason) {
+      const meta = nodeReasons[id] || {};
+      let html = `<div class="tt-title">${escHtml(d.data.title || id)}</div>`;
+      if (isRetrieved) {
         html += `<div class="tt-label tt-selected">Selected by model</div>`;
-        html += `<div class="tt-reason">${escHtml(reason)}</div>`;
-      } else if (isRetrieved) {
-        html += `<div class="tt-label tt-selected">Selected by model</div>`;
+        if (meta.reason) html += `<div class="tt-reason">${escHtml(meta.reason)}</div>`;
       } else if (d.data.isLeaf) {
         html += `<div class="tt-label tt-not-selected">Not retrieved</div>`;
         if (d.data.summary) html += `<div class="tt-reason tt-muted">${escHtml(d.data.summary)}</div>`;
       } else {
+        html += `<div class="tt-label tt-not-selected">Section</div>`;
         if (d.data.summary) html += `<div class="tt-reason tt-muted">${escHtml(d.data.summary)}</div>`;
       }
-      _tooltip.innerHTML = html;
-      _tooltip.style.display = 'block';
+      const tip = getTooltip();
+      tip.innerHTML = html;
+      tip.style.display = 'block';
       positionTooltip(event);
     })
     .on('mousemove', positionTooltip)
-    .on('mouseout', () => { _tooltip.style.display = 'none'; });
+    .on('mouseout', () => { getTooltip().style.display = 'none'; });
 
   // Status icon (inside circle)
   nodeG.filter(d => d.data.isLeaf)
@@ -471,11 +474,7 @@ function renderSnippets(data) {
 
       const title   = el('div', 'snippet-title', node.title);
       const content = el('div', 'snippet-content');
-      content.innerHTML = highlightRelevantContent(
-        node.content || '(no content)',
-        state.currentQuery,
-        node.reason || '',
-      );
+      content.innerHTML = highlightRelevantContent(node.content || '(no content)', node.quote || '');
 
       card.appendChild(tags);
       card.appendChild(title);
@@ -508,47 +507,46 @@ function escHtml(str) {
 }
 
 function positionTooltip(event) {
-  const margin = 12;
-  const tw = _tooltip.offsetWidth  || 260;
-  const th = _tooltip.offsetHeight || 80;
+  const tip    = getTooltip();
+  const margin = 14;
+  const tw     = tip.offsetWidth  || 280;
+  const th     = tip.offsetHeight || 80;
   let x = event.clientX + margin;
   let y = event.clientY + margin;
   if (x + tw > window.innerWidth)  x = event.clientX - tw - margin;
   if (y + th > window.innerHeight) y = event.clientY - th - margin;
-  _tooltip.style.left = `${x}px`;
-  _tooltip.style.top  = `${y}px`;
+  tip.style.left = `${x}px`;
+  tip.style.top  = `${y}px`;
 }
 
-function extractTerms(query, reason) {
-  const raw = `${query} ${reason}`;
-  const stopWords = new Set([
-    'a','an','the','and','or','of','in','to','for','is','are','be','by','at','on',
-    'it','its','with','that','this','from','as','was','were','what','how','which',
-    'should','would','can','could','when','where','who','not','no','have','has',
-    'do','does','did','will','if','than','then','so','but','any','all','about',
-    'into','also','more','been','their','there','these','those','they','we',
-  ]);
-  return [...new Set(
-    raw.toLowerCase()
-      .replace(/[^a-z0-9\s-]/g, ' ')
-      .split(/\s+/)
-      .filter(w => w.length >= 4 && !stopWords.has(w))
-  )];
-}
+/**
+ * Highlight the quote inside content using the model's verbatim quote.
+ * Strategy:
+ *   1. Try exact case-insensitive substring match of the full quote.
+ *   2. If not found, try each sentence of the quote separately.
+ *   3. If still nothing, return plain escaped content (no false highlights).
+ */
+function highlightRelevantContent(content, quote) {
+  if (!quote || !content) return escHtml(content || '');
 
-function highlightRelevantContent(content, query, reason) {
-  const terms = extractTerms(query, reason);
-  if (!terms.length) return escHtml(content);
+  // Build list of candidate spans to highlight, from longest to shortest
+  const candidates = [quote];
+  // Also try individual sentences from the quote
+  quote.split(/[.!?]+/).forEach(s => { const t = s.trim(); if (t.length > 20) candidates.push(t); });
 
-  // Build a single regex alternation, longest terms first (avoids partial overlap)
-  terms.sort((a, b) => b.length - a.length);
-  const pattern = new RegExp(`(${terms.map(t => t.replace(/[-]/g, '[-]')).join('|')})`, 'gi');
+  for (const candidate of candidates) {
+    const idx = content.toLowerCase().indexOf(candidate.toLowerCase());
+    if (idx !== -1) {
+      // Found — split content at this span and wrap
+      const before = escHtml(content.slice(0, idx));
+      const match  = escHtml(content.slice(idx, idx + candidate.length));
+      const after  = escHtml(content.slice(idx + candidate.length));
+      return `${before}<mark>${match}</mark>${after}`;
+    }
+  }
 
-  return escHtml(content).replace(
-    // operate on plain text after escaping
-    new RegExp(`(${terms.map(t => escHtml(t).replace(/[-]/g, '[-]')).join('|')})`, 'gi'),
-    '<mark>$1</mark>'
-  );
+  // Nothing matched verbatim — return plain content without false highlights
+  return escHtml(content);
 }
 
 // ── Boot ─────────────────────────────────────────────────────

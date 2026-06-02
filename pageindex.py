@@ -251,18 +251,30 @@ def _node_from_dict(d: dict) -> PageNode:
 # TOC formatting
 # ---------------------------------------------------------------------------
 
+_TOC_CONTENT_WORDS = 80  # max words of leaf content to include in TOC
+
+
 def _flatten_toc(nodes: list[PageNode], depth: int = 0) -> str:
     """
-    Format each node as:  {indent}LEAF|SECTION | id={nodeId} | {title} | {summary}
-    The `id=` tag makes it unambiguous what to return.
+    Sections: single line  {indent}SECTION | id={nodeId} | {title}
+    Leaves:   header line + indented content excerpt (up to _TOC_CONTENT_WORDS words)
+    Including actual content lets the LLM judge relevance and quote verbatim.
     """
     lines = []
     indent = "  " * depth
     for node in nodes:
-        kind = "LEAF" if node.is_leaf else "SECTION"
-        lines.append(f"{indent}{kind} | id={node.node_id} | {node.title} | {node.summary}")
-        if node.children:
-            lines.append(_flatten_toc(node.children, depth + 1))
+        if node.is_leaf:
+            lines.append(f"{indent}LEAF | id={node.node_id} | {node.title}")
+            if node.content:
+                words = node.content.split()
+                excerpt = " ".join(words[:_TOC_CONTENT_WORDS])
+                if len(words) > _TOC_CONTENT_WORDS:
+                    excerpt += " …"
+                lines.append(f"{indent}  {excerpt}")
+        else:
+            lines.append(f"{indent}SECTION | id={node.node_id} | {node.title}")
+            if node.children:
+                lines.append(_flatten_toc(node.children, depth + 1))
     return "\n".join(l for l in lines if l)
 
 
@@ -322,26 +334,28 @@ Only include a node if it CLEARLY and DIRECTLY answers the query.
 
 Document: DOCNAME_PLACEHOLDER
 
-Each TOC line format:  TYPE | id=NODE_ID | Title | Summary
+TOC format:
+  SECTION | id=... | Title
+  LEAF | id=... | Title
+    [content excerpt — the actual text of this leaf]
 
 Rules:
 1. First decide: does this document's subject relate to the query at all?
-   If the document covers a clearly different topic, output [] and stop.
-2. For each LEAF: only include it when its Title or Summary explicitly addresses the query topic.
-   If in doubt, exclude it — a missed node is less harmful than a false inclusion.
-3. NEVER select the top-level SECTION (first line, no indentation).
-4. Return a JSON array. For each relevant LEAF include one object:
-   {"id": "node-id", "reason": "1-2 sentences explaining why this node directly answers the query."}
+   If the document is about a clearly different topic, output [] immediately.
+2. Read each LEAF content excerpt. Only include the leaf if its content directly
+   answers the query. Title alone is not enough — check the text. If in doubt, exclude.
+3. NEVER select a SECTION line (only LEAF lines).
+4. For each selected LEAF output one JSON object with three fields:
+   "id": the node id string
+   "reason": 1-2 sentences explaining why this leaf answers the query
+   "quote": copy 1-2 verbatim sentences from the leaf content that best answer the query
 
-Good example (include):
-  Query: "What sodium restriction is recommended for hypertension?"
-  LEAF: id=sodium-restriction | Sodium Restriction | Sodium intake should be limited to less than 2,300 mg/day...
-  → [{"id": "sodium-restriction", "reason": "Specifies daily sodium intake targets and their effect on blood pressure."}]
+The quote MUST be copied character-for-character from the content shown above.
 
-Good example (exclude whole document):
-  Query: "What sodium restriction is recommended for hypertension?"
-  Document: Antibiotic Stewardship (about antimicrobial prescribing and resistance)
-  → []   ← correct: antibiotics are unrelated to dietary sodium
+Example:
+[{"id": "sodium-restriction", "reason": "Gives the recommended daily sodium ceiling and its BP effect.", "quote": "Sodium intake should be limited to less than 2,300 mg/day."}]
+
+If nothing is relevant: []
 
 Query: QUERY_PLACEHOLDER
 
@@ -408,7 +422,7 @@ def _clean_node_id(raw: str) -> str:
 
 
 def _select_nodes_from_llm(toc_text: str, query: str, doc_name: str = "") -> list[dict]:
-    """Return list of {id, reason} dicts for nodes the LLM considers relevant."""
+    """Return list of {id, reason, quote} dicts for nodes the LLM considers relevant."""
     prompt = (
         RETRIEVAL_PROMPT_TEMPLATE
         .replace("DOCNAME_PLACEHOLDER", doc_name.replace("_", " ").title() if doc_name else "Unknown")
@@ -424,13 +438,14 @@ def _select_nodes_from_llm(toc_text: str, query: str, doc_name: str = "") -> lis
         if isinstance(item, str):
             node_id = _clean_node_id(item)
             if node_id:
-                parsed.append({"id": node_id, "reason": ""})
+                parsed.append({"id": node_id, "reason": "", "quote": ""})
         elif isinstance(item, dict):
             raw_id = str(item.get("id") or "").strip()
             reason = str(item.get("reason") or "").strip()
+            quote  = str(item.get("quote")  or "").strip()
             node_id = _clean_node_id(raw_id)
             if node_id:
-                parsed.append({"id": node_id, "reason": reason})
+                parsed.append({"id": node_id, "reason": reason, "quote": quote})
     return parsed
 
 
@@ -471,8 +486,8 @@ def retrieve(doc_name: str, query: str) -> list[PageNode]:
     return nodes_result
 
 
-def retrieve_with_metadata(doc_name: str, query: str) -> tuple[list[PageNode], dict[str, str]]:
-    """Return (leaf_nodes, {node_id: reason}) for a query against one document's index."""
+def retrieve_with_metadata(doc_name: str, query: str) -> tuple[list[PageNode], dict[str, dict]]:
+    """Return (leaf_nodes, {node_id: {reason, quote}}) for a query against one document's index."""
     index_path = INDEX_DIR / f"{doc_name}.json"
     if not index_path.exists():
         raise FileNotFoundError(f"Index not found: {index_path}. Run build first.")
@@ -484,16 +499,16 @@ def retrieve_with_metadata(doc_name: str, query: str) -> tuple[list[PageNode], d
     if not selections:
         return [], {}
 
-    id_to_reason = {s["id"]: s["reason"] for s in selections}
-    leaf_nodes = _find_nodes_by_ids(nodes, set(id_to_reason.keys()))
+    id_to_meta = {s["id"]: {"reason": s["reason"], "quote": s["quote"]} for s in selections}
+    leaf_nodes = _find_nodes_by_ids(nodes, set(id_to_meta.keys()))
 
-    leaf_reasons: dict[str, str] = {}
+    leaf_meta: dict[str, dict] = {}
     for leaf in leaf_nodes:
-        leaf_reasons[leaf.node_id] = id_to_reason.get(
-            leaf.node_id, "Included as part of a selected section."
+        leaf_meta[leaf.node_id] = id_to_meta.get(
+            leaf.node_id, {"reason": "Included as part of a selected section.", "quote": ""}
         )
 
-    return leaf_nodes, leaf_reasons
+    return leaf_nodes, leaf_meta
 
 
 # ---------------------------------------------------------------------------
