@@ -295,7 +295,49 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   white-space: pre-wrap; font-family: var(--font-mono);
 }
 
+.snippet-reason {
+  font-size: 11px; color: #7dd3fc; line-height: 1.5;
+  padding: 4px 0 2px;
+  font-style: italic;
+}
+.reason-label {
+  font-style: normal; font-weight: 600; color: var(--accent); margin-right: 4px;
+}
+
+.snippet-content mark {
+  background: rgba(251, 191, 36, 0.25);
+  color: #fde68a;
+  border-radius: 2px;
+  padding: 0 1px;
+}
+
 .empty-msg { padding: 24px; color: var(--muted); font-size: 12px; }
+
+/* ── Tooltip ─────────────────────────────────────────────── */
+#tree-tooltip {
+  display: none;
+  position: fixed;
+  z-index: 9999;
+  max-width: 300px;
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  pointer-events: none;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.5);
+}
+.tt-title {
+  font-size: 12px; font-weight: 600; color: var(--text);
+  margin-bottom: 5px; line-height: 1.3;
+}
+.tt-label {
+  font-size: 10px; font-weight: 700; letter-spacing: 0.05em;
+  text-transform: uppercase; margin-bottom: 4px;
+}
+.tt-selected     { color: #86efac; }
+.tt-not-selected { color: #94a3b8; }
+.tt-reason  { font-size: 11px; color: var(--muted); line-height: 1.5; }
+.tt-muted   { color: #64748b; }
 
 /* Scrollbars */
 ::-webkit-scrollbar { width: 6px; height: 6px; }

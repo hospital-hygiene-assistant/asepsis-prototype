@@ -11,6 +11,7 @@ from pageindex import (
     PageNode,
     build_index,
     retrieve,
+    retrieve_with_metadata,
     INDEX_DIR,
     MODEL,
     _parse_headings,

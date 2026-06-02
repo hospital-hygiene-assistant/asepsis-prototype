@@ -330,12 +330,13 @@ Rules:
 2. For each LEAF: only include it when its Title or Summary explicitly addresses the query topic.
    If in doubt, exclude it — a missed node is less harmful than a false inclusion.
 3. NEVER select the top-level SECTION (first line, no indentation).
-4. Return a JSON array of bare NODE_IDs (value after "id="). No prose, no fences.
+4. Return a JSON array. For each relevant LEAF include one object:
+   {"id": "node-id", "reason": "1-2 sentences explaining why this node directly answers the query."}
 
 Good example (include):
   Query: "What sodium restriction is recommended for hypertension?"
   LEAF: id=sodium-restriction | Sodium Restriction | Sodium intake should be limited to less than 2,300 mg/day...
-  → ["sodium-restriction"]
+  → [{"id": "sodium-restriction", "reason": "Specifies daily sodium intake targets and their effect on blood pressure."}]
 
 Good example (exclude whole document):
   Query: "What sodium restriction is recommended for hypertension?"
@@ -406,7 +407,8 @@ def _clean_node_id(raw: str) -> str:
     return s
 
 
-def _select_nodes_from_llm(toc_text: str, query: str, doc_name: str = "") -> list[str]:
+def _select_nodes_from_llm(toc_text: str, query: str, doc_name: str = "") -> list[dict]:
+    """Return list of {id, reason} dicts for nodes the LLM considers relevant."""
     prompt = (
         RETRIEVAL_PROMPT_TEMPLATE
         .replace("DOCNAME_PLACEHOLDER", doc_name.replace("_", " ").title() if doc_name else "Unknown")
@@ -415,9 +417,21 @@ def _select_nodes_from_llm(toc_text: str, query: str, doc_name: str = "") -> lis
     )
     raw = _chat(prompt)
     result = _parse_json_response(raw)
-    if isinstance(result, list):
-        return [_clean_node_id(str(x)) for x in result if x]
-    return []
+    if not isinstance(result, list):
+        return []
+    parsed = []
+    for item in result:
+        if isinstance(item, str):
+            node_id = _clean_node_id(item)
+            if node_id:
+                parsed.append({"id": node_id, "reason": ""})
+        elif isinstance(item, dict):
+            raw_id = str(item.get("id") or "").strip()
+            reason = str(item.get("reason") or "").strip()
+            node_id = _clean_node_id(raw_id)
+            if node_id:
+                parsed.append({"id": node_id, "reason": reason})
+    return parsed
 
 
 # ---------------------------------------------------------------------------
@@ -453,18 +467,33 @@ def build_index(doc_name: str) -> None:
 
 def retrieve(doc_name: str, query: str) -> list[PageNode]:
     """Return relevant leaf nodes for a query against one document's index."""
+    nodes_result, _ = retrieve_with_metadata(doc_name, query)
+    return nodes_result
+
+
+def retrieve_with_metadata(doc_name: str, query: str) -> tuple[list[PageNode], dict[str, str]]:
+    """Return (leaf_nodes, {node_id: reason}) for a query against one document's index."""
     index_path = INDEX_DIR / f"{doc_name}.json"
     if not index_path.exists():
         raise FileNotFoundError(f"Index not found: {index_path}. Run build first.")
 
     nodes = [_node_from_dict(d) for d in json.loads(index_path.read_text(encoding="utf-8"))]
     toc = _flatten_toc(nodes)
-    selected_ids = set(_select_nodes_from_llm(toc, query, doc_name))
+    selections = _select_nodes_from_llm(toc, query, doc_name)
 
-    if not selected_ids:
-        return []
+    if not selections:
+        return [], {}
 
-    return _find_nodes_by_ids(nodes, selected_ids)
+    id_to_reason = {s["id"]: s["reason"] for s in selections}
+    leaf_nodes = _find_nodes_by_ids(nodes, set(id_to_reason.keys()))
+
+    leaf_reasons: dict[str, str] = {}
+    for leaf in leaf_nodes:
+        leaf_reasons[leaf.node_id] = id_to_reason.get(
+            leaf.node_id, "Included as part of a selected section."
+        )
+
+    return leaf_nodes, leaf_reasons
 
 
 # ---------------------------------------------------------------------------

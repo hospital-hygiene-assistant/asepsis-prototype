@@ -6,7 +6,16 @@ const state = {
   currentTestId: null,
   currentResults: null,
   currentDoc: null,
+  currentQuery: '',
 };
+
+// ── Tooltip ──────────────────────────────────────────────────
+const _tooltip = (() => {
+  const div = document.createElement('div');
+  div.id = 'tree-tooltip';
+  document.body.appendChild(div);
+  return div;
+})();
 
 // ── API ──────────────────────────────────────────────────────
 async function apiGet(path) {
@@ -101,7 +110,9 @@ async function runTest(testId) {
   const btn = document.querySelector(`[data-test-id="${testId}"]`);
   if (btn) btn.classList.add('active');
 
-  const desc = state.tests.find(t => t.id === testId)?.description || testId;
+  const test = state.tests.find(t => t.id === testId);
+  const desc = test?.description || testId;
+  state.currentQuery = test?.query || '';
   showLoading(`Running "${desc}" across all documents…`);
   try {
     const data = await apiPost('/api/run', { test_id: testId, ...selectedModules() });
@@ -116,6 +127,7 @@ async function runCustomQuery() {
   const query = document.getElementById('custom-query').value.trim();
   if (!query) return;
   state.currentTestId = null;
+  state.currentQuery = query;
   document.querySelectorAll('.test-btn').forEach(b => b.classList.remove('active'));
   showLoading('Running custom query…');
   try {
@@ -247,6 +259,7 @@ function showDocTree(docName, data) {
     new Set((tr.expected     || {})[docName] || []),
     new Set((tr.expected_any || {})[docName] || []),
     new Set((tr.forbidden    || {})[docName] || []),
+    docData.node_reasons || {},
   );
 }
 
@@ -287,7 +300,7 @@ function nodeStatus(d, retrievedSet, expectedSet, expectedAnySet, forbiddenSet) 
   return 'neutral';
 }
 
-function renderTree(rawTree, retrievedSet, expectedSet, expectedAnySet, forbiddenSet) {
+function renderTree(rawTree, retrievedSet, expectedSet, expectedAnySet, forbiddenSet, nodeReasons = {}) {
   const container = document.getElementById('tree-container');
   container.innerHTML = '';
 
@@ -353,8 +366,31 @@ function renderTree(rawTree, retrievedSet, expectedSet, expectedAnySet, forbidde
     .attr('fill',   d => { const s = nodeStatus(d, retrievedSet, expectedSet, expectedAnySet, forbiddenSet); return STATUS_COLOR[s]; })
     .attr('stroke', d => { const s = nodeStatus(d, retrievedSet, expectedSet, expectedAnySet, forbiddenSet); return STATUS_STROKE[s]; })
     .attr('stroke-width', 1.5)
-    .style('cursor', d => d.data.isLeaf ? 'pointer' : 'default')
-    .on('click', (event, d) => { if (d.data.isLeaf) highlightSnippet(d.data.nodeId); });
+    .style('cursor', 'pointer')
+    .on('click', (event, d) => { if (d.data.isLeaf) highlightSnippet(d.data.nodeId); })
+    .on('mouseover', (event, d) => {
+      const id = d.data.nodeId;
+      if (!id || id === '_root') return;
+      const isRetrieved = retrievedSet.has(id);
+      const reason = nodeReasons[id];
+      let html = `<div class="tt-title">${d.data.title || id}</div>`;
+      if (isRetrieved && reason) {
+        html += `<div class="tt-label tt-selected">Selected by model</div>`;
+        html += `<div class="tt-reason">${escHtml(reason)}</div>`;
+      } else if (isRetrieved) {
+        html += `<div class="tt-label tt-selected">Selected by model</div>`;
+      } else if (d.data.isLeaf) {
+        html += `<div class="tt-label tt-not-selected">Not retrieved</div>`;
+        if (d.data.summary) html += `<div class="tt-reason tt-muted">${escHtml(d.data.summary)}</div>`;
+      } else {
+        if (d.data.summary) html += `<div class="tt-reason tt-muted">${escHtml(d.data.summary)}</div>`;
+      }
+      _tooltip.innerHTML = html;
+      _tooltip.style.display = 'block';
+      positionTooltip(event);
+    })
+    .on('mousemove', positionTooltip)
+    .on('mouseout', () => { _tooltip.style.display = 'none'; });
 
   // Status icon (inside circle)
   nodeG.filter(d => d.data.isLeaf)
@@ -433,11 +469,21 @@ function renderSnippets(data) {
       if (isExp && !isForb) tags.appendChild(badge('expected-tag', 'expected'));
       if (isForb)           tags.appendChild(badge('forbidden-tag', 'forbidden'));
 
-      const title   = el('div', 'snippet-title',   node.title);
-      const content = el('div', 'snippet-content', node.content || '(no content)');
+      const title   = el('div', 'snippet-title', node.title);
+      const content = el('div', 'snippet-content');
+      content.innerHTML = highlightRelevantContent(
+        node.content || '(no content)',
+        state.currentQuery,
+        node.reason || '',
+      );
 
       card.appendChild(tags);
       card.appendChild(title);
+      if (node.reason) {
+        const reasonEl = el('div', 'snippet-reason');
+        reasonEl.innerHTML = `<span class="reason-label">Model:</span> ${escHtml(node.reason)}`;
+        card.appendChild(reasonEl);
+      }
       card.appendChild(content);
       list.appendChild(card);
     }
@@ -456,6 +502,54 @@ function el(tag, cls, text) {
   return e;
 }
 function badge(cls, text) { return el('span', `tag ${cls}`, text); }
+
+function escHtml(str) {
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function positionTooltip(event) {
+  const margin = 12;
+  const tw = _tooltip.offsetWidth  || 260;
+  const th = _tooltip.offsetHeight || 80;
+  let x = event.clientX + margin;
+  let y = event.clientY + margin;
+  if (x + tw > window.innerWidth)  x = event.clientX - tw - margin;
+  if (y + th > window.innerHeight) y = event.clientY - th - margin;
+  _tooltip.style.left = `${x}px`;
+  _tooltip.style.top  = `${y}px`;
+}
+
+function extractTerms(query, reason) {
+  const raw = `${query} ${reason}`;
+  const stopWords = new Set([
+    'a','an','the','and','or','of','in','to','for','is','are','be','by','at','on',
+    'it','its','with','that','this','from','as','was','were','what','how','which',
+    'should','would','can','could','when','where','who','not','no','have','has',
+    'do','does','did','will','if','than','then','so','but','any','all','about',
+    'into','also','more','been','their','there','these','those','they','we',
+  ]);
+  return [...new Set(
+    raw.toLowerCase()
+      .replace(/[^a-z0-9\s-]/g, ' ')
+      .split(/\s+/)
+      .filter(w => w.length >= 4 && !stopWords.has(w))
+  )];
+}
+
+function highlightRelevantContent(content, query, reason) {
+  const terms = extractTerms(query, reason);
+  if (!terms.length) return escHtml(content);
+
+  // Build a single regex alternation, longest terms first (avoids partial overlap)
+  terms.sort((a, b) => b.length - a.length);
+  const pattern = new RegExp(`(${terms.map(t => t.replace(/[-]/g, '[-]')).join('|')})`, 'gi');
+
+  return escHtml(content).replace(
+    // operate on plain text after escaping
+    new RegExp(`(${terms.map(t => escHtml(t).replace(/[-]/g, '[-]')).join('|')})`, 'gi'),
+    '<mark>$1</mark>'
+  );
+}
 
 // ── Boot ─────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', init);

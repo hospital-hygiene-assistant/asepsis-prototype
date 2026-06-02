@@ -9,7 +9,7 @@ from typing import Optional
 ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(ROOT))
 
-from pageindex import _node_from_dict
+from pageindex import _node_from_dict, retrieve_with_metadata as _pageindex_retrieve_with_metadata
 from modules.registry import discover as _discover_modules, load as _load_module, defaults as _module_defaults
 
 from fastapi import FastAPI
@@ -176,7 +176,12 @@ def run_query(req: RunRequest):
     for idx in sorted(index_dir.glob("*.json")):
         doc_name = idx.stem
         try:
-            nodes = index_mod.retrieve(doc_name, query)
+            retrieve_fn = getattr(index_mod, "retrieve_with_metadata", None)
+            if retrieve_fn:
+                nodes, node_reasons = retrieve_fn(doc_name, query)
+            else:
+                nodes = index_mod.retrieve(doc_name, query)
+                node_reasons = {}
         except FileNotFoundError:
             continue
 
@@ -184,6 +189,7 @@ def run_query(req: RunRequest):
         results[doc_name] = {
             "tree": raw_tree,
             "retrieved_ids": [n.node_id for n in nodes],
+            "node_reasons": node_reasons,
             "nodes": [
                 {
                     "node_id": n.node_id,
@@ -192,6 +198,7 @@ def run_query(req: RunRequest):
                     "synthetic": n.synthetic,
                     "heading_level": n.heading_level,
                     "summary": n.summary,
+                    "reason": node_reasons.get(n.node_id, ""),
                 }
                 for n in nodes
             ],
