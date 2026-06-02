@@ -203,28 +203,20 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   display: flex; flex-direction: column; overflow: hidden;
 }
 
-#doc-tabs {
-  display: flex; gap: 2px;
-  padding: 6px 12px 0;
-  border-bottom: 1px solid var(--border);
-  background: var(--bg); flex-shrink: 0; overflow-x: auto;
+.stat-card.doc-tab-card {
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, transform 0.1s;
 }
-.doc-tab {
-  background: none; border: 1px solid transparent;
-  border-bottom: none; border-radius: var(--radius) var(--radius) 0 0;
-  padding: 5px 14px; cursor: pointer;
-  color: var(--muted); font-size: 11px; white-space: nowrap;
-  transition: color 0.12s, background 0.12s;
+.stat-card.doc-tab-card:hover {
+  background: var(--surface2);
+  border-color: var(--muted);
 }
-.doc-tab:hover { color: var(--text); background: var(--surface2); }
-.doc-tab.active { color: var(--text); background: var(--surface); border-color: var(--border); }
-.tab-count {
-  display: inline-block; margin-left: 5px;
-  background: var(--green); color: #0f172a;
-  border-radius: 999px; padding: 0 6px;
-  font-size: 10px; font-weight: 700;
+.stat-card.doc-tab-card.active {
+  background: #1a3a5c;
+  border-color: var(--accent);
+  box-shadow: 0 0 8px rgba(56, 189, 248, 0.25);
+  transform: translateY(-1px);
 }
-.tab-count.zero { background: var(--gray); color: var(--text); }
 
 #tree-container {
   flex: 1; min-height: 0;
@@ -241,7 +233,6 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 .legend-item.retrieved        { color: var(--green-light); }
 .legend-item.expected-missing { color: var(--red); }
-.legend-item.forbidden-retrieved { color: var(--orange); }
 .legend-item.neutral          { color: var(--gray); }
 .legend-item.internal         { color: var(--blue); }
 
@@ -284,7 +275,6 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 .level-tag    { background: #1e293b; color: var(--gray); }
 .synth-tag    { background: #2e1a4f; color: var(--violet); }
 .expected-tag { background: #14532d; color: var(--green); }
-.forbidden-tag{ background: #450a0a; color: var(--red); }
 
 .snippet-title {
   font-size: 12px; font-weight: 600; color: var(--text); line-height: 1.4;
@@ -311,6 +301,53 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   padding: 0 1px;
 }
 
+/* ── Ollama instance stepper ─────────────────────────────── */
+.instance-stepper {
+  display: flex; align-items: center; gap: 6px;
+}
+.inst-btn {
+  width: 22px; height: 22px; border-radius: 4px;
+  background: var(--surface2); border: 1px solid var(--border);
+  color: var(--text); font-size: 14px; line-height: 1;
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+}
+.inst-btn:hover:not(:disabled) { background: var(--border); }
+.inst-btn:disabled { opacity: 0.4; cursor: default; }
+#inst-count {
+  min-width: 20px; text-align: center;
+  font-size: 13px; font-weight: 600; color: var(--text);
+}
+
+/* Per-instance activity dots */
+.inst-indicators {
+  display: flex; gap: 5px; align-items: center;
+  padding: 4px 0 2px;
+}
+.inst-dot {
+  width: 14px; height: 14px; border-radius: 50%;
+  border: 2px solid var(--border);
+  box-sizing: border-box;
+  transition: border-color 0.2s;
+}
+.inst-dot.idle {
+  border-color: var(--gray);
+}
+.inst-dot.busy {
+  border-color: var(--accent);
+  border-top-color: transparent;
+  animation: inst-spin 0.7s linear infinite;
+}
+@keyframes inst-spin {
+  to { transform: rotate(360deg); }
+}
+
+.inst-status {
+  font-size: 10px; padding: 2px 0 6px;
+  color: var(--muted);
+}
+.inst-ok   { color: var(--green); }
+.inst-warn { color: var(--orange); }
+
 .empty-msg { padding: 24px; color: var(--muted); font-size: 12px; }
 
 /* ── Tooltip ─────────────────────────────────────────────── */
@@ -318,7 +355,8 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   display: none;
   position: fixed;
   z-index: 9999;
-  max-width: 300px;
+  min-width: 200px;
+  max-width: 320px;
   background: #1e293b;
   border: 1px solid #334155;
   border-radius: var(--radius);
@@ -336,8 +374,206 @@ body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
 }
 .tt-selected     { color: #86efac; }
 .tt-not-selected { color: #94a3b8; }
+.tt-section      { color: #7dd3fc; }
 .tt-reason  { font-size: 11px; color: var(--muted); line-height: 1.5; }
 .tt-muted   { color: #64748b; }
+
+/* ── Treemap Visualizer ────────────────────────────────── */
+#welcome-viewport {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+#welcome-header {
+  padding: 16px;
+  text-align: center;
+  flex-shrink: 0;
+}
+#treemap-pack {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  position: relative;
+  margin: 0 16px;
+}
+#treemap-pack svg {
+  display: block;
+}
+.tm-rect {
+  stroke: var(--border);
+  stroke-width: 1px;
+  rx: 3px;
+  ry: 3px;
+  transition: fill 0.4s ease, stroke 0.4s ease, fill-opacity 0.4s ease, stroke-width 0.15s ease;
+  cursor: pointer;
+}
+.tm-rect:hover {
+  stroke-width: 2px;
+  stroke: var(--accent) !important;
+}
+
+.tm-pending {
+  fill: #ffffff;
+  fill-opacity: 0.04;
+  stroke: #cbd5e1;
+  stroke-opacity: 0.35;
+}
+.tm-leaf.tm-pending {
+  fill: #ffffff;
+  fill-opacity: 0.12;
+  stroke: #94a3b8;
+  stroke-opacity: 0.5;
+}
+.tm-pruned {
+  fill: #475569;
+  fill-opacity: 0.18;
+  stroke: #475569;
+  stroke-opacity: 0.4;
+}
+.tm-retrieved {
+  fill: #22c55e;
+  fill-opacity: 0.8;
+  stroke: #4ade80;
+  stroke-width: 1.5px;
+  filter: drop-shadow(0 0 4px rgba(34, 197, 94, 0.4));
+}
+.tm-rejected {
+  fill: #334155;
+  fill-opacity: 0.3;
+  stroke: #ef4444;
+  stroke-opacity: 0.7;
+  stroke-width: 1.5px;
+  stroke-dasharray: 4 2;
+}
+
+.tm-label-text {
+  font-size: 10px;
+  fill: var(--text);
+  pointer-events: none;
+  font-family: var(--font-mono);
+  opacity: 0.8;
+}
+.tm-doc-label {
+  font-size: 10px;
+  font-weight: 700;
+  fill: var(--muted);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  pointer-events: none;
+  opacity: 0.6;
+}
+
+/* ── D3 Tree Path Edge Highlight & Forgiving Hover ──────── */
+.link-highlight {
+  stroke: #22c55e !important;
+  stroke-width: 2.5px !important;
+  stroke-opacity: 0.85 !important;
+  filter: drop-shadow(0 0 2px rgba(34, 197, 94, 0.35));
+}
+.link-hover-catcher {
+  fill: none;
+  stroke: transparent;
+  stroke-dasharray: none;
+  stroke-width: 14px !important;
+  cursor: pointer;
+  pointer-events: stroke !important;
+}
+
+/* ── Chat/Search Input (Floating/Draggable) ── */
+#chat-input-container {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 10000;
+  background: transparent;
+  border-top: none;
+  padding: 0;
+  width: 480px;
+  cursor: move;
+  flex-shrink: 0;
+  display: flex;
+  justify-content: center;
+}
+
+.chat-input-box {
+  width: 100%;
+  max-width: 100%;
+  position: relative;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  display: flex;
+  align-items: center;
+  padding: 6px 12px 6px 18px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  transition: border-color 0.2s, box-shadow 0.2s;
+  backdrop-filter: blur(8px);
+}
+
+.chat-input-box:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 4px 24px rgba(56, 189, 248, 0.15);
+}
+
+#main-query-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1.5;
+  resize: none;
+  height: 24px;
+  max-height: 120px;
+  outline: none;
+  padding: 2px 0;
+}
+
+#main-query-input::placeholder {
+  color: var(--muted);
+}
+
+#main-run-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #0f172a;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.15s, transform 0.1s;
+  flex-shrink: 0;
+  margin-left: 8px;
+}
+
+#main-run-btn:hover {
+  opacity: 0.9;
+}
+
+#main-run-btn:active {
+  transform: scale(0.95);
+}
+
+#main-run-btn:disabled {
+  background: var(--surface2);
+  color: var(--muted);
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+#main-query-input:disabled {
+  color: var(--muted);
+  cursor: not-allowed;
+}
 
 /* Scrollbars */
 ::-webkit-scrollbar { width: 6px; height: 6px; }

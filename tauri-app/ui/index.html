@@ -32,36 +32,44 @@
         <span class="pipeline-stage-label">3 · Query</span>
         <select id="sel-query" class="module-select"></select>
       </div>
+      <div class="pipeline-row" style="margin-top:8px;border-top:1px solid var(--border);padding-top:8px;">
+        <span class="pipeline-stage-label">Ollama instances</span>
+        <div class="instance-stepper">
+          <button id="inst-dec" class="inst-btn">−</button>
+          <span id="inst-count">1</span>
+          <button id="inst-inc" class="inst-btn">+</button>
+        </div>
+      </div>
+      <div id="inst-indicators" class="inst-indicators"></div>
+      <div id="inst-status" class="inst-status"></div>
     </div>
 
     <div id="test-list"></div>
 
-    <div class="sidebar-section" style="margin-top:auto; padding-top:16px;">
-      <div class="section-label">Custom Query</div>
-      <textarea id="custom-query" placeholder="Type a query… (⌘↵ to run)"></textarea>
-      <button id="run-custom-btn" class="run-btn">Run Query</button>
-    </div>
   </aside>
 
   <!-- ── Main ── -->
   <main id="main">
 
-    <!-- Welcome -->
-    <div id="welcome" class="center-message">
-      <div class="welcome-icon">⬡</div>
-      <h2>PageIndex Explorer</h2>
-      <p>Select a test case from the sidebar to visualise retrieval results, or enter a custom query below.</p>
-    </div>
-
-    <!-- Loading -->
-    <div id="loading" class="center-message" style="display:none">
-      <div class="spinner"></div>
-      <p id="loading-msg">Running retrieval…</p>
-      <p style="font-size:11px;opacity:.6">Calling Ollama across all documents — this takes ~30–90 s</p>
+    <!-- Visualizer / Welcome Screen -->
+    <!-- Visualizer / Welcome Screen -->
+    <div id="welcome-viewport" style="display:flex; flex:1; flex-direction:column; min-height:0;">
+      <div id="welcome-header" style="padding:16px; text-align:center; flex-shrink:0;">
+        <div class="welcome-icon" style="font-size:32px; opacity:0.4; margin-bottom:8px;">⬡</div>
+        <h2 style="font-size:18px; margin-bottom:6px;">PageIndex Explorer</h2>
+        <p id="welcome-status" style="font-size:12px; color:var(--muted);">Select a test case from the sidebar or enter a custom query below to start.</p>
+      </div>
+      <div id="treemap-pack" style="flex:1; min-height:0; overflow:hidden;"></div>
+      <div id="treemap-pack-legend" class="circle-legend" style="display:flex; justify-content:center; gap:16px; padding:10px; border-top:1px solid var(--border); background:var(--surface); font-size:10px; color:var(--muted);">
+        <span class="legend-item"><span style="display:inline-block; width:8px; height:8px; background:#fff; border:1px solid #94a3b8; margin-right:4px;"></span>Pending / Unevaluated</span>
+        <span class="legend-item"><span style="display:inline-block; width:8px; height:8px; background:#22c55e; margin-right:4px;"></span>Retrieved</span>
+        <span class="legend-item"><span style="display:inline-block; width:8px; height:8px; background:#334155; border:1.5px dashed #ef4444; margin-right:4px;"></span>Rejected</span>
+        <span class="legend-item"><span style="display:inline-block; width:8px; height:8px; background:#475569; opacity:0.5; margin-right:4px;"></span>Pruned</span>
+      </div>
     </div>
 
     <!-- Results -->
-    <div id="results" style="display:none; flex-direction:column; height:100%;">
+    <div id="results" style="display:none; flex-direction:column; height:100%; flex:1;">
 
       <!-- Query + pass/fail -->
       <div id="status-bar">
@@ -74,16 +82,17 @@
 
       <!-- Tree area -->
       <div id="tree-area">
-        <div id="doc-tabs"></div>
         <div id="tree-container"></div>
-        <div id="tree-legend">
-          <span class="legend-item expected-missing">● Expected (missing)</span>
-          <span class="legend-item retrieved">● Retrieved</span>
-          <span class="legend-item forbidden-retrieved">● Forbidden (retrieved)</span>
-          <span class="legend-item neutral">● Not retrieved</span>
-          <span class="legend-item internal">○ Internal (section)</span>
-          <span style="color:#a78bfa;font-size:10px">◈ [synth] = promoted preamble leaf</span>
-          <span style="color:#94a3b8;font-size:10px;margin-left:8px">Click any leaf node → scroll to snippet</span>
+        <div id="tree-legend" style="display:flex; flex-wrap:wrap; gap:10px 16px; padding:8px 16px; background:var(--surface); border-top:1px solid var(--border); font-size:10px; color:var(--muted);">
+          <span class="legend-item" style="color:#86efac">● Retrieved</span>
+          <span class="legend-item" style="color:#f97316">● Evaluated & Rejected</span>
+          <span class="legend-item" style="color:#ef4444">● Expected (missing)</span>
+          <span class="legend-item" style="color:#22c55e">● Expected (hit)</span>
+          <span class="legend-item" style="color:#0ea5e9">● Kept (passed pruning)</span>
+          <span class="legend-item" style="color:#64748b">● Pruned</span>
+          <span class="legend-item" style="color:#3b82f6">● Section (unevaluated)</span>
+          <span class="legend-item" style="color:#374151">● Leaf (unevaluated)</span>
+          <span style="color:#a78bfa;font-size:10px;white-space:nowrap">◈ [synth] = overview leaf</span>
         </div>
       </div>
 
@@ -93,6 +102,19 @@
         <div id="snippets-list"></div>
       </div>
 
+    </div>
+
+    <!-- Chat/Search Input at bottom -->
+    <div id="chat-input-container">
+      <div class="chat-input-box">
+        <textarea id="main-query-input" placeholder="Ask a question or enter a query... (⌘↵ to run)"></textarea>
+        <button id="main-run-btn" title="Run Query">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="22" y1="2" x2="11" y2="13"></line>
+            <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+          </svg>
+        </button>
+      </div>
     </div>
   </main>
 </div>

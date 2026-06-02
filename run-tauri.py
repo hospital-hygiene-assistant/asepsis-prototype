@@ -4,12 +4,8 @@ One-click launcher for PageIndex Explorer.
 
   python3 run-tauri.py
 
-Starts the Python backend on localhost:8765, then:
-  - opens a native Tauri window  (if cargo + tauri-cli v1 are installed)
-  - falls back to the system browser otherwise
-
-Install Tauri CLI v1 once with:
-  cargo install tauri-cli --version '^1.0' --locked
+Runs the full pipeline (ingest → index) if needed, starts the Python backend
+on localhost:8765, then opens a native Tauri window or falls back to the browser.
 """
 
 import os
@@ -23,19 +19,49 @@ from pathlib import Path
 
 ROOT      = Path(__file__).parent
 TAURI_DIR = ROOT / "tauri-app"
+KB_DIR    = ROOT / "knowledge_base"
+INDEX_DIR = ROOT / "index"
+DOCS_DIR  = ROOT / "docs"
 PORT      = 8765
 URL       = f"http://127.0.0.1:{PORT}"
 
 
-# ── dependency check / install ────────────────────────────────
+# ── dependency check ──────────────────────────────────────────
 def _ensure_python_deps():
-    req = TAURI_DIR / "requirements-tauri.txt"
     try:
         import fastapi, uvicorn  # noqa: F401
     except ImportError:
-        print("  Installing Python dependencies...")
+        req = TAURI_DIR / "requirements-tauri.txt"
+        print("  Installing Python dependencies…")
         subprocess.check_call(
             [sys.executable, "-m", "pip", "install", "-q", "-r", str(req)]
+        )
+
+
+# ── pipeline ──────────────────────────────────────────────────
+def _run_pipeline_if_needed():
+    docs = list(DOCS_DIR.glob("*.md")) if DOCS_DIR.exists() else []
+    if not docs:
+        print("  No docs found in docs/ — skipping pipeline.")
+        return
+
+    # Ingest: run if knowledge_base is missing or stale
+    kb_files  = set(p.stem for p in KB_DIR.glob("*.md"))  if KB_DIR.exists()    else set()
+    doc_stems = set(p.stem for p in docs)
+    if not kb_files >= doc_stems:
+        print("  Running ingest…")
+        subprocess.check_call(
+            [sys.executable, str(ROOT / "ingest.py")],
+            cwd=ROOT,
+        )
+
+    # Index: run if any doc is missing from the index
+    idx_files = set(p.stem for p in INDEX_DIR.glob("*.json")) if INDEX_DIR.exists() else set()
+    if not idx_files >= doc_stems:
+        print("  Building index…")
+        subprocess.check_call(
+            [sys.executable, str(ROOT / "pageindex.py")],
+            cwd=ROOT,
         )
 
 
@@ -64,14 +90,33 @@ def _has_tauri() -> bool:
 
 
 # ── main ──────────────────────────────────────────────────────
+def _print_ollama_tip():
+    urls = os.environ.get("OLLAMA_URLS", "")
+    n = len([u for u in urls.split(",") if u.strip()]) if urls else 1
+    if n > 1:
+        print(f"  Ollama pool  → {n} instances ({urls})")
+    else:
+        print("  Ollama tip   → For faster retrieval run multiple Ollama instances and set:")
+        print("                   OLLAMA_URLS=http://localhost:11434,http://localhost:11435")
+        print("                 Start extras with:  OLLAMA_HOST=0.0.0.0:11435 ollama serve")
+
+
 def main():
+    import argparse
+    parser = argparse.ArgumentParser(description="Launch PageIndex Explorer")
+    parser.add_argument("--ollama-instances", type=int, default=1,
+                        help="Number of Ollama instances to use for parallel retrieval (default: 1)")
+    args = parser.parse_args()
+
     print("\nPageIndex Explorer — starting up")
     print("─" * 40)
 
     _ensure_python_deps()
+    _print_ollama_tip()
+    _run_pipeline_if_needed()
 
     # Launch Python backend
-    env = {**os.environ, "PYTHONPATH": str(ROOT)}
+    env = {**os.environ, "PYTHONPATH": str(ROOT), "OLLAMA_INSTANCES": str(args.ollama_instances)}
     server = subprocess.Popen(
         [sys.executable, str(TAURI_DIR / "server.py")],
         env=env,
@@ -95,7 +140,6 @@ def main():
             print("  Press Ctrl+C to stop.\n")
             import webbrowser
             webbrowser.open(URL)
-            # Block until user interrupts
             if hasattr(signal, "pause"):
                 signal.pause()
             else:

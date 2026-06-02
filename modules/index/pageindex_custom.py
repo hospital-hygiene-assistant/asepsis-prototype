@@ -25,7 +25,6 @@ from pageindex import (
     _generate_summary,
     _extract_leaf_content,
     _extract_preamble,
-    _clean_node_id,
     _node_to_dict,
     _node_from_dict,
 )

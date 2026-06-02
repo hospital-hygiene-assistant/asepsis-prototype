@@ -13,8 +13,11 @@ Usage:
 
 import argparse
 import json
+import os
 import re
 import sys
+import threading
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
@@ -24,6 +27,127 @@ import ollama
 KB_DIR = Path("knowledge_base")
 INDEX_DIR = Path("index")
 MODEL = "gemma3:4b"
+
+# ---------------------------------------------------------------------------
+# Ollama instance pool — set OLLAMA_URLS=url1,url2,... for parallelism
+# Each URL is an independent Ollama process; branches are distributed
+# round-robin so N instances process N branches simultaneously.
+# ---------------------------------------------------------------------------
+OLLAMA_URLS: list[str] = [
+    u.strip()
+    for u in os.getenv("OLLAMA_URLS", "http://localhost:11434").split(",")
+    if u.strip()
+]
+_clients: list[ollama.Client] = [ollama.Client(host=url) for url in OLLAMA_URLS]
+_rr_lock  = threading.Lock()
+_rr_index = 0
+
+# Per-instance activity counters  {url: active_leaf_count}
+_activity: dict[str, int] = {url: 0 for url in OLLAMA_URLS}
+_activity_lock = threading.Lock()
+
+# Run-level progress counter
+_prog_lock  = threading.Lock()
+_prog_total = 0
+_prog_done  = 0
+
+# Live event tracking for circle-pack animation
+_event_lock      = threading.Lock()
+_pruned_ids:     set[str] = set()   # section-pruned (and their descendants)
+_retrieved_ids:  set[str] = set()   # leaves whose LLM verdict was "relevant"
+_kept_ids:       set[str] = set()   # sections that passed the section check
+_rejected_ids:   set[str] = set()   # leaves evaluated but verdict was "not relevant"
+
+
+def _inc(url: str) -> None:
+    with _activity_lock:
+        _activity[url] = _activity.get(url, 0) + 1
+
+
+def _dec(url: str) -> None:
+    with _activity_lock:
+        _activity[url] = max(0, _activity.get(url, 0) - 1)
+
+
+def _inc_done() -> None:
+    global _prog_done
+    with _prog_lock:
+        _prog_done += 1
+
+
+def get_activity() -> dict[str, int]:
+    with _activity_lock:
+        return dict(_activity)
+
+
+def start_run(total_leaves: int) -> None:
+    global _prog_total, _prog_done
+    with _prog_lock:
+        _prog_total = total_leaves
+        _prog_done  = 0
+    with _event_lock:
+        _pruned_ids.clear()
+        _retrieved_ids.clear()
+        _kept_ids.clear()
+        _rejected_ids.clear()
+
+
+def get_progress() -> dict[str, int]:
+    with _prog_lock:
+        return {"total": _prog_total, "done": _prog_done}
+
+
+def _mark_pruned(node_id: str) -> None:
+    with _event_lock:
+        _pruned_ids.add(node_id)
+
+
+def _mark_retrieved(node_id: str) -> None:
+    with _event_lock:
+        _retrieved_ids.add(node_id)
+
+
+def _mark_kept(node_id: str) -> None:
+    with _event_lock:
+        _kept_ids.add(node_id)
+
+
+def _mark_rejected(node_id: str) -> None:
+    with _event_lock:
+        _rejected_ids.add(node_id)
+
+
+def get_live_events() -> dict[str, list[str]]:
+    with _event_lock:
+        return {
+            "pruned":     list(_pruned_ids),
+            "retrieved":  list(_retrieved_ids),
+            "kept":       list(_kept_ids),
+            "rejected":   list(_rejected_ids),
+        }
+
+
+def _round_robin_client() -> tuple[ollama.Client, str]:
+    global _rr_index
+    with _rr_lock:
+        idx    = _rr_index % len(_clients)
+        client = _clients[idx]
+        url    = OLLAMA_URLS[idx]
+        _rr_index += 1
+    return client, url
+
+
+def reconfigure_clients(urls: list[str]) -> None:
+    """Hot-swap the Ollama client pool. Called by the server when instance count changes."""
+    global OLLAMA_URLS, _clients, _rr_index
+    with _rr_lock:
+        OLLAMA_URLS = urls
+        _clients = [ollama.Client(host=u) for u in urls]
+        _rr_index = 0
+    with _activity_lock:
+        _activity.clear()
+        for u in urls:
+            _activity[u] = 0
 
 HEADING_RE = re.compile(r"^(#{1,6})\s+(.+)$")
 
@@ -54,6 +178,23 @@ class PageNode:
 
 def _slugify(text: str) -> str:
     return re.sub(r"[^a-z0-9]+", "-", text.lower()).strip("-")
+
+
+def _clean_node_id(raw: str) -> str:
+    """Sanitise and extract the node_id from raw strings returned by the LLM."""
+    raw = raw.strip()
+    if "|" in raw:
+        for part in raw.split("|"):
+            part = part.strip()
+            if part.startswith("id="):
+                return part[3:].strip()
+    raw = re.sub(r"^(?:LEAF|SECTION|\[LEAF\]|\[SECTION\])[\s\\:]*", "", raw, flags=re.IGNORECASE)
+    if "/" in raw:
+        raw = raw.split("/")[-1]
+    if raw.startswith("id="):
+        raw = raw[3:]
+    return raw.strip()
+
 
 
 def _parse_headings(text: str) -> list[tuple[int, int, str, str]]:
@@ -251,14 +392,11 @@ def _node_from_dict(d: dict) -> PageNode:
 # TOC formatting
 # ---------------------------------------------------------------------------
 
-_TOC_CONTENT_WORDS = 80  # max words of leaf content to include in TOC
-
-
 def _flatten_toc(nodes: list[PageNode], depth: int = 0) -> str:
     """
     Sections: single line  {indent}SECTION | id={nodeId} | {title}
-    Leaves:   header line + indented content excerpt (up to _TOC_CONTENT_WORDS words)
-    Including actual content lets the LLM judge relevance and quote verbatim.
+    Leaves:   header line + full content indented below
+    Full content lets the LLM read the actual text before deciding and quote verbatim.
     """
     lines = []
     indent = "  " * depth
@@ -266,11 +404,7 @@ def _flatten_toc(nodes: list[PageNode], depth: int = 0) -> str:
         if node.is_leaf:
             lines.append(f"{indent}LEAF | id={node.node_id} | {node.title}")
             if node.content:
-                words = node.content.split()
-                excerpt = " ".join(words[:_TOC_CONTENT_WORDS])
-                if len(words) > _TOC_CONTENT_WORDS:
-                    excerpt += " …"
-                lines.append(f"{indent}  {excerpt}")
+                lines.append(f"{indent}  {node.content}")
         else:
             lines.append(f"{indent}SECTION | id={node.node_id} | {node.title}")
             if node.children:
@@ -326,46 +460,56 @@ def _find_nodes_by_ids(nodes: list[PageNode], ids: set[str]) -> list[PageNode]:
 # LLM plumbing
 # ---------------------------------------------------------------------------
 
-RETRIEVAL_PROMPT_TEMPLATE = """\
-You are a precise document retrieval assistant.
-
-Default answer: [] — most documents have zero relevant nodes for any given query.
-Only include a node if it CLEARLY and DIRECTLY answers the query.
-
-Document: DOCNAME_PLACEHOLDER
-
-TOC format:
-  SECTION | id=... | Title
-  LEAF | id=... | Title
-    [content excerpt — the actual text of this leaf]
-
-Rules:
-1. First decide: does this document's subject relate to the query at all?
-   If the document is about a clearly different topic, output [] immediately.
-2. Read each LEAF content excerpt. Only include the leaf if its content directly
-   answers the query. Title alone is not enough — check the text. If in doubt, exclude.
-3. NEVER select a SECTION line (only LEAF lines).
-4. For each selected LEAF output one JSON object with three fields:
-   "id": the node id string
-   "reason": 1-2 sentences explaining why this leaf answers the query
-   "quote": copy 1-2 verbatim sentences from the leaf content that best answer the query
-
-The quote MUST be copied character-for-character from the content shown above.
-
-Example:
-[{"id": "sodium-restriction", "reason": "Gives the recommended daily sodium ceiling and its BP effect.", "quote": "Sodium intake should be limited to less than 2,300 mg/day."}]
-
-If nothing is relevant: []
+LEAF_EVAL_PROMPT = """\
+Decide if the section below directly answers the query. Read the full content carefully.
 
 Query: QUERY_PLACEHOLDER
 
-Table of contents:
-TOC_PLACEHOLDER
+Document: DOCNAME_PLACEHOLDER
+Section path: BREADCRUMB_PLACEHOLDER
+Parent section: PARENT_SUMMARY_PLACEHOLDER
+
+--- SECTION CONTENT ---
+CONTENT_PLACEHOLDER
+--- END ---
+
+Rules:
+- Answer YES only if the content directly and specifically addresses the query.
+- A section that is tangentially related or only mentions the topic in passing is NOT relevant.
+- If YES, the quote must be copied character-for-character from the content above.
+
+Output exactly one of:
+  {"relevant": true,  "reason": "1-2 sentences: what in this content answers the query", "quote": "1-2 verbatim sentences from the content that best answer the query"}
+  {"relevant": false}
+
+Output only the JSON object. No other text.
+"""
+
+SECTION_CHECK_PROMPT = """\
+Could the document section below contain content that directly answers the query?
+
+Query: QUERY_PLACEHOLDER
+Section: BREADCRUMB_PLACEHOLDER
+
+This section and all of its nested subsections / headings:
+DESCENDANTS_PLACEHOLDER
+
+Rules:
+- Answer in JSON format.
+- If ANY of the headings above might cover content that answers the query, answer:
+  {"relevant": true, "reason": "1-2 sentences explaining why this section was selected"}
+  The "reason" field is STRICTLY REQUIRED when "relevant" is true.
+- If you are certain that none of these headings could contain a direct answer, answer:
+  {"relevant": false}
+
+Output only the JSON object. No other text.
 """
 
 
-def _chat(prompt: str) -> str:
-    response = ollama.chat(
+def _chat(prompt: str, client: Optional[ollama.Client] = None, url: str = "") -> str:
+    if client is None:
+        client, url = _round_robin_client()
+    response = client.chat(
         model=MODEL,
         messages=[{"role": "user", "content": prompt}],
         options={"temperature": 0},
@@ -399,54 +543,100 @@ def _parse_json_response(raw: str) -> object:
     raise ValueError(f"Could not parse JSON from model response: {raw[:300]!r}")
 
 
-def _clean_node_id(raw: str) -> str:
-    s = raw.strip()
-    if "/" in s:
-        s = s.split("/")[-1]
-    if " | " in s:
-        for part in s.split(" | "):
-            part = part.strip()
-            if part.startswith("id="):
-                s = part[3:]
-                break
-        else:
-            s = s.split(" | ")[0].strip()
-    for prefix in ("LEAF ", "SECTION ", "id=", "[LEAF] ", "[SECTION] "):
-        if s.startswith(prefix):
-            s = s[len(prefix):]
-            break
-    # Strip any remaining label-like prefix word followed by colon/backslash
-    s = re.sub(r"^[A-Z]+\\?:?\s*", "", s)
-    s = s.strip(" :\\")
-    return s
+# ---------------------------------------------------------------------------
+# Breadcrumb helpers
+# ---------------------------------------------------------------------------
+
+def _build_parent_map(nodes: list["PageNode"], parent: Optional["PageNode"] = None) -> dict:
+    result: dict[str, "PageNode"] = {}
+    for node in nodes:
+        if parent is not None:
+            result[node.node_id] = parent
+        result.update(_build_parent_map(node.children, node))
+    return result
 
 
-def _select_nodes_from_llm(toc_text: str, query: str, doc_name: str = "") -> list[dict]:
-    """Return list of {id, reason, quote} dicts for nodes the LLM considers relevant."""
+def _build_nodes_by_id(nodes: list["PageNode"]) -> dict:
+    result: dict[str, "PageNode"] = {}
+    for node in nodes:
+        result[node.node_id] = node
+        result.update(_build_nodes_by_id(node.children))
+    return result
+
+
+def _make_breadcrumb(node_id: str, parent_map: dict, nodes_by_id: dict) -> str:
+    parts: list[str] = []
+    current = node_id
+    while current in parent_map:
+        p = parent_map[current]
+        parts.append(p.title)
+        current = p.node_id
+    parts.reverse()
+    if node_id in nodes_by_id:
+        parts.append(nodes_by_id[node_id].title)
+    return " > ".join(parts)
+
+
+# ---------------------------------------------------------------------------
+# Per-leaf evaluation
+# ---------------------------------------------------------------------------
+
+def _evaluate_leaf(
+    leaf: "PageNode",
+    query: str,
+    doc_name: str,
+    breadcrumb: str,
+    parent_summary: str,
+    client: Optional[ollama.Client] = None,
+    client_url: str = "",
+) -> tuple[str, dict]:
+    """Evaluate one leaf. Returns (node_id, {relevant, reason, quote, status})."""
     prompt = (
-        RETRIEVAL_PROMPT_TEMPLATE
-        .replace("DOCNAME_PLACEHOLDER", doc_name.replace("_", " ").title() if doc_name else "Unknown")
+        LEAF_EVAL_PROMPT
         .replace("QUERY_PLACEHOLDER", query)
-        .replace("TOC_PLACEHOLDER", toc_text)
+        .replace("DOCNAME_PLACEHOLDER", doc_name.replace("_", " ").title())
+        .replace("BREADCRUMB_PLACEHOLDER", breadcrumb)
+        .replace("PARENT_SUMMARY_PLACEHOLDER", parent_summary or "top-level section")
+        .replace("CONTENT_PLACEHOLDER", leaf.content or "(no content)")
     )
-    raw = _chat(prompt)
-    result = _parse_json_response(raw)
-    if not isinstance(result, list):
-        return []
-    parsed = []
-    for item in result:
-        if isinstance(item, str):
-            node_id = _clean_node_id(item)
-            if node_id:
-                parsed.append({"id": node_id, "reason": "", "quote": ""})
-        elif isinstance(item, dict):
-            raw_id = str(item.get("id") or "").strip()
-            reason = str(item.get("reason") or "").strip()
-            quote  = str(item.get("quote")  or "").strip()
-            node_id = _clean_node_id(raw_id)
-            if node_id:
-                parsed.append({"id": node_id, "reason": reason, "quote": quote})
-    return parsed
+    _inc(client_url)
+    try:
+        raw = _chat(prompt, client, client_url)
+        result = _parse_json_response(raw)
+        
+        if isinstance(result, dict):
+            relevant = bool(result.get("relevant"))
+            reason = str(result.get("reason") or "").strip()
+            quote = str(result.get("quote") or "").strip()
+            
+            if relevant:
+                _mark_retrieved(leaf.node_id)
+                return leaf.node_id, {
+                    "relevant": True,
+                    "reason": reason,
+                    "quote": quote,
+                    "status": "retrieved"
+                }
+            else:
+                _mark_rejected(leaf.node_id)
+                return leaf.node_id, {
+                    "relevant": False,
+                    "reason": "",
+                    "quote": "",
+                    "status": "rejected"
+                }
+    except Exception as exc:
+        print(f"    [warn] leaf eval failed for {leaf.node_id}: {exc}", file=sys.stderr)
+    finally:
+        _dec(client_url)
+    
+    _mark_rejected(leaf.node_id)
+    return leaf.node_id, {
+        "relevant": False,
+        "reason": "",
+        "quote": "",
+        "status": "rejected"
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -480,6 +670,134 @@ def build_index(doc_name: str) -> None:
     print(f"    → {index_path} ({len(nodes)} top-level nodes, {len(leaves)} leaves)")
 
 
+def _format_descendant_outline(node: "PageNode", depth: int = 0) -> str:
+    """Indented bullet list of all descendant headings — gives the LLM full visibility."""
+    lines: list[str] = []
+    for child in node.children:
+        prefix = "  " * depth
+        marker = "•" if not child.is_leaf else "-"
+        lines.append(f"{prefix}{marker} {child.title}")
+        if child.children:
+            lines.append(_format_descendant_outline(child, depth + 1))
+    return "\n".join(l for l in lines if l)
+
+
+def _check_section_relevant(
+    node: "PageNode",
+    query: str,
+    breadcrumb: str,
+    client: Optional[ollama.Client] = None,
+    client_url: str = "",
+) -> tuple[bool, str]:
+    """Lightweight LLM call: can this section contain a direct answer?"""
+    descendants = _format_descendant_outline(node) or "(no subsections)"
+    prompt = (
+        SECTION_CHECK_PROMPT
+        .replace("QUERY_PLACEHOLDER", query)
+        .replace("BREADCRUMB_PLACEHOLDER", breadcrumb)
+        .replace("DESCENDANTS_PLACEHOLDER", descendants)
+    )
+    _inc(client_url)
+    try:
+        raw = _chat(prompt, client, client_url)
+        result = _parse_json_response(raw)
+        verdict = isinstance(result, dict) and bool(result.get("relevant"))
+        reason = ""
+        if isinstance(result, dict):
+            reason = str(result.get("reason") or "").strip()
+        
+        if verdict:
+            _mark_kept(node.node_id)
+        
+        print(f"    [prune-check] {node.node_id}: {'KEEP' if verdict else 'PRUNE'} (raw={raw!r:.120})", file=sys.stderr)
+        return verdict, reason
+    except Exception as exc:
+        _mark_kept(node.node_id)
+        print(f"    [prune-check] {node.node_id}: ERROR ({exc}) — keeping", file=sys.stderr)
+        return True, f"Error checking section: {exc}"  # conservative: never prune on error
+    finally:
+        _dec(client_url)
+
+
+def _collect_all_nodes(nodes: list["PageNode"]) -> list["PageNode"]:
+    result: list["PageNode"] = []
+    for node in nodes:
+        result.append(node)
+        result.extend(_collect_all_nodes(node.children))
+    return result
+
+
+def _prune_and_collect(
+    nodes: list["PageNode"],
+    query: str,
+    parent_map: dict,
+    nodes_by_id: dict,
+    node_assignment: dict[str, tuple],
+    node_meta: dict[str, dict],
+) -> list["PageNode"]:
+    """
+    BFS top-down pruning. At each level, check all internal nodes in parallel;
+    recurse only into relevant ones. Leaves always survive to full evaluation.
+    Returns the list of leaf candidates that passed pruning.
+    """
+    candidate_leaves: list["PageNode"] = []
+    frontier = list(nodes)
+
+    while frontier:
+        sections = [n for n in frontier if not n.is_leaf]
+        candidate_leaves.extend(n for n in frontier if n.is_leaf)
+
+        if not sections:
+            break
+
+        with ThreadPoolExecutor(max_workers=len(sections)) as pool:
+            futures = {
+                pool.submit(
+                    _check_section_relevant,
+                    node, query,
+                    _make_breadcrumb(node.node_id, parent_map, nodes_by_id),
+                    *node_assignment.get(node.node_id, (_clients[0], OLLAMA_URLS[0])),
+                ): node
+                for node in sections
+            }
+            next_frontier: list["PageNode"] = []
+            for future in as_completed(futures):
+                node = futures[future]
+                verdict, reason = future.result()
+                
+                node_meta[node.node_id] = {
+                    "relevant": verdict,
+                    "reason": reason,
+                    "status": "kept" if verdict else "pruned"
+                }
+
+                if verdict:
+                    next_frontier.extend(node.children)
+                else:
+                    # Pruned: count all leaf descendants toward "done" so the
+                    # progress counter reaches total. They won't be evaluated again.
+                    for leaf in _collect_leaves([node]):
+                        _inc_done()
+                        _mark_pruned(leaf.node_id)
+                        node_meta[leaf.node_id] = {
+                            "relevant": False,
+                            "reason": f"Pruned because ancestor section '{node.title}' was pruned.",
+                            "status": "pruned"
+                        }
+                    for descendant in _collect_all_nodes([node]):
+                        _mark_pruned(descendant.node_id)
+                        if descendant.node_id != node.node_id:
+                            node_meta[descendant.node_id] = {
+                                "relevant": False,
+                                "reason": f"Pruned because ancestor section '{node.title}' was pruned.",
+                                "status": "pruned"
+                            }
+
+        frontier = next_frontier
+
+    return candidate_leaves
+
+
 def retrieve(doc_name: str, query: str) -> list[PageNode]:
     """Return relevant leaf nodes for a query against one document's index."""
     nodes_result, _ = retrieve_with_metadata(doc_name, query)
@@ -487,28 +805,77 @@ def retrieve(doc_name: str, query: str) -> list[PageNode]:
 
 
 def retrieve_with_metadata(doc_name: str, query: str) -> tuple[list[PageNode], dict[str, dict]]:
-    """Return (leaf_nodes, {node_id: {reason, quote}}) for a query against one document's index."""
+    """
+    Two-phase retrieval with top-down pruning.
+    Phase 1: BFS section checks — prune branches whose sections are irrelevant.
+    Phase 2: Full leaf evaluation (reason + quote) on survivors only.
+    Returns (selected_leaves_in_doc_order, {node_id: {reason, quote}}).
+    """
     index_path = INDEX_DIR / f"{doc_name}.json"
     if not index_path.exists():
         raise FileNotFoundError(f"Index not found: {index_path}. Run build first.")
 
     nodes = [_node_from_dict(d) for d in json.loads(index_path.read_text(encoding="utf-8"))]
-    toc = _flatten_toc(nodes)
-    selections = _select_nodes_from_llm(toc, query, doc_name)
+    leaves = _collect_leaves(nodes)
 
-    if not selections:
+    if not leaves:
         return [], {}
 
-    id_to_meta = {s["id"]: {"reason": s["reason"], "quote": s["quote"]} for s in selections}
-    leaf_nodes = _find_nodes_by_ids(nodes, set(id_to_meta.keys()))
+    parent_map  = _build_parent_map(nodes)
+    nodes_by_id = _build_nodes_by_id(nodes)
 
-    leaf_meta: dict[str, dict] = {}
-    for leaf in leaf_nodes:
-        leaf_meta[leaf.node_id] = id_to_meta.get(
-            leaf.node_id, {"reason": "Included as part of a selected section.", "quote": ""}
-        )
+    # Assign every node (section + leaf) to an Ollama instance round-robin by branch.
+    branch_roots = nodes[0].children if (len(nodes) == 1 and nodes[0].children) else nodes
+    node_assignment: dict[str, tuple[ollama.Client, str]] = {}
+    for i, branch in enumerate(branch_roots):
+        idx = i % len(_clients)
+        client, url = _clients[idx], OLLAMA_URLS[idx]
+        for node in _collect_all_nodes([branch]):
+            node_assignment[node.node_id] = (client, url)
+    # Fallback for any node not covered (e.g., single-root flat doc)
+    for node in _collect_all_nodes(nodes):
+        if node.node_id not in node_assignment:
+            node_assignment[node.node_id] = (_clients[0], OLLAMA_URLS[0])
 
-    return leaf_nodes, leaf_meta
+    node_meta: dict[str, dict] = {}
+    if nodes:
+        node_meta[nodes[0].node_id] = {
+            "relevant": True,
+            "reason": f"Document root '{nodes[0].title}' — starting point for retrieval.",
+            "status": "kept"
+        }
+
+    # Phase 1 — top-down pruning
+    top = nodes[0].children if (len(nodes) == 1 and nodes[0].children) else nodes
+    surviving = _prune_and_collect(top, query, parent_map, nodes_by_id, node_assignment, node_meta)
+    print(
+        f"  [prune] {doc_name}: {len(surviving)}/{len(leaves)} leaves after pruning",
+        file=sys.stderr,
+    )
+
+    # Phase 2 — full leaf evaluation on survivors
+    if surviving:
+        with ThreadPoolExecutor(max_workers=len(surviving)) as pool:
+            futures = {
+                pool.submit(
+                    _evaluate_leaf,
+                    leaf,
+                    query,
+                    doc_name,
+                    _make_breadcrumb(leaf.node_id, parent_map, nodes_by_id),
+                    parent_map[leaf.node_id].summary if leaf.node_id in parent_map else "",
+                    *node_assignment.get(leaf.node_id, (_clients[0], OLLAMA_URLS[0])),
+                ): leaf
+                for leaf in surviving
+            }
+            for future in as_completed(futures):
+                node_id, meta = future.result()
+                node_meta[node_id] = meta
+                _inc_done()
+
+    # Preserve original document order
+    selected = [l for l in leaves if node_meta.get(l.node_id, {}).get("relevant")]
+    return selected, node_meta
 
 
 # ---------------------------------------------------------------------------
