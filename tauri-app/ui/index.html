@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PageIndex Explorer</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+</head>
+<body>
+<div id="app">
+
+  <!-- ── Sidebar ── -->
+  <aside id="sidebar">
+    <div class="sidebar-header">
+      <span class="logo">⬡</span>
+      <span>PageIndex Explorer</span>
+    </div>
+
+    <!-- Pipeline module selectors -->
+    <div id="pipeline-config" class="sidebar-section">
+      <div class="section-label">Pipeline</div>
+      <div class="pipeline-row">
+        <span class="pipeline-stage-label">1 · Ingest</span>
+        <select id="sel-ingest" class="module-select"></select>
+      </div>
+      <div class="pipeline-row">
+        <span class="pipeline-stage-label">2 · Index</span>
+        <select id="sel-index" class="module-select"></select>
+      </div>
+      <div class="pipeline-row">
+        <span class="pipeline-stage-label">3 · Query</span>
+        <select id="sel-query" class="module-select"></select>
+      </div>
+    </div>
+
+    <div id="test-list"></div>
+
+    <div class="sidebar-section" style="margin-top:auto; padding-top:16px;">
+      <div class="section-label">Custom Query</div>
+      <textarea id="custom-query" placeholder="Type a query… (⌘↵ to run)"></textarea>
+      <button id="run-custom-btn" class="run-btn">Run Query</button>
+    </div>
+  </aside>
+
+  <!-- ── Main ── -->
+  <main id="main">
+
+    <!-- Welcome -->
+    <div id="welcome" class="center-message">
+      <div class="welcome-icon">⬡</div>
+      <h2>PageIndex Explorer</h2>
+      <p>Select a test case from the sidebar to visualise retrieval results, or enter a custom query below.</p>
+    </div>
+
+    <!-- Loading -->
+    <div id="loading" class="center-message" style="display:none">
+      <div class="spinner"></div>
+      <p id="loading-msg">Running retrieval…</p>
+      <p style="font-size:11px;opacity:.6">Calling Ollama across all documents — this takes ~30–90 s</p>
+    </div>
+
+    <!-- Results -->
+    <div id="results" style="display:none; flex-direction:column; height:100%;">
+
+      <!-- Query + pass/fail -->
+      <div id="status-bar">
+        <div id="query-display"></div>
+        <div id="test-status"></div>
+      </div>
+
+      <!-- Per-doc retrieval stats -->
+      <div id="stats-bar"></div>
+
+      <!-- Tree area -->
+      <div id="tree-area">
+        <div id="doc-tabs"></div>
+        <div id="tree-container"></div>
+        <div id="tree-legend">
+          <span class="legend-item expected-missing">● Expected (missing)</span>
+          <span class="legend-item retrieved">● Retrieved</span>
+          <span class="legend-item forbidden-retrieved">● Forbidden (retrieved)</span>
+          <span class="legend-item neutral">● Not retrieved</span>
+          <span class="legend-item internal">○ Internal (section)</span>
+          <span style="color:#a78bfa;font-size:10px">◈ [synth] = promoted preamble leaf</span>
+          <span style="color:#94a3b8;font-size:10px;margin-left:8px">Click any leaf node → scroll to snippet</span>
+        </div>
+      </div>
+
+      <!-- Snippets -->
+      <div id="snippets-panel">
+        <div class="panel-header">Retrieved Snippets</div>
+        <div id="snippets-list"></div>
+      </div>
+
+    </div>
+  </main>
+</div>
+<script src="/static/main.js"></script>
+</body>
+</html>
