@@ -57,6 +57,9 @@ _pruned_ids:     set[str] = set()   # section-pruned (and their descendants)
 _retrieved_ids:  set[str] = set()   # leaves whose LLM verdict was "relevant"
 _kept_ids:       set[str] = set()   # sections that passed the section check
 _rejected_ids:   set[str] = set()   # leaves evaluated but verdict was "not relevant"
+# Per-node decision detail, populated live as verdicts are made, so the doc
+# viewer can show reasons/quotes in real time mid-run: {node_id: {status, reason, quote}}
+_live_meta:      dict[str, dict] = {}
 
 
 def _inc(url: str) -> None:
@@ -90,6 +93,7 @@ def start_run(total_leaves: int) -> None:
         _retrieved_ids.clear()
         _kept_ids.clear()
         _rejected_ids.clear()
+        _live_meta.clear()
 
 
 def get_progress() -> dict[str, int]:
@@ -117,13 +121,20 @@ def _mark_rejected(node_id: str) -> None:
         _rejected_ids.add(node_id)
 
 
-def get_live_events() -> dict[str, list[str]]:
+def _set_live_meta(node_id: str, status: str, reason: str = "", quote: str = "") -> None:
+    """Record a node's decision detail as it happens, for live doc-viewer hover."""
+    with _event_lock:
+        _live_meta[node_id] = {"status": status, "reason": reason, "quote": quote}
+
+
+def get_live_events() -> dict:
     with _event_lock:
         return {
             "pruned":     list(_pruned_ids),
             "retrieved":  list(_retrieved_ids),
             "kept":       list(_kept_ids),
             "rejected":   list(_rejected_ids),
+            "meta":       {k: dict(v) for k, v in _live_meta.items()},
         }
 
 
@@ -505,6 +516,31 @@ Rules:
 Output only the JSON object. No other text.
 """
 
+# On-demand explanation for a section that was NOT selected (rejected or pruned).
+# Anchored to the actual content so the negative is verifiable, not confabulated:
+# the model must describe what the section factually covers, then judge fit.
+EXPLAIN_PROMPT = """\
+A section of a document was not selected as answering a query. Read the section
+content below and explain, factually, what it actually covers.
+
+Query: QUERY_PLACEHOLDER
+Document: DOCNAME_PLACEHOLDER
+Section path: BREADCRUMB_PLACEHOLDER
+
+--- SECTION CONTENT ---
+CONTENT_PLACEHOLDER
+--- END ---
+
+First describe the section's actual topic, grounded strictly in the content above.
+Then judge whether it directly answers the query.
+
+Output exactly this JSON object:
+  {"topic": "one factual sentence describing what this section actually covers", "addresses_query": false, "reason": "one sentence contrasting the section's topic with what the query asks for"}
+
+Set "addresses_query" to true ONLY if, on re-reading, the content does directly answer the query.
+Output only the JSON object. No other text.
+"""
+
 
 def _chat(prompt: str, client: Optional[ollama.Client] = None, url: str = "") -> str:
     if client is None:
@@ -611,6 +647,7 @@ def _evaluate_leaf(
             
             if relevant:
                 _mark_retrieved(leaf.node_id)
+                _set_live_meta(leaf.node_id, "retrieved", reason, quote)
                 return leaf.node_id, {
                     "relevant": True,
                     "reason": reason,
@@ -619,9 +656,10 @@ def _evaluate_leaf(
                 }
             else:
                 _mark_rejected(leaf.node_id)
+                _set_live_meta(leaf.node_id, "rejected", reason)
                 return leaf.node_id, {
                     "relevant": False,
-                    "reason": "",
+                    "reason": reason,
                     "quote": "",
                     "status": "rejected"
                 }
@@ -631,6 +669,7 @@ def _evaluate_leaf(
         _dec(client_url)
     
     _mark_rejected(leaf.node_id)
+    _set_live_meta(leaf.node_id, "rejected")
     return leaf.node_id, {
         "relevant": False,
         "reason": "",
@@ -708,7 +747,8 @@ def _check_section_relevant(
         
         if verdict:
             _mark_kept(node.node_id)
-        
+            _set_live_meta(node.node_id, "kept", reason)
+
         print(f"    [prune-check] {node.node_id}: {'KEEP' if verdict else 'PRUNE'} (raw={raw!r:.120})", file=sys.stderr)
         return verdict, reason
     except Exception as exc:
@@ -717,6 +757,52 @@ def _check_section_relevant(
         return True, f"Error checking section: {exc}"  # conservative: never prune on error
     finally:
         _dec(client_url)
+
+
+def make_client(url: str) -> ollama.Client:
+    """Build an Ollama client for a specific instance URL (used by the explainer)."""
+    return ollama.Client(host=url)
+
+
+def explain_nonselection(
+    node: "PageNode",
+    query: str,
+    doc_name: str,
+    breadcrumb: str,
+    client: Optional[ollama.Client] = None,
+    client_url: str = "",
+) -> dict:
+    """On-demand: read the actual content and explain (grounded) what this
+    non-selected section covers and why it doesn't answer the query.
+
+    For a section with no own content, concatenate descendant leaf text so the
+    judgement is anchored to real content rather than the heading alone.
+    """
+    content = node.content
+    if not content:
+        leaves = _collect_leaves([node])
+        content = "\n\n".join((l.title + "\n" + (l.content or "")) for l in leaves).strip()
+    content = (content or "(no content)")[:4000]
+
+    prompt = (
+        EXPLAIN_PROMPT
+        .replace("QUERY_PLACEHOLDER", query)
+        .replace("DOCNAME_PLACEHOLDER", doc_name.replace("_", " ").title())
+        .replace("BREADCRUMB_PLACEHOLDER", breadcrumb)
+        .replace("CONTENT_PLACEHOLDER", content)
+    )
+    try:
+        raw = _chat(prompt, client, client_url)
+        result = _parse_json_response(raw)
+        if isinstance(result, dict):
+            return {
+                "topic": str(result.get("topic") or "").strip(),
+                "addresses_query": bool(result.get("addresses_query")),
+                "reason": str(result.get("reason") or "").strip(),
+            }
+    except Exception as exc:
+        print(f"    [explain] failed for {node.node_id}: {exc}", file=sys.stderr)
+    return {"topic": "", "addresses_query": False, "reason": ""}
 
 
 def _collect_all_nodes(nodes: list["PageNode"]) -> list["PageNode"]:
@@ -776,20 +862,24 @@ def _prune_and_collect(
                 else:
                     # Pruned: count all leaf descendants toward "done" so the
                     # progress counter reaches total. They won't be evaluated again.
+                    _prune_reason = f"Pruned because ancestor section '{node.title}' was pruned."
+                    _set_live_meta(node.node_id, "pruned", reason or _prune_reason)
                     for leaf in _collect_leaves([node]):
                         _inc_done()
                         _mark_pruned(leaf.node_id)
+                        _set_live_meta(leaf.node_id, "pruned", _prune_reason)
                         node_meta[leaf.node_id] = {
                             "relevant": False,
-                            "reason": f"Pruned because ancestor section '{node.title}' was pruned.",
+                            "reason": _prune_reason,
                             "status": "pruned"
                         }
                     for descendant in _collect_all_nodes([node]):
                         _mark_pruned(descendant.node_id)
                         if descendant.node_id != node.node_id:
+                            _set_live_meta(descendant.node_id, "pruned", _prune_reason)
                             node_meta[descendant.node_id] = {
                                 "relevant": False,
-                                "reason": f"Pruned because ancestor section '{node.title}' was pruned.",
+                                "reason": _prune_reason,
                                 "status": "pruned"
                             }
 

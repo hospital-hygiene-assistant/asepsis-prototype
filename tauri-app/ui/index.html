@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>PageIndex Explorer</title>
   <link rel="stylesheet" href="/static/style.css">
-  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <script src="/static/d3.v7.min.js"></script>
 </head>
 <body>
 <div id="app">
@@ -82,7 +82,12 @@
 
       <!-- Tree area -->
       <div id="tree-area">
+        <div id="view-tabs">
+          <button id="tab-graph" class="view-tab active" title="Hierarchical graph">⊟ Graph</button>
+          <button id="tab-boxes" class="view-tab" title="Packed boxes (treemap)">▦ Boxes</button>
+        </div>
         <div id="tree-container"></div>
+        <div id="result-treemap" style="display:none;"></div>
         <div id="tree-legend" style="display:flex; flex-wrap:wrap; gap:10px 16px; padding:8px 16px; background:var(--surface); border-top:1px solid var(--border); font-size:10px; color:var(--muted);">
           <span class="legend-item" style="color:#86efac">● Retrieved</span>
           <span class="legend-item" style="color:#f97316">● Evaluated & Rejected</span>
@@ -104,10 +109,22 @@
 
     </div>
 
-    <!-- Chat/Search Input at bottom -->
-    <div id="chat-input-container">
+    <!-- Chat/Search Input at bottom (collapsed into a launcher by default) -->
+    <div id="chat-input-container" class="collapsed">
+      <button id="chat-launcher" title="Ask a question (⌘K)">
+        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+        </svg>
+        <span class="chat-launcher-label">Ask a question</span>
+        <span class="chat-kbd">⌘K</span>
+      </button>
       <div class="chat-input-box">
-        <textarea id="main-query-input" placeholder="Ask a question or enter a query... (⌘↵ to run)"></textarea>
+        <button id="chat-collapse" title="Collapse (Esc)">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="6 9 12 15 18 9"></polyline>
+          </svg>
+        </button>
+        <textarea id="main-query-input" rows="1" placeholder="Ask a question or enter a query… (⌘↵ to run, Esc to collapse)"></textarea>
         <button id="main-run-btn" title="Run Query">
           <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
             <line x1="22" y1="2" x2="11" y2="13"></line>
@@ -118,6 +135,30 @@
     </div>
   </main>
 </div>
+
+<!-- ── Document viewer modal ── -->
+<div id="doc-modal" class="doc-modal" style="display:none;">
+  <div class="doc-modal-backdrop"></div>
+  <div class="doc-modal-window">
+    <div class="doc-modal-header">
+      <span id="doc-modal-title">Document</span>
+      <div id="doc-verdict-legend" class="doc-verdict-legend" style="display:none;">
+        <span class="lg"><span class="sw sw-acc"></span>Retrieved</span>
+        <span class="lg"><span class="sw sw-rej"></span>Rejected</span>
+        <span class="lg"><span class="sw sw-kept"></span>Section kept</span>
+        <span class="lg"><span class="sw sw-pru"></span>Pruned</span>
+        <span class="lg"><span class="sw sw-q"></span>Deciding quote</span>
+      </div>
+      <button id="doc-modal-close" title="Close (Esc)">✕</button>
+    </div>
+    <div class="doc-modal-body">
+      <nav id="doc-modal-toc" class="doc-modal-toc"></nav>
+      <article id="doc-modal-content" class="doc-modal-content markdown-body"></article>
+    </div>
+  </div>
+</div>
+
+<script src="/static/marked.min.js"></script>
 <script src="/static/main.js"></script>
 </body>
 </html>

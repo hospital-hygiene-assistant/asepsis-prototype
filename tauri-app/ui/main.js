@@ -8,7 +8,38 @@ const state = {
   currentDoc: null,
   currentQuery: '',
   nodeSpacing: 36,
+  resultView: 'graph',   // 'graph' (D3 tree) | 'boxes' (treemap)
+  docViewerStem: null,   // stem currently open in the doc-viewer modal
+  liveStatus: null,      // latest /api/status snapshot (for live verdicts)
+  explainCache: {},      // {stem: {node_id: {topic, reason, addresses_query}}}
 };
+
+// ── Verdict helpers (shared by doc-viewer bands, TOC, and result boxes) ──
+// Prefers the final run results; falls back to live /api/status events so the
+// doc viewer can color + explain decisions in real time mid-run.
+function getDocVerdicts(stem) {
+  const res = state.currentResults?.results?.[stem];
+  if (res) return { retrieved: new Set(res.retrieved_ids || []), meta: res.node_meta || {}, live: false };
+
+  const live = state.liveStatus?.live;
+  if (live && (live.meta || live.retrieved)) {
+    const meta = { ...(live.meta || {}) };
+    const ensure = (ids, status) => (ids || []).forEach(id => { if (!meta[id]) meta[id] = { status }; });
+    ensure(live.retrieved, 'retrieved'); ensure(live.rejected, 'rejected');
+    ensure(live.kept, 'kept');           ensure(live.pruned, 'pruned');
+    return { retrieved: new Set(live.retrieved || []), meta, live: true };
+  }
+  return null;
+}
+function verdictFor(baseId, v) {
+  if (!v) return null;
+  const m = v.meta[baseId] || null;
+  if (v.retrieved.has(baseId) || m?.status === 'retrieved') return 'accepted';
+  if (m?.status === 'rejected') return 'rejected';
+  if (m?.status === 'pruned')   return 'pruned';
+  if (m?.status === 'kept')     return 'kept';
+  return null;
+}
 
 // ── Tooltip (created after DOM is ready — see init()) ────────
 let _tooltip = null;
@@ -56,14 +87,62 @@ async function init() {
   } catch (e) {
     console.error('init error:', e);
   }
+  initChat();
+  makeDraggable(document.getElementById('chat-input-container'));
+  initDocViewer();
+}
+
+// ── Chat window: collapse/expand, hotkey, auto-grow ──────────
+function setChatExpanded(expanded) {
+  const container = document.getElementById('chat-input-container');
+  const input = document.getElementById('main-query-input');
+  container.classList.toggle('collapsed', !expanded);
+  if (expanded) {
+    requestAnimationFrame(() => { input.focus(); autoGrowTextarea(input); });
+  } else {
+    input.blur();
+  }
+}
+
+// Grow the textarea with content, up to ~10 lines, then scroll.
+function autoGrowTextarea(ta) {
+  ta.style.height = 'auto';
+  const cs = getComputedStyle(ta);
+  const line = parseFloat(cs.lineHeight) || 19;
+  const padY = (parseFloat(cs.paddingTop) || 0) + (parseFloat(cs.paddingBottom) || 0);
+  const maxH = line * 10 + padY;
+  ta.style.height = Math.min(ta.scrollHeight, maxH) + 'px';
+  ta.style.overflowY = ta.scrollHeight > maxH ? 'auto' : 'hidden';
+}
+
+function initChat() {
+  const container = document.getElementById('chat-input-container');
+  const launcher  = document.getElementById('chat-launcher');
+  const collapse  = document.getElementById('chat-collapse');
+  const input     = document.getElementById('main-query-input');
+
   document.getElementById('main-run-btn').addEventListener('click', runCustomQuery);
-  document.getElementById('main-query-input').addEventListener('keydown', e => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); runCustomQuery(); }
+    else if (e.key === 'Escape')          { e.preventDefault(); setChatExpanded(false); }
+  });
+  input.addEventListener('input', () => autoGrowTextarea(input));
+
+  launcher.addEventListener('click', () => setChatExpanded(true));
+  collapse.addEventListener('click', () => setChatExpanded(false));
+
+  // Global hotkey: ⌘K / Ctrl+K toggles the chat; "/" opens it when not typing.
+  document.addEventListener('keydown', (e) => {
+    const ae = document.activeElement;
+    const typing = /^(INPUT|TEXTAREA|SELECT)$/.test(ae?.tagName || '') || ae?.isContentEditable;
+    if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
       e.preventDefault();
-      runCustomQuery();
+      setChatExpanded(container.classList.contains('collapsed'));
+    } else if (e.key === '/' && !typing && container.classList.contains('collapsed')) {
+      e.preventDefault();
+      setChatExpanded(true);
     }
   });
-  makeDraggable(document.getElementById('chat-input-container'));
 }
 
 // ── Ollama instance stepper + live activity indicators ────────
@@ -163,8 +242,10 @@ function startStatusPolling() {
   _statusPoller = setInterval(async () => {
     try {
       const status = await apiGet('/api/status');
+      state.liveStatus = status;
       renderInstanceDots(status);
       applyTreemapEvents(status);
+      refreshOpenDocViewer();
     } catch { /* ignore transient errors */ }
   }, 250);
 }
@@ -173,11 +254,21 @@ async function stopStatusPolling() {
   if (_statusPoller) { clearInterval(_statusPoller); _statusPoller = null; }
   try {
     const status = await apiGet('/api/status');
+    state.liveStatus = status;
     renderInstanceDots(status);
     applyTreemapEvents(status);
+    refreshOpenDocViewer();
   } catch {
     renderInstanceDots(null);
   }
+}
+
+// Re-decorate the doc viewer if it's open (called on every status poll).
+function refreshOpenDocViewer() {
+  if (!state.docViewerStem) return;
+  const modal = document.getElementById('doc-modal');
+  if (!modal || modal.style.display === 'none') return;
+  decorateDocVerdicts(document.getElementById('doc-modal-content'), state.docViewerStem);
 }
 
 // ── Module selectors ─────────────────────────────────────────
@@ -242,7 +333,9 @@ async function runTest(testId) {
   const desc = test?.description || testId;
   state.currentQuery = test?.query || '';
   
-  document.getElementById('main-query-input').value = state.currentQuery;
+  const qInput = document.getElementById('main-query-input');
+  qInput.value = state.currentQuery;
+  autoGrowTextarea(qInput);
 
   showLoading(`Running "${desc}" across all documents…`);
   startStatusPolling();
@@ -368,6 +461,7 @@ function renderTreemap(docs) {
     .attr('width', d => d.x1 - d.x0)
     .attr('height', d => d.y1 - d.y0)
     .attr('class', d => `tm-rect tm-pending ${d.data.isLeaf ? 'tm-leaf' : ''}`)
+    .style('cursor', 'pointer')
     .each(function(d) {
       this.__d = d;
       const id = d.data.nodeId;
@@ -416,7 +510,18 @@ function renderTreemap(docs) {
       positionTooltip(event);
     })
     .on('mousemove', positionTooltip)
-    .on('mouseout', () => { getTooltip().style.display = 'none'; });
+    .on('mouseout', () => { getTooltip().style.display = 'none'; })
+    .on('click', (event, d) => {
+      // Find the enclosing document and open the viewer.
+      let curr = d;
+      while (curr && !curr.data.isDoc) curr = curr.parent;
+      if (!curr) return;
+      const stem = curr.data.name;
+      // Scroll to a specific heading when a section/leaf was clicked.
+      const targetTitle = d.data.isDoc ? null : (d.data.title || null);
+      getTooltip().style.display = 'none';
+      openDocViewer(stem, targetTitle);
+    });
 
   // Document name labels on top-level doc circles/rectangles
   leafG.filter(d => d.data.isDoc)
@@ -499,6 +604,327 @@ function applyTreemapEvents(status) {
   }
 }
 
+// ── Document viewer modal ────────────────────────────────────
+function slugify(text) {
+  return (text || '')
+    .toLowerCase()
+    .replace(/[^\w\s-]/g, '')   // drop punctuation
+    .trim()
+    .replace(/\s+/g, '-');
+}
+
+async function openDocViewer(stem, targetTitle = null) {
+  const modal   = document.getElementById('doc-modal');
+  const titleEl = document.getElementById('doc-modal-title');
+  const tocEl   = document.getElementById('doc-modal-toc');
+  const bodyEl  = document.getElementById('doc-modal-content');
+
+  titleEl.textContent = (stem || 'Document').replace(/_/g, ' ');
+  tocEl.innerHTML = '';
+  bodyEl.innerHTML = '<div class="empty-msg">Loading…</div>';
+  modal.style.display = 'flex';
+
+  let doc;
+  try {
+    doc = await apiGet(`/api/document/${encodeURIComponent(stem)}/full`);
+  } catch (e) {
+    bodyEl.innerHTML = `<div class="empty-msg">Could not load document: ${escHtml(e.message)}</div>`;
+    return;
+  }
+
+  // Render markdown (marked is loaded globally as `marked`).
+  const html = (typeof marked !== 'undefined')
+    ? (marked.parse ? marked.parse(doc.markdown) : marked(doc.markdown))
+    : `<pre>${escHtml(doc.markdown)}</pre>`;
+  bodyEl.innerHTML = html;
+
+  // Assign anchor IDs to headings and build the TOC from them.
+  const docV = getDocVerdicts(stem);
+  const headings = bodyEl.querySelectorAll('h1, h2, h3, h4');
+  const seen = {};
+  headings.forEach(h => {
+    let id = slugify(h.textContent);
+    if (!id) return;
+    if (seen[id] != null) { seen[id]++; id = `${id}-${seen[id]}`; }
+    else { seen[id] = 0; }
+    h.id = id;
+
+    const link = document.createElement('a');
+    link.href = `#${id}`;
+    link.className = `toc-${h.tagName.toLowerCase()}`;
+    // Share the verdict color scheme on the TOC entry.
+    const vd = verdictFor(slugify(h.textContent), docV);
+    if (vd) link.classList.add(`toc-v-${vd}`);
+    link.textContent = h.textContent;
+    link.addEventListener('click', (ev) => {
+      ev.preventDefault();
+      h.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+    tocEl.appendChild(link);
+  });
+
+  // Overlay verdicts (live during a run, or final results). Track the open
+  // stem so the status poller can refresh this view in real time.
+  state.docViewerStem = stem;
+  bodyEl.dataset.vsig = '';            // force a fresh decoration
+  decorateDocVerdicts(bodyEl, stem);
+
+  // Scroll to a requested heading (when a section/leaf box was clicked).
+  if (targetTitle) {
+    const want = slugify(targetTitle);
+    let match = bodyEl.querySelector(`#${CSS.escape(want)}`);
+    if (!match) {
+      // Fuzzy fallback: first heading whose slug starts with the target slug.
+      match = Array.from(headings).find(h => slugify(h.textContent).startsWith(want));
+    }
+    if (match) {
+      // Defer so layout is ready before scrolling.
+      requestAnimationFrame(() => match.scrollIntoView({ behavior: 'auto', block: 'start' }));
+    } else {
+      bodyEl.scrollTop = 0;
+    }
+  } else {
+    bodyEl.scrollTop = 0;
+  }
+}
+
+const VERDICT_CLASSES = ['accepted', 'rejected', 'kept', 'pruned'];
+
+/**
+ * Annotate the rendered markdown with the model's per-node verdicts. Each
+ * heading and its following content get a verdict class (sage = retrieved,
+ * rose = rejected, blue = kept, greyed = pruned); accepted leaves get the
+ * deciding quote highlighted in amber. Every annotated element carries
+ * data-vid so hover can surface the decision.
+ *
+ * Idempotent and safe to re-run on every status poll: it clears prior
+ * annotations first and skips work when the verdict signature is unchanged.
+ * Reads final results when available, else live /api/status events.
+ */
+function decorateDocVerdicts(bodyEl, stem) {
+  if (!bodyEl) return;
+  const legend = document.getElementById('doc-verdict-legend');
+  const v = getDocVerdicts(stem);
+
+  // Signature guard — avoid churning the DOM when nothing changed.
+  const sig = v ? JSON.stringify(Object.keys(v.meta).sort().map(k => k + ':' + (v.meta[k].status || '')))
+                : '';
+  if (bodyEl.dataset.vsig === sig) return;
+  bodyEl.dataset.vsig = sig;
+
+  // Clear previous annotations (classes, data-vid, quote marks).
+  bodyEl.querySelectorAll('[data-vid]').forEach(el => {
+    VERDICT_CLASSES.forEach(c => el.classList.remove(`md-h-${c}`, `md-c-${c}`));
+    delete el.dataset.vid;
+  });
+  bodyEl.querySelectorAll('mark.md-quote').forEach(mk => {
+    mk.replaceWith(document.createTextNode(mk.textContent));
+  });
+  bodyEl.normalize();
+
+  if (legend) legend.style.display = 'none';
+  if (!v) return;
+
+  const headings = Array.from(bodyEl.querySelectorAll('h1, h2, h3, h4'));
+  let annotated = 0;
+
+  headings.forEach(h => {
+    const baseId = slugify(h.textContent);     // matches pageindex node_id
+    const verdict = verdictFor(baseId, v);
+    if (!verdict) return;
+    const m = v.meta[baseId] || null;
+
+    h.classList.add(`md-h-${verdict}`);
+    h.dataset.vid = baseId;
+
+    // Tag the content siblings up to (not including) the next heading.
+    const contentEls = [];
+    let sib = h.nextElementSibling;
+    while (sib && !/^H[1-4]$/.test(sib.tagName)) {
+      sib.classList.add(`md-c-${verdict}`);
+      sib.dataset.vid = baseId;
+      contentEls.push(sib);
+      sib = sib.nextElementSibling;
+    }
+
+    if (verdict === 'accepted' && m?.quote) {
+      highlightQuoteInEls(contentEls.length ? contentEls : [h], m.quote);
+    }
+    annotated++;
+  });
+
+  if (legend && annotated > 0) legend.style.display = 'flex';
+}
+
+/** Highlight the model's deciding quote (verbatim, else longest matching
+ *  sentence) in a <mark> across the given elements. Single-text-node match. */
+function highlightQuoteInEls(els, quote) {
+  const candidates = [quote];
+  quote.split(/[.!?]+/).forEach(s => { const t = s.trim(); if (t.length > 20) candidates.push(t); });
+
+  for (const cand of candidates) {
+    for (const root of els) {
+      const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+      let node;
+      while ((node = walker.nextNode())) {
+        const idx = node.nodeValue.toLowerCase().indexOf(cand.toLowerCase());
+        if (idx !== -1) {
+          try {
+            const range = document.createRange();
+            range.setStart(node, idx);
+            range.setEnd(node, idx + cand.length);
+            const mark = document.createElement('mark');
+            mark.className = 'md-quote';
+            range.surroundContents(mark);
+            return true;
+          } catch { /* boundary-spanning match — try next candidate */ }
+        }
+      }
+    }
+  }
+  return false;
+}
+
+function closeDocViewer() {
+  document.getElementById('doc-modal').style.display = 'none';
+  state.docViewerStem = null;
+}
+
+// Tooltip describing the model's decision for the hovered paragraph/heading.
+function showDecisionTooltip(event, vid) {
+  const stem = state.docViewerStem;
+  const v = stem ? getDocVerdicts(stem) : null;
+  const m = v?.meta?.[vid];
+  const verdict = v ? verdictFor(vid, v) : null;
+  if (!verdict) { getTooltip().style.display = 'none'; return; }
+
+  const LABEL = {
+    accepted: ['✓ Retrieved', 'tt-selected'],
+    rejected: ['✗ Evaluated & not selected', 'tt-rejected'],
+    kept:     ['☉ Section kept (passed pruning)', ''],
+    pruned:   ['⊘ Pruned (branch skipped)', 'tt-pruned-label'],
+  }[verdict];
+
+  let html = `<div class="tt-label ${LABEL[1]}">${LABEL[0]}${v.live ? ' · live' : ''}</div>`;
+  if (m?.reason) html += `<div class="tt-reason">${escHtml(m.reason)}</div>`;
+  if (m?.quote)  html += `<div class="tt-quote" style="margin-top:6px;font-style:italic;border-left:2px solid var(--green);padding-left:6px;color:#cbd5e1;">"${escHtml(m.quote)}"</div>`;
+
+  // For negatives, surface any cached on-demand explanation, else invite one.
+  if (verdict === 'rejected' || verdict === 'pruned') {
+    const ex = state.explainCache?.[stem]?.[vid];
+    if (ex && (ex.topic || ex.reason)) {
+      if (ex.topic)  html += `<div class="tt-reason" style="margin-top:6px;"><span style="color:var(--muted)">Topic:</span> ${escHtml(ex.topic)}</div>`;
+      if (ex.reason) html += `<div class="tt-reason tt-muted">${escHtml(ex.reason)}</div>`;
+    } else if (!m?.reason) {
+      html += `<div class="tt-reason tt-muted">The model judged this does not directly answer the query.</div>`;
+    }
+    html += `<div class="tt-hint" style="margin-top:6px;color:var(--accent);font-size:10px;">▸ click to ask the model why (grounded re-read)</div>`;
+  }
+
+  const tip = getTooltip();
+  tip.innerHTML = html;
+  tip.style.display = 'block';
+  positionTooltip(event);
+}
+
+function initDocViewer() {
+  const modal = document.getElementById('doc-modal');
+  if (!modal) return;
+  document.getElementById('doc-modal-close').addEventListener('click', closeDocViewer);
+  modal.querySelector('.doc-modal-backdrop').addEventListener('click', closeDocViewer);
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && modal.style.display !== 'none') closeDocViewer();
+  });
+
+  // Hover any annotated paragraph/heading → show the model's decision.
+  const content = document.getElementById('doc-modal-content');
+  content.addEventListener('mouseover', (e) => {
+    const el = e.target.closest('[data-vid]');
+    if (el) showDecisionTooltip(e, el.dataset.vid);
+    else getTooltip().style.display = 'none';
+  });
+  content.addEventListener('mousemove', (e) => {
+    if (getTooltip().style.display === 'block') positionTooltip(e);
+  });
+  content.addEventListener('mouseleave', () => { getTooltip().style.display = 'none'; });
+
+  // Click a rejected/pruned element → on-demand grounded "why not" explanation.
+  content.addEventListener('click', (e) => {
+    const el = e.target.closest('[data-vid]');
+    if (!el) return;
+    const stem = state.docViewerStem; if (!stem) return;
+    const v = getDocVerdicts(stem);
+    const verdict = verdictFor(el.dataset.vid, v);
+    if (verdict === 'rejected' || verdict === 'pruned') {
+      requestExplanation(stem, el.dataset.vid, el);
+    }
+  });
+}
+
+// ── On-demand "why not selected" explanation ─────────────────
+function getExplainPopover() {
+  let p = document.getElementById('doc-explain-popover');
+  if (!p) {
+    p = document.createElement('div');
+    p.id = 'doc-explain-popover';
+    p.style.display = 'none';
+    document.body.appendChild(p);
+    // Dismiss on outside click / Esc.
+    document.addEventListener('mousedown', (e) => {
+      if (p.style.display !== 'none' && !p.contains(e.target) && !e.target.closest('[data-vid]')) {
+        p.style.display = 'none';
+      }
+    });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape') p.style.display = 'none'; });
+  }
+  return p;
+}
+
+function positionPopover(anchorEl) {
+  const p = getExplainPopover();
+  const r = anchorEl.getBoundingClientRect();
+  const pw = p.offsetWidth || 320;
+  let x = Math.min(r.left, window.innerWidth - pw - 16);
+  let y = r.bottom + 8;
+  if (y + (p.offsetHeight || 120) > window.innerHeight) y = Math.max(8, r.top - (p.offsetHeight || 120) - 8);
+  p.style.left = `${Math.max(8, x)}px`;
+  p.style.top  = `${y}px`;
+}
+
+function renderExplainPopover(anchorEl, data) {
+  const p = getExplainPopover();
+  let html = `<div class="ep-head">Why not selected</div>`;
+  if (data.loading) {
+    html += `<div class="ep-loading"><span class="ep-spinner"></span> Asking the model (dedicated instance)…</div>`;
+  } else if (data.error) {
+    html += `<div class="ep-reason" style="color:var(--orange)">Could not get an explanation: ${escHtml(data.error)}</div>`;
+  } else {
+    if (data.topic)  html += `<div class="ep-topic"><span>Topic</span> ${escHtml(data.topic)}</div>`;
+    if (data.reason) html += `<div class="ep-reason">${escHtml(data.reason)}</div>`;
+    if (data.addresses_query) {
+      html += `<div class="ep-flag">⚠ On re-read the model now thinks this <b>does</b> address the query — worth a manual check.</div>`;
+    }
+    if (!data.topic && !data.reason) html += `<div class="ep-reason tt-muted">No explanation returned.</div>`;
+  }
+  p.innerHTML = html;
+  p.style.display = 'block';
+  positionPopover(anchorEl);
+}
+
+async function requestExplanation(stem, nodeId, anchorEl) {
+  const cache = (state.explainCache[stem] ||= {});
+  if (cache[nodeId]) { renderExplainPopover(anchorEl, cache[nodeId]); return; }
+
+  renderExplainPopover(anchorEl, { loading: true });
+  try {
+    const res = await apiPost('/api/explain', { stem, node_id: nodeId, query: state.currentQuery || '' });
+    cache[nodeId] = res;
+    renderExplainPopover(anchorEl, res);
+  } catch (e) {
+    renderExplainPopover(anchorEl, { error: e.message });
+  }
+}
+
 // ── Render results ───────────────────────────────────────────
 function renderResults(data) {
   renderStatusBar(data);
@@ -510,11 +936,117 @@ function renderResults(data) {
   
   renderStatsBar(data);
   initGraphControls();
+  initViewTabs();
 
   if (docs.length) {
-    showDocTree(docs[0], data);
+    renderCurrentResultView();
   }
   renderSnippets(data);
+}
+
+// ── Result view switching: graph (tree) ↔ boxes (treemap) ─────
+function initViewTabs() {
+  const g = document.getElementById('tab-graph');
+  const b = document.getElementById('tab-boxes');
+  if (!g || g.dataset.wired) return;
+  g.dataset.wired = '1';
+  g.addEventListener('click', () => { state.resultView = 'graph'; renderCurrentResultView(); });
+  b.addEventListener('click', () => { state.resultView = 'boxes'; renderCurrentResultView(); });
+}
+
+function renderCurrentResultView() {
+  const graphOn = state.resultView !== 'boxes';
+  const treeC = document.getElementById('tree-container');
+  const boxC  = document.getElementById('result-treemap');
+  if (treeC) treeC.style.display = graphOn ? '' : 'none';
+  if (boxC)  boxC.style.display  = graphOn ? 'none' : '';
+  document.getElementById('tab-graph')?.classList.toggle('active', graphOn);
+  document.getElementById('tab-boxes')?.classList.toggle('active', !graphOn);
+
+  if (!state.currentDoc || !state.currentResults) return;
+  if (graphOn) showDocTree(state.currentDoc, state.currentResults);
+  else         renderResultBoxes(state.currentDoc, state.currentResults);
+}
+
+// Treemap of a single result document, colored by the final verdicts.
+function renderResultBoxes(docName, data) {
+  const container = document.getElementById('result-treemap');
+  if (!container) return;
+  container.innerHTML = '';
+  const docData = data?.results?.[docName];
+  if (!docData) return;
+
+  const retrieved = new Set(docData.retrieved_ids || []);
+  const meta = docData.node_meta || {};
+
+  const rect = container.getBoundingClientRect();
+  const width  = rect.width  || 800;
+  const height = rect.height || 480;
+
+  const rootData = {
+    name: docName, nodeId: `__doc__${docName}`, isDoc: true,
+    title: docName.replace(/_/g, ' '), children: docData.tree,
+  };
+  const root = d3.hierarchy(rootData, n => n.children)
+    .sum(n => n.isLeaf ? 1 : 0)
+    .sort((a, b) => b.value - a.value);
+  d3.treemap().size([width, height]).paddingOuter(6).paddingTop(20).paddingInner(3).round(true)(root);
+
+  const svg = d3.select(container).append('svg')
+    .attr('width', width).attr('height', height)
+    .attr('viewBox', `0 0 ${width} ${height}`);
+
+  const nodes = root.descendants().filter(d => d.depth > 0);
+  const g = svg.selectAll('g').data(nodes).join('g')
+    .attr('transform', d => `translate(${d.x0},${d.y0})`);
+
+  g.append('rect')
+    .attr('width',  d => Math.max(0, d.x1 - d.x0))
+    .attr('height', d => Math.max(0, d.y1 - d.y0))
+    .attr('class', d => `tm-rect ${d.data.isLeaf ? 'tm-leaf' : ''} ${resultBoxClass(d.data, retrieved, meta)}`)
+    .style('cursor', 'pointer')
+    .on('mouseover', (event, d) => {
+      const id = d.data.nodeId; const m = meta[id] || {};
+      let label = d.data.isLeaf ? 'Pending' : 'Section', cls = 'tt-muted';
+      if (retrieved.has(id) || m.status === 'retrieved') { label = '✓ Retrieved'; cls = 'tt-selected'; }
+      else if (m.status === 'rejected') { label = '✗ Evaluated & Rejected'; cls = 'tt-rejected'; }
+      else if (m.status === 'pruned')   { label = '⊘ Pruned'; cls = 'tt-pruned-label'; }
+      else if (m.status === 'kept')     { label = '☉ Section kept'; cls = ''; }
+      let html = `<div class="tt-title">${escHtml(d.data.title || id)}</div>`;
+      html += `<div class="tt-label ${cls}">${label}</div>`;
+      const txt = m.reason || d.data.summary;
+      if (txt) html += `<div class="tt-reason tt-muted">${escHtml(txt)}</div>`;
+      if (m.quote) html += `<div class="tt-quote" style="margin-top:6px;font-style:italic;border-left:2px solid var(--green);padding-left:6px;color:#cbd5e1;">"${escHtml(m.quote)}"</div>`;
+      const tip = getTooltip(); tip.innerHTML = html; tip.style.display = 'block'; positionTooltip(event);
+    })
+    .on('mousemove', positionTooltip)
+    .on('mouseout', () => { getTooltip().style.display = 'none'; })
+    .on('click', (event, d) => {
+      getTooltip().style.display = 'none';
+      openDocViewer(docName, d.data.isDoc ? null : (d.data.title || null));
+    });
+
+  g.filter(d => d.data.isDoc).append('text')
+    .attr('class', 'tm-doc-label').attr('x', 6).attr('y', 14)
+    .text(d => d.data.title);
+
+  g.filter(d => d.data.isLeaf).append('text')
+    .attr('class', 'tm-label-text').attr('x', 4).attr('y', 14)
+    .text(d => {
+      const w = d.x1 - d.x0, h = d.y1 - d.y0;
+      const maxChars = Math.floor((w - 8) / 6.5);
+      if (maxChars < 4 || h < 18) return '';
+      const l = d.data.title || d.data.nodeId || '';
+      return l.length > maxChars ? l.slice(0, maxChars - 1) + '…' : l;
+    });
+}
+
+function resultBoxClass(nodeData, retrieved, meta) {
+  const id = nodeData.nodeId; const m = meta[id] || {};
+  if (retrieved.has(id) || m.status === 'retrieved') return 'tm-retrieved';
+  if (m.status === 'rejected') return 'tm-rejected';
+  if (m.status === 'pruned')   return 'tm-pruned';
+  return 'tm-pending';
 }
 
 function renderStatusBar(data) {
@@ -569,7 +1101,16 @@ function renderStatsBar(data) {
       <div class="stat-doc-name">${docName.replace(/_/g, ' ')}</div>
       <div class="stat-bar-wrap"><div class="stat-bar-fill" style="width:${pct}%"></div></div>
       <div class="stat-count">${retrieved} / ${total} leaves (${pct}%)</div>`;
-    
+
+    // "Read" affordance — opens the rendered markdown with verdict highlights.
+    const readBtn = el('button', 'doc-read-btn', '⤢ Read');
+    readBtn.title = 'Open the rendered document with the model\'s verdict highlights';
+    readBtn.addEventListener('click', (e) => {
+      e.stopPropagation();              // don't trigger the card's tree switch
+      openDocViewer(docName);
+    });
+    card.appendChild(readBtn);
+
     const tabSizeInput = document.getElementById('ctrl-tab-size');
     if (tabSizeInput) {
       card.style.minWidth = `${tabSizeInput.value}px`;
@@ -583,7 +1124,7 @@ function renderStatsBar(data) {
       document.querySelectorAll('.stat-card').forEach(c => c.classList.remove('active'));
       card.classList.add('active');
       state.currentDoc = docName;
-      showDocTree(docName, data);
+      renderCurrentResultView();
     });
 
     bar.appendChild(card);

@@ -1,10 +1,12 @@
 """PageIndex Explorer — FastAPI backend. Serves the UI and wraps pageindex retrieval."""
 
+import atexit
 import json
 import os
 import shutil
 import subprocess
 import sys
+import threading
 import time
 import urllib.request
 from pathlib import Path
@@ -18,8 +20,10 @@ import pageindex as _pi
 from pageindex import _node_from_dict
 from modules.registry import discover as _discover_modules, load as _load_module, defaults as _module_defaults
 
+import re
+
 from fastapi import FastAPI
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -106,6 +110,55 @@ def set_ollama_instances(n: int) -> dict:
     }
 
 
+# ---------------------------------------------------------------------------
+# Dedicated explainer instance — isolated from the retrieval pool so on-demand
+# "why not selected" calls never steal a slot from an in-flight query.
+# ---------------------------------------------------------------------------
+
+EXPLAINER_PORT = BASE_PORT + 66          # 11500 — reserved for explanations only
+_explainer_procs: list[subprocess.Popen] = []
+_explainer_lock = threading.Lock()
+
+
+def ensure_explainer() -> Optional[str]:
+    """Return a URL for the explainer instance, lazily starting it on first use.
+
+    Falls back to the base instance only if no ollama binary is available to
+    spawn a dedicated one.
+    """
+    url = f"http://127.0.0.1:{EXPLAINER_PORT}"
+    with _explainer_lock:
+        if _probe(url):
+            return url
+        bin_path = _ollama_bin()
+        if not bin_path:
+            base = f"http://127.0.0.1:{BASE_PORT}"
+            return base if _probe(base) else None
+        env = {**os.environ, "OLLAMA_HOST": f"127.0.0.1:{EXPLAINER_PORT}"}
+        proc = subprocess.Popen(
+            [bin_path, "serve"], env=env,
+            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+        )
+        _explainer_procs.append(proc)
+        if _wait_ready(url, timeout=25):
+            return url
+        base = f"http://127.0.0.1:{BASE_PORT}"
+        return base if _probe(base) else None
+
+
+def _shutdown_explainer() -> None:
+    for proc in _explainer_procs:
+        try:
+            proc.terminate()
+            proc.wait(timeout=4)
+        except Exception:
+            try: proc.kill()
+            except Exception: pass
+
+
+atexit.register(_shutdown_explainer)
+
+
 # Initialise from env on startup
 _initial_n = int(os.environ.get("OLLAMA_INSTANCES", "1"))
 if _initial_n > 1:
@@ -113,6 +166,22 @@ if _initial_n > 1:
 
 app = FastAPI(title="PageIndex Explorer")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+
+
+@app.middleware("http")
+async def _no_cache(request, call_next):
+    """Prevent the (WK)webview from serving stale UI assets.
+
+    Tauri loads the UI from this server's devUrl and does no hot-reload, so the
+    webview will otherwise cache main.js/index.html across launches and ignore
+    edits. Disabling caching keeps every launch on the latest UI.
+    """
+    response = await call_next(request)
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    return response
+
 
 UI_DIR = Path(__file__).parent / "ui"
 app.mount("/static", StaticFiles(directory=UI_DIR), name="static")
@@ -184,9 +253,26 @@ TEST_CASES = [
 # Routes
 # ---------------------------------------------------------------------------
 
+def _versioned(path: str) -> str:
+    """Append a cache-busting ?v=<mtime> to a /static/<file> reference.
+
+    Tauri's WKWebView keeps an on-disk asset cache that survives app quit and
+    can serve a stale main.js/index.html even with no-store headers. Versioning
+    the URL by file mtime forces a fresh fetch whenever a UI file changes.
+    """
+    fname = path.rsplit("/static/", 1)[-1]
+    fpath = UI_DIR / fname
+    try:
+        return f"{path}?v={int(fpath.stat().st_mtime)}"
+    except OSError:
+        return path
+
+
 @app.get("/")
 def root():
-    return FileResponse(UI_DIR / "index.html")
+    html = (UI_DIR / "index.html").read_text(encoding="utf-8")
+    html = re.sub(r"/static/[\w.\-]+", lambda m: _versioned(m.group(0)), html)
+    return HTMLResponse(html)
 
 
 @app.get("/api/tests")
@@ -257,6 +343,71 @@ def get_documents():
             "tree": tree,
         })
     return JSONResponse(docs)
+
+
+@app.get("/api/document/{stem}/full")
+def get_document_full(stem: str):
+    """Return the raw markdown for a single knowledge-base document.
+
+    The frontend renders the markdown and derives its own table of contents
+    from the rendered headings, so anchors always stay consistent.
+    """
+    # Resolve the KB directory from the default ingest module, relative to ROOT.
+    try:
+        ingest_mod = _load_module("ingest", _module_defaults()["ingest"])
+        kb_dir = getattr(ingest_mod, "KB_DIR", Path("knowledge_base"))
+    except Exception:
+        kb_dir = Path("knowledge_base")
+    if not kb_dir.is_absolute():
+        kb_dir = ROOT / kb_dir
+
+    # Guard against path traversal — only allow plain stems that exist.
+    safe_stem = Path(stem).name
+    md_path = kb_dir / f"{safe_stem}.md"
+    if not md_path.exists() or md_path.parent.resolve() != kb_dir.resolve():
+        return JSONResponse({"error": f"Document '{stem}' not found"}, status_code=404)
+
+    return JSONResponse({
+        "stem": safe_stem,
+        "markdown": md_path.read_text(encoding="utf-8"),
+    })
+
+
+class ExplainRequest(BaseModel):
+    stem: str
+    node_id: str
+    query: str
+
+
+@app.post("/api/explain")
+def explain_node(req: ExplainRequest):
+    """On-demand grounded explanation for a node that was NOT selected.
+
+    Runs on a dedicated Ollama instance so it never disturbs an in-flight query.
+    """
+    index_mod = _load_module("index", _module_defaults()["index"])
+    index_dir = getattr(index_mod, "INDEX_DIR", Path("index"))
+    idx = index_dir / f"{Path(req.stem).name}.json"
+    if not idx.exists():
+        return JSONResponse({"error": f"unknown document '{req.stem}'"}, status_code=404)
+
+    nodes = [_node_from_dict(d) for d in json.loads(idx.read_text(encoding="utf-8"))]
+    nodes_by_id = _pi._build_nodes_by_id(nodes)
+    node = nodes_by_id.get(req.node_id)
+    if node is None:
+        return JSONResponse({"error": f"unknown node '{req.node_id}'"}, status_code=404)
+
+    url = ensure_explainer()
+    if not url:
+        return JSONResponse({"error": "no Ollama instance available"}, status_code=503)
+
+    parent_map = _pi._build_parent_map(nodes)
+    breadcrumb = _pi._make_breadcrumb(req.node_id, parent_map, nodes_by_id)
+    client = _pi.make_client(url)
+    result = _pi.explain_nonselection(node, req.query, req.stem, breadcrumb, client, url)
+    result["node_id"] = req.node_id
+    result["instance"] = url
+    return JSONResponse(result)
 
 
 class RunRequest(BaseModel):
