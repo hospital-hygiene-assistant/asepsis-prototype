@@ -163,6 +163,52 @@ def reconfigure_clients(urls: list[str]) -> None:
 HEADING_RE = re.compile(r"^(#{1,6})\s+(.+)$")
 
 # ---------------------------------------------------------------------------
+# Provenance pins — fenced ```pin blocks emitted by the betteringest_pdf
+# ingest module (inline YAML: page, bbox, regions, asset info). They are part
+# of the knowledge_base markdown (one render path in the viewer), but must be
+# structured metadata here: stripped from all LLM-visible content and lifted
+# onto the node as node.pin. Documents without pins are untouched.
+# ---------------------------------------------------------------------------
+
+PIN_FENCE_OPEN = "```pin"
+PIN_BLOCK_RE = re.compile(r"^```pin\s*$\n(.*?)^```\s*$\n?", re.MULTILINE | re.DOTALL)
+IMAGE_LINE_RE = re.compile(r"^!\[[^\]]*\]\([^)]*\)[ \t]*$", re.MULTILINE)
+
+
+def _parse_pin_yaml(body: str) -> dict:
+    """Minimal parser for the pin blocks' flat YAML: `key: scalar` lines,
+    with bracketed values ([..] flow sequences) parsed as JSON."""
+    pin: dict = {}
+    for line in body.split("\n"):
+        line = line.strip()
+        if not line or ":" not in line:
+            continue
+        key, _, value = line.partition(":")
+        key, value = key.strip(), value.strip()
+        if value.startswith("["):
+            try:
+                pin[key] = json.loads(value)
+                continue
+            except json.JSONDecodeError:
+                pass
+        try:
+            pin[key] = int(value)
+        except ValueError:
+            try:
+                pin[key] = float(value)
+            except ValueError:
+                pin[key] = value
+    return pin
+
+
+def _strip_pins(text: str) -> str:
+    """Remove pin blocks and standalone image lines from LLM-visible content
+    (the viewer still renders them from the raw markdown)."""
+    text = PIN_BLOCK_RE.sub("", text)
+    text = IMAGE_LINE_RE.sub("", text)
+    return re.sub(r"\n{3,}", "\n\n", text).strip()
+
+# ---------------------------------------------------------------------------
 # Data structure
 # ---------------------------------------------------------------------------
 
@@ -177,6 +223,7 @@ class PageNode:
     content: Optional[str] = None
     synthetic: bool = False
     parent_title: Optional[str] = None  # set on synthetic leaves
+    pin: Optional[dict] = None          # provenance pin (page/bbox/asset) if ingested with one
 
     @property
     def is_leaf(self) -> bool:
@@ -282,7 +329,7 @@ def _extract_preamble(parent_line_idx: int, first_child_line_idx: int, lines: li
     for line in lines[parent_line_idx + 1 : first_child_line_idx]:
         if not HEADING_RE.match(line):
             chunk.append(line)
-    return "\n".join(chunk).strip()
+    return _strip_pins("\n".join(chunk).strip())
 
 
 def _promote_preambles(nodes: list[PageNode], lines: list[str]) -> None:
@@ -305,6 +352,7 @@ def _promote_preambles(nodes: list[PageNode], lines: list[str]) -> None:
                     content=preamble,
                     synthetic=True,
                     parent_title=node.title,
+                    pin=node.pin,  # overview holds the parent's text → same location
                 )
                 node.children.insert(0, synthetic)
             # Recurse
@@ -328,7 +376,7 @@ def _extract_leaf_content(line_idx: int, heading_level: int, lines: list[str]) -
             break
         if not m:  # exclude any stray heading lines inside the block
             chunk.append(line)
-    return "\n".join(chunk).strip()
+    return _strip_pins("\n".join(chunk).strip())
 
 
 def _populate_content(nodes: list[PageNode], lines: list[str]) -> None:
@@ -338,6 +386,32 @@ def _populate_content(nodes: list[PageNode], lines: list[str]) -> None:
             node.content = _extract_leaf_content(node.line_idx, node.heading_level, lines)
         elif node.children:
             _populate_content(node.children, lines)
+
+
+# ---------------------------------------------------------------------------
+# Pin attachment
+# ---------------------------------------------------------------------------
+
+def _attach_pins(nodes: list[PageNode], lines: list[str]) -> None:
+    """Attach each heading's ```pin block (the massager places it immediately
+    under the heading, before any other content or child heading) to its node.
+    Runs before preamble promotion so synthetic overview leaves can inherit."""
+    for node in nodes:
+        i = node.line_idx + 1
+        while i < len(lines) and not HEADING_RE.match(lines[i]):
+            stripped = lines[i].strip()
+            if stripped == PIN_FENCE_OPEN:
+                body: list[str] = []
+                i += 1
+                while i < len(lines) and lines[i].strip() != "```":
+                    body.append(lines[i])
+                    i += 1
+                node.pin = _parse_pin_yaml("\n".join(body))
+                break
+            if stripped and not stripped.startswith("```"):
+                break  # real content before any pin → this heading has none
+            i += 1
+        _attach_pins(node.children, lines)
 
 
 # ---------------------------------------------------------------------------
@@ -380,6 +454,7 @@ def _node_to_dict(node: PageNode) -> dict:
         "synthetic": node.synthetic,
         "parentTitle": node.parent_title,
         "content": node.content,
+        "pin": node.pin,
         "children": [_node_to_dict(c) for c in node.children],
     }
 
@@ -396,6 +471,7 @@ def _node_from_dict(d: dict) -> PageNode:
         content=d.get("content"),
         synthetic=d.get("synthetic", False),
         parent_title=d.get("parentTitle"),
+        pin=d.get("pin"),
     )
 
 
@@ -694,6 +770,7 @@ def build_index(doc_name: str) -> None:
 
     headings = _parse_headings(text)
     nodes = _build_tree(headings)
+    _attach_pins(nodes, lines)
     _promote_preambles(nodes, lines)
     _populate_content(nodes, lines)
     _populate_summaries(nodes)

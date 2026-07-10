@@ -2,5 +2,8 @@
   "identifier": "default",
   "description": "Default window capability",
   "windows": ["main"],
-  "permissions": []
+  "remote": {
+    "urls": ["http://localhost:8765"]
+  },
+  "permissions": ["core:default", "dialog:default"]
 }

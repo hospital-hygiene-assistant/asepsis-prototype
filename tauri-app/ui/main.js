@@ -12,6 +12,8 @@ const state = {
   docViewerStem: null,   // stem currently open in the doc-viewer modal
   liveStatus: null,      // latest /api/status snapshot (for live verdicts)
   explainCache: {},      // {stem: {node_id: {topic, reason, addresses_query}}}
+  ingestModules: {},     // {name: MODULE_INFO} for the ingest stage
+  showPins: false,       // doc-viewer provenance-pin visibility toggle
 };
 
 // ── Verdict helpers (shared by doc-viewer bands, TOC, and result boxes) ──
@@ -70,8 +72,9 @@ async function apiPost(path, body) {
 
 // ── Init ─────────────────────────────────────────────────────
 async function init() {
+  let docs = [];
   try {
-    const [tests, modules, config, status, docs] = await Promise.all([
+    const [tests, modules, config, status, fetchedDocs] = await Promise.all([
       apiGet('/api/tests'),
       apiGet('/api/modules'),
       apiGet('/api/config'),
@@ -79,6 +82,7 @@ async function init() {
       getDocs(),
     ]);
     state.tests = tests;
+    docs = fetchedDocs;
     renderModuleSelectors(modules);
     renderTestList(tests);
     initInstanceStepper(config);
@@ -87,9 +91,66 @@ async function init() {
   } catch (e) {
     console.error('init error:', e);
   }
+  
+  // Welcome setup card visibility based on documents
+  const setupCard = document.getElementById('welcome-setup-card');
+  const treemapPack = document.getElementById('treemap-pack');
+  const treemapLegend = document.getElementById('treemap-pack-legend');
+  const toggleBtn = document.getElementById('welcome-toggle-setup-btn');
+  const welcomeStatus = document.getElementById('welcome-status');
+  const welcomeSourcePath = document.getElementById('welcome-source-path');
+
+  // Pre-populate welcome path if already configured
+  try {
+    const src = await apiGet('/api/ingest/source?module=betteringest_pdf');
+    if (src.source_dir) {
+      if (welcomeSourcePath) welcomeSourcePath.value = src.source_dir;
+      const runBtn = document.getElementById('welcome-run-btn');
+      if (runBtn) runBtn.disabled = false;
+      const modalInput = document.getElementById('ingest-source-path');
+      if (modalInput) modalInput.value = src.source_dir;
+      const modalRunBtn = document.getElementById('ingest-run-btn');
+      if (modalRunBtn) modalRunBtn.disabled = false;
+    }
+  } catch (e) {}
+
+  if (docs.length === 0) {
+    if (setupCard) setupCard.style.display = 'flex';
+    if (treemapPack) treemapPack.style.display = 'none';
+    if (treemapLegend) treemapLegend.style.display = 'none';
+    if (toggleBtn) toggleBtn.style.display = 'none';
+    if (welcomeStatus) welcomeStatus.textContent = "No documents found in the database. Please select a folder of PDFs to begin.";
+  } else {
+    if (setupCard) setupCard.style.display = 'none';
+    if (treemapPack) treemapPack.style.display = 'block';
+    if (treemapLegend) treemapLegend.style.display = 'flex';
+    if (toggleBtn) {
+      toggleBtn.style.display = 'inline-block';
+      toggleBtn.textContent = '📁 Configure Source Folder';
+    }
+    if (welcomeStatus) welcomeStatus.textContent = "Select a test case from the sidebar or enter a custom query below to start.";
+  }
+
+  if (toggleBtn) {
+    toggleBtn.addEventListener('click', () => {
+      if (setupCard.style.display === 'none') {
+        setupCard.style.display = 'flex';
+        treemapPack.style.display = 'none';
+        treemapLegend.style.display = 'none';
+        toggleBtn.textContent = '✕ Close Setup';
+      } else {
+        setupCard.style.display = 'none';
+        treemapPack.style.display = 'block';
+        treemapLegend.style.display = 'flex';
+        toggleBtn.textContent = '📁 Configure Source Folder';
+      }
+    });
+  }
+
   initChat();
   makeDraggable(document.getElementById('chat-input-container'));
   initDocViewer();
+  initIngestSetup();
 }
 
 // ── Chat window: collapse/expand, hotkey, auto-grow ──────────
@@ -274,6 +335,9 @@ function refreshOpenDocViewer() {
 // ── Module selectors ─────────────────────────────────────────
 function renderModuleSelectors(modulesData) {
   const stageMap = { ingest: 'sel-ingest', index: 'sel-index', query: 'sel-query' };
+  for (const mod of modulesData.stages?.ingest?.modules || []) {
+    state.ingestModules[mod.name] = mod;
+  }
   for (const [stage, { default: def, modules }] of Object.entries(modulesData.stages || {})) {
     const sel = document.getElementById(stageMap[stage]);
     if (!sel) continue;
@@ -638,6 +702,11 @@ async function openDocViewer(stem, targetTitle = null) {
     : `<pre>${escHtml(doc.markdown)}</pre>`;
   bodyEl.innerHTML = html;
 
+  // Provenance pins: upgrade ```pin code blocks into chips; one checkbox
+  // (header) shows/hides them all — same rendered DOM either way.
+  const pinCount = decoratePinBlocks(bodyEl, stem);
+  initPinToggle(bodyEl, pinCount);
+
   // Assign anchor IDs to headings and build the TOC from them.
   const docV = getDocVerdicts(stem);
   const headings = bodyEl.querySelectorAll('h1, h2, h3, h4');
@@ -849,7 +918,10 @@ function initDocViewer() {
   content.addEventListener('mouseleave', () => { getTooltip().style.display = 'none'; });
 
   // Click a rejected/pruned element → on-demand grounded "why not" explanation.
+  // Click a retrieved element with a provenance pin → jump to its page/bbox
+  // in the source PDF.
   content.addEventListener('click', (e) => {
+    if (e.target.closest('.pin-chip')) return;   // chip has its own handler
     const el = e.target.closest('[data-vid]');
     if (!el) return;
     const stem = state.docViewerStem; if (!stem) return;
@@ -857,6 +929,9 @@ function initDocViewer() {
     const verdict = verdictFor(el.dataset.vid, v);
     if (verdict === 'rejected' || verdict === 'pruned') {
       requestExplanation(stem, el.dataset.vid, el);
+    } else if (verdict === 'accepted') {
+      const pin = findNodePin(stem, el.dataset.vid);
+      if (pin?.page) openSourceView(stem, pin);
     }
   });
 }
@@ -905,8 +980,13 @@ function renderExplainPopover(anchorEl, data) {
       html += `<div class="ep-flag">⚠ On re-read the model now thinks this <b>does</b> address the query — worth a manual check.</div>`;
     }
     if (!data.topic && !data.reason) html += `<div class="ep-reason tt-muted">No explanation returned.</div>`;
+    if (data.pin?.page) {
+      html += `<button class="ep-pin-link">📍 View in source PDF — page ${escHtml(String(data.pin.page))}</button>`;
+    }
   }
   p.innerHTML = html;
+  const pinLink = p.querySelector('.ep-pin-link');
+  if (pinLink) pinLink.addEventListener('click', () => openSourceView(state.docViewerStem, data.pin));
   p.style.display = 'block';
   positionPopover(anchorEl);
 }
@@ -1463,12 +1543,35 @@ function renderSnippets(data) {
       if (node.synthetic) tags.appendChild(badge('synth-tag', 'synthetic'));
       if (isExp) tags.appendChild(badge('expected-tag', 'expected'));
 
+      // Provenance pin badge — click jumps to the chunk's page/bbox in the
+      // source PDF (pins exist for PDF-ingested documents).
+      if (node.pin?.page) {
+        const pinBadge = badge('pin-tag', `📍 p.${node.pin.page}`);
+        pinBadge.title = 'View this passage in the source PDF';
+        pinBadge.style.cursor = 'pointer';
+        pinBadge.addEventListener('click', () => openSourceView(docName, node.pin));
+        tags.appendChild(pinBadge);
+      }
+
       const title   = el('div', 'snippet-title', node.title);
       const content = el('div', 'snippet-content');
       content.innerHTML = highlightRelevantContent(node.content || '(no content)', node.quote || '');
 
       card.appendChild(tags);
       card.appendChild(title);
+
+      // Asset chunks: the retrieval decision read the caption; show the crop
+      // alongside it so the evidence is visible.
+      if (node.pin?.kind === 'asset' && node.pin.image) {
+        const fig = el('div', 'snippet-asset');
+        const img = document.createElement('img');
+        img.src = node.pin.image;
+        img.alt = node.title;
+        img.loading = 'lazy';
+        img.addEventListener('click', () => openSourceView(docName, node.pin));
+        fig.appendChild(img);
+        card.appendChild(fig);
+      }
       if (node.reason) {
         const reasonEl = el('div', 'snippet-reason');
         reasonEl.innerHTML = `<span class="reason-label">Model:</span> ${escHtml(node.reason)}`;
@@ -1634,6 +1737,309 @@ function initGraphControls() {
       btn.textContent = 'Show Snippets';
     }
   });
+}
+
+// ── Ingest setup (PDF folder picker for source-based ingest modules) ──
+// A module whose MODULE_INFO carries source:"pdf_folder" (betteringest_pdf)
+// needs a flat folder of PDFs before it can run. Selecting it opens this
+// modal: pick a folder (native Tauri dialog when available), then run
+// ingest + re-index in the backend with live progress.
+function ingestModuleNeedsSource(name) {
+  return state.ingestModules[name]?.source === 'pdf_folder';
+}
+
+function initIngestSetup() {
+  const sel = document.getElementById('sel-ingest');
+  if (!sel) return;
+  sel.addEventListener('change', () => {
+    if (ingestModuleNeedsSource(sel.value)) openIngestSetup(sel.value);
+  });
+  // First popup: if the app starts with a source-based module already active,
+  // ask for the folder right away (unless one is configured and valid).
+  if (ingestModuleNeedsSource(sel.value)) {
+    apiGet(`/api/ingest/source?module=${encodeURIComponent(sel.value)}`)
+      .then(src => { if (!src.source_ok) openIngestSetup(sel.value); })
+      .catch(() => openIngestSetup(sel.value));
+  }
+
+  document.getElementById('ingest-modal-close').addEventListener('click', closeIngestSetup);
+  document.getElementById('ingest-cancel-btn').addEventListener('click', closeIngestSetup);
+  document.querySelector('#ingest-modal .doc-modal-backdrop')
+    .addEventListener('click', closeIngestSetup);
+  document.addEventListener('keydown', (e) => {
+    const modal = document.getElementById('ingest-modal');
+    if (e.key === 'Escape' && modal.style.display !== 'none') closeIngestSetup();
+  });
+
+  document.getElementById('ingest-browse-btn').addEventListener('click', () => browseForFolder('ingest-source-path'));
+  document.getElementById('ingest-source-path').addEventListener('input', () => {
+    const val = document.getElementById('ingest-source-path').value;
+    const other = document.getElementById('welcome-source-path');
+    if (other) other.value = val;
+    document.getElementById('ingest-run-btn').disabled = !val.trim();
+    const otherBtn = document.getElementById('welcome-run-btn');
+    if (otherBtn) otherBtn.disabled = !val.trim();
+  });
+  document.getElementById('ingest-run-btn').addEventListener('click', () => runIngest('ingest'));
+
+  // Welcome card event listeners
+  const welcomeBrowseBtn = document.getElementById('welcome-browse-btn');
+  if (welcomeBrowseBtn) {
+    welcomeBrowseBtn.addEventListener('click', () => browseForFolder('welcome-source-path'));
+  }
+  const welcomeSourcePath = document.getElementById('welcome-source-path');
+  if (welcomeSourcePath) {
+    welcomeSourcePath.addEventListener('input', () => {
+      const val = welcomeSourcePath.value;
+      const other = document.getElementById('ingest-source-path');
+      if (other) other.value = val;
+      document.getElementById('welcome-run-btn').disabled = !val.trim();
+      const otherBtn = document.getElementById('ingest-run-btn');
+      if (otherBtn) otherBtn.disabled = !val.trim();
+    });
+  }
+  const welcomeRunBtn = document.getElementById('welcome-run-btn');
+  if (welcomeRunBtn) {
+    welcomeRunBtn.addEventListener('click', () => runIngest('welcome'));
+  }
+}
+
+async function openIngestSetup(moduleName) {
+  const modal = document.getElementById('ingest-modal');
+  modal.dataset.module = moduleName || document.getElementById('sel-ingest').value;
+  document.getElementById('ingest-file-list').innerHTML = '';
+  document.getElementById('ingest-warnings').innerHTML = '';
+  document.getElementById('ingest-progress').style.display = 'none';
+  document.getElementById('ingest-run-btn').textContent = 'Ingest & Index';
+  modal.style.display = 'flex';
+  try {
+    const src = await apiGet(`/api/ingest/source?module=${encodeURIComponent(modal.dataset.module)}`);
+    const input = document.getElementById('ingest-source-path');
+    if (src.source_dir && !input.value) input.value = src.source_dir;
+    document.getElementById('ingest-run-btn').disabled = !input.value.trim();
+  } catch { /* fresh setup */ }
+}
+
+function closeIngestSetup() {
+  document.getElementById('ingest-modal').style.display = 'none';
+}
+
+async function browseForFolder(inputId) {
+  const input = document.getElementById(inputId || 'ingest-source-path');
+  const dialog = window.__TAURI__?.dialog;
+  if (dialog?.open) {
+    // Native folder dialog (Tauri dialog plugin).
+    const picked = await dialog.open({ directory: true, multiple: false,
+                                       title: 'Choose a folder of PDFs' });
+    if (picked) {
+      input.value = Array.isArray(picked) ? picked[0] : picked;
+      input.dispatchEvent(new Event('input'));
+    }
+  } else {
+    // Browser fallback: no native dialog — focus the text input.
+    input.placeholder = 'No native dialog in browser mode — paste the folder path here';
+    input.focus();
+  }
+}
+
+async function runIngest(prefix) {
+  const isWelcome = prefix === 'welcome';
+  const sourcePathId = `${prefix}-source-path`;
+  const runBtnId = `${prefix}-run-btn`;
+  const fileListId = `${prefix}-file-list`;
+  const warningsId = `${prefix}-warnings`;
+  const progressId = `${prefix}-progress`;
+  const progressFillId = `${prefix}-progress-fill`;
+  const progressMsgId = `${prefix}-progress-msg`;
+
+  const path    = document.getElementById(sourcePathId).value.trim();
+  const runBtn  = document.getElementById(runBtnId);
+  const listEl  = document.getElementById(fileListId);
+  const warnEl  = document.getElementById(warningsId);
+  if (!path) return;
+
+  runBtn.disabled = true;
+  warnEl.innerHTML = '';
+  try {
+    const activeModule = document.getElementById('sel-ingest').value || 'betteringest_pdf';
+    const src = await apiPost('/api/ingest/source', { module: activeModule, path });
+    listEl.style.display = 'block';
+    listEl.innerHTML = `<div class="ingest-file-count">${src.pdf_count} PDF(s):</div>` +
+      src.pdfs.map(p => `<div class="ingest-file">${escHtml(p)}</div>`).join('');
+    await apiPost('/api/ingest/run', {
+      ingest_module: activeModule,
+      index_module: document.getElementById('sel-index')?.value || null,
+    });
+  } catch (e) {
+    warnEl.innerHTML = `<div class="ingest-warn">✗ ${escHtml(e.message)}</div>`;
+    runBtn.disabled = false;
+    return;
+  }
+
+  const progWrap = document.getElementById(progressId);
+  const fill = document.getElementById(progressFillId);
+  const msg  = document.getElementById(progressMsgId);
+  progWrap.style.display = 'block';
+
+  const poll = setInterval(async () => {
+    let p;
+    try { p = await apiGet('/api/ingest/progress'); } catch { return; }
+    const pct = p.total ? Math.round((p.done / p.total) * 100) : 0;
+    fill.style.width = `${p.phase === 'index' || p.state === 'done' ? 100 : pct}%`;
+    msg.textContent = p.message || p.phase || '';
+    if (p.state === 'done' || p.state === 'error') {
+      clearInterval(poll);
+      runBtn.disabled = false;
+      if (p.state === 'error') {
+        warnEl.innerHTML = `<div class="ingest-warn">✗ ${escHtml(p.message)}</div>`;
+        return;
+      }
+      for (const w of p.warnings || []) {
+        warnEl.innerHTML += `<div class="ingest-warn">⚠ ${escHtml(w)}</div>`;
+      }
+      msg.textContent = `Done — ${p.docs?.length ?? 0} document(s) ingested and indexed.`;
+      runBtn.textContent = 'Re-ingest';
+      // Refresh the corpus view with the new documents.
+      _docsCache = null;
+      try {
+        const docs = await getDocs();
+        renderTreemap(docs);
+        if (docs.length > 0) {
+          // If we are on the welcome screen and documents were successfully loaded, hide the setup card and show the treemap!
+          document.getElementById('treemap-pack').style.display = 'block';
+          document.getElementById('treemap-pack-legend').style.display = 'flex';
+          document.getElementById('welcome-setup-card').style.display = 'none';
+          const toggleBtn = document.getElementById('welcome-toggle-setup-btn');
+          if (toggleBtn) {
+            toggleBtn.style.display = 'inline-block';
+            toggleBtn.textContent = '📁 Configure Source Folder';
+          }
+          document.getElementById('welcome-status').textContent = "Select a test case from the sidebar or enter a custom query below to start.";
+        }
+      } catch (e) {
+        console.error("refresh error:", e);
+      }
+      if (!(p.warnings || []).length) {
+        if (!isWelcome) setTimeout(closeIngestSetup, 1200);
+      }
+    }
+  }, 500);
+}
+
+// ── Provenance pins (page/bbox metadata from PDF ingest) ─────
+// Pin blocks are ```pin fenced code in the knowledge_base markdown; marked
+// renders them as <pre><code>. decoratePinBlocks() upgrades each into a
+// wrapper with a clickable chip — one render path; the header checkbox is
+// the single show/hide switch for all of them.
+// Look up a node's pin from the cached document trees (loaded at startup /
+// after ingest) — used when only a node_id is at hand (doc-viewer clicks).
+function findNodePin(stem, nodeId) {
+  const doc = (_docsCache || []).find(d => d.name === stem);
+  if (!doc) return null;
+  let found = null;
+  (function walk(nodes) {
+    for (const n of nodes || []) {
+      if (found) return;
+      if (n.nodeId === nodeId) { found = n.pin || null; return; }
+      walk(n.children);
+    }
+  })(doc.tree);
+  return found;
+}
+
+function parsePinText(text) {
+  const pin = {};
+  for (const line of (text || '').split('\n')) {
+    const i = line.indexOf(':');
+    if (i < 0) continue;
+    const key = line.slice(0, i).trim();
+    let val = line.slice(i + 1).trim();
+    if (val.startsWith('[')) { try { val = JSON.parse(val); } catch { /* keep raw */ } }
+    pin[key] = val;
+  }
+  return pin;
+}
+
+function decoratePinBlocks(bodyEl, stem) {
+  let count = 0;
+  bodyEl.querySelectorAll('pre > code').forEach(code => {
+    const isPin = /language-pin/.test(code.className) ||
+      (/^id: /m.test(code.textContent) && /^kind: (section|asset)$/m.test(code.textContent));
+    if (!isPin) return;
+    const pin = parsePinText(code.textContent);
+    const pre = code.parentElement;
+    const wrap = document.createElement('div');
+    wrap.className = 'pin-block';
+    const chip = document.createElement('button');
+    chip.className = 'pin-chip';
+    chip.innerHTML = `📍 <b>${escHtml(pin.id || 'pin')}</b> · ${escHtml(pin.kind || '')}` +
+      (pin.page ? ` · p.${escHtml(String(pin.page))}` : '') +
+      (pin.page ? ` <span class="pin-chip-hint">view in PDF ↗</span>` : '');
+    chip.addEventListener('click', () => { if (pin.page) openSourceView(stem, pin); });
+    pre.replaceWith(wrap);
+    wrap.appendChild(chip);
+    wrap.appendChild(pre);
+    count++;
+  });
+  return count;
+}
+
+function initPinToggle(bodyEl, pinCount) {
+  const toggle = document.getElementById('doc-pins-toggle');
+  const box = document.getElementById('doc-pins-checkbox');
+  if (!toggle || !box) return;
+  toggle.style.display = pinCount > 0 ? '' : 'none';
+  box.checked = state.showPins;
+  bodyEl.classList.toggle('pins-visible', state.showPins);
+  box.onchange = () => {
+    state.showPins = box.checked;
+    bodyEl.classList.toggle('pins-visible', state.showPins);
+  };
+}
+
+// ── Source view: the pin's page rendered from the source PDF ─
+function getSourcePopover() {
+  let p = document.getElementById('source-popover');
+  if (!p) {
+    p = document.createElement('div');
+    p.id = 'source-popover';
+    p.style.display = 'none';
+    p.innerHTML = `
+      <div class="sp-head">
+        <span id="sp-title">Source</span>
+        <button id="sp-close" title="Close">✕</button>
+      </div>
+      <div class="sp-body"><img id="sp-img" alt="source page"></div>`;
+    document.body.appendChild(p);
+    p.querySelector('#sp-close').addEventListener('click', () => { p.style.display = 'none'; });
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') p.style.display = 'none';
+    });
+  }
+  return p;
+}
+
+// Open the source-PDF page for a pin, with its bbox highlighted — the
+// "jump to its exact spot in the PDF" affordance.
+function openSourceView(stem, pin) {
+  if (!pin || !pin.page) return;
+  const p = getSourcePopover();
+  const img = p.querySelector('#sp-img');
+  const params = new URLSearchParams();
+  if (Array.isArray(pin.bbox)) params.set('bbox', pin.bbox.join(','));
+  if (Array.isArray(pin.regions)) params.set('regions', JSON.stringify(pin.regions));
+  p.querySelector('#sp-title').textContent =
+    `${(pin.doc || stem).replace(/_/g, ' ')} — page ${pin.page}` +
+    (pin.kind === 'asset' ? ` · ${pin.asset || 'asset'}` : '');
+  img.src = '';
+  p.classList.add('sp-loading');
+  img.onload = () => p.classList.remove('sp-loading');
+  img.onerror = () => {
+    p.classList.remove('sp-loading');
+    p.querySelector('#sp-title').textContent += ' — source PDF unavailable';
+  };
+  img.src = `/api/document/${encodeURIComponent(pin.doc || stem)}/page/${pin.page}?${params}`;
+  p.style.display = 'flex';
 }
 
 // ── Boot ─────────────────────────────────────────────────────

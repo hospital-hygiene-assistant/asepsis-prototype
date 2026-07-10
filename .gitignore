@@ -25,3 +25,8 @@ tauri-app/src-tauri/Cargo.lock
 
 # Claude Code session data
 .claude/
+
+# BetterIngest working caches + machine-local source config
+/.betteringest_out/
+/.ocr_cache/
+/.betteringest.json

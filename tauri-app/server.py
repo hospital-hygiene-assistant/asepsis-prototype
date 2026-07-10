@@ -23,7 +23,7 @@ from modules.registry import discover as _discover_modules, load as _load_module
 import re
 
 from fastapi import FastAPI
-from fastapi.responses import FileResponse, HTMLResponse, JSONResponse
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
@@ -185,6 +185,21 @@ async def _no_cache(request, call_next):
 
 UI_DIR = Path(__file__).parent / "ui"
 app.mount("/static", StaticFiles(directory=UI_DIR), name="static")
+
+# Asset crops extracted by the betteringest_pdf ingest module
+# (knowledge_base/assets/<stem>/*.png), referenced from the massaged markdown
+# as /assets/<stem>/<file>. check_dir=False: the dir appears on first ingest.
+KB_ASSETS_DIR = ROOT / "knowledge_base" / "assets"
+app.mount("/assets", StaticFiles(directory=KB_ASSETS_DIR, check_dir=False), name="assets")
+
+SOURCES_MANIFEST = ROOT / "knowledge_base" / ".sources.json"
+
+
+def _load_sources() -> dict:
+    try:
+        return json.loads(SOURCES_MANIFEST.read_text(encoding="utf-8"))
+    except Exception:
+        return {}
 
 # ---------------------------------------------------------------------------
 # Test definitions — mirrors tests/test_retrieval.py exactly
@@ -373,6 +388,177 @@ def get_document_full(stem: str):
     })
 
 
+# ---------------------------------------------------------------------------
+# BetterIngest PDF ingest — source-folder config, background run, progress
+# ---------------------------------------------------------------------------
+
+_ingest_lock = threading.Lock()
+_ingest_state: dict = {"state": "idle", "phase": "", "doc": "", "done": 0,
+                       "total": 0, "message": "", "warnings": [], "docs": []}
+
+
+def _set_ingest_state(**kw) -> None:
+    with _ingest_lock:
+        _ingest_state.update(kw)
+
+
+@app.get("/api/ingest/source")
+def get_ingest_source(module: str = "betteringest_pdf"):
+    """Whether the given ingest module needs a source folder, and the one
+    currently configured (if any)."""
+    try:
+        mod = _load_module("ingest", module)
+    except Exception as exc:
+        return JSONResponse({"error": f"unknown ingest module '{module}': {exc}"},
+                            status_code=404)
+    info = getattr(mod, "MODULE_INFO", {})
+    source_dir = mod.get_source_dir() if hasattr(mod, "get_source_dir") else None
+    return JSONResponse({
+        "module": module,
+        "needs_source": info.get("source") == "pdf_folder",
+        "source_dir": source_dir,
+        "source_ok": bool(source_dir and Path(source_dir).is_dir()),
+    })
+
+
+class IngestSourceRequest(BaseModel):
+    module: str = "betteringest_pdf"
+    path: str
+
+
+@app.post("/api/ingest/source")
+def post_ingest_source(req: IngestSourceRequest):
+    """Validate and persist the PDF source folder for a folder-based module."""
+    try:
+        mod = _load_module("ingest", req.module)
+    except Exception as exc:
+        return JSONResponse({"error": f"unknown ingest module '{req.module}': {exc}"},
+                            status_code=404)
+    folder = Path(req.path).expanduser()
+    if not folder.is_dir():
+        return JSONResponse({"error": f"Not a folder: {folder}"}, status_code=400)
+    pdfs = sorted(folder.glob("*.pdf"))
+    if not pdfs:
+        return JSONResponse({"error": f"No .pdf files in {folder}"}, status_code=400)
+    if not hasattr(mod, "set_source_dir"):
+        return JSONResponse({"error": f"module '{req.module}' takes no source folder"},
+                            status_code=400)
+    mod.set_source_dir(str(folder))
+    return JSONResponse({"source_dir": str(folder), "pdf_count": len(pdfs),
+                         "pdfs": [p.name for p in pdfs]})
+
+
+class IngestRunRequest(BaseModel):
+    ingest_module: str = "betteringest_pdf"
+    index_module: Optional[str] = None
+    source_dir: Optional[str] = None
+
+
+@app.post("/api/ingest/run")
+def run_ingest(req: IngestRunRequest):
+    """Run ingest (then re-index the knowledge base) in a background thread;
+    the frontend polls /api/ingest/progress."""
+    with _ingest_lock:
+        if _ingest_state["state"] == "running":
+            return JSONResponse({"error": "an ingest run is already in progress"},
+                                status_code=409)
+        _ingest_state.update({"state": "running", "phase": "starting", "doc": "",
+                              "done": 0, "total": 0, "message": "Starting…",
+                              "warnings": [], "docs": []})
+
+    ingest_name = req.ingest_module
+    index_name = req.index_module or _module_defaults()["index"]
+    source_dir = req.source_dir
+
+    def work():
+        try:
+            ingest_mod = _load_module("ingest", ingest_name)
+            kwargs = {}
+            if getattr(ingest_mod, "MODULE_INFO", {}).get("source") == "pdf_folder":
+                kwargs = {"source_dir": source_dir, "progress":
+                          lambda info: _set_ingest_state(**info)}
+            result = ingest_mod.run(**kwargs) or {}
+
+            _set_ingest_state(phase="index", message="Rebuilding index…")
+            index_mod = _load_module("index", index_name)
+            kb_dir = getattr(ingest_mod, "KB_DIR", Path("knowledge_base"))
+            if not Path(kb_dir).is_absolute():
+                kb_dir = ROOT / kb_dir
+            for md in sorted(Path(kb_dir).glob("*.md")):
+                index_mod.build_index(md.stem)
+
+            _set_ingest_state(state="done", phase="done",
+                              message="Ingest + index complete",
+                              warnings=result.get("warnings", []),
+                              docs=result.get("docs", []))
+        except Exception as exc:
+            _set_ingest_state(state="error", message=str(exc))
+
+    threading.Thread(target=work, daemon=True).start()
+    return JSONResponse({"started": True})
+
+
+@app.get("/api/ingest/progress")
+def ingest_progress():
+    with _ingest_lock:
+        return JSONResponse(dict(_ingest_state))
+
+
+@app.get("/api/document/{stem}/page/{page}")
+def get_document_page(stem: str, page: int, bbox: Optional[str] = None,
+                      regions: Optional[str] = None):
+    """Render one page of the document's SOURCE PDF as a PNG, optionally with
+    the pin's bbox highlighted — powers 'jump to its page/bbox' in the UI.
+
+    `bbox` is "x0,y0,x1,y1" and `regions` is JSON [[page,x0,y0,x1,y1],...],
+    both in render pixels at the ingest ocr_scale (the pin convention)."""
+    src = _load_sources().get(Path(stem).name)
+    if not src:
+        return JSONResponse(
+            {"error": f"'{stem}' has no source PDF (not ingested from a PDF)"},
+            status_code=404)
+    pdf_path = Path(src["pdf"])
+    if not pdf_path.exists():
+        return JSONResponse({"error": f"source PDF moved or deleted: {pdf_path}"},
+                            status_code=404)
+    try:
+        import pypdfium2 as pdfium
+        from PIL import ImageDraw
+    except ImportError as exc:
+        return JSONResponse(
+            {"error": f"page rendering needs pypdfium2 + Pillow: {exc}"},
+            status_code=501)
+
+    scale = float(src.get("ocr_scale", 2.0))
+    doc = pdfium.PdfDocument(str(pdf_path))
+    if not (1 <= page <= len(doc)):
+        return JSONResponse({"error": f"page {page} out of range 1..{len(doc)}"},
+                            status_code=404)
+    img = doc[page - 1].render(scale=scale).to_pil().convert("RGB")
+    draw = ImageDraw.Draw(img, "RGBA")
+
+    if regions:
+        try:
+            for r in json.loads(regions):
+                if int(r[0]) == page:
+                    draw.rectangle([r[1], r[2], r[3], r[4]],
+                                   outline=(56, 189, 248, 220), width=3)
+        except Exception:
+            pass
+    if bbox:
+        try:
+            x0, y0, x1, y1 = (float(v) for v in bbox.split(","))
+            draw.rectangle([x0, y0, x1, y1], fill=(245, 158, 11, 56),
+                           outline=(245, 158, 11, 255), width=4)
+        except Exception:
+            pass
+
+    import io
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")
+    return Response(content=buf.getvalue(), media_type="image/png")
+
+
 class ExplainRequest(BaseModel):
     stem: str
     node_id: str
@@ -407,6 +593,7 @@ def explain_node(req: ExplainRequest):
     result = _pi.explain_nonselection(node, req.query, req.stem, breadcrumb, client, url)
     result["node_id"] = req.node_id
     result["instance"] = url
+    result["pin"] = node.pin
     return JSONResponse(result)
 
 
@@ -475,6 +662,7 @@ def run_query(req: RunRequest):
                     "synthetic": n.synthetic,
                     "heading_level": n.heading_level,
                     "summary": n.summary,
+                    "pin": n.pin,
                     "reason": (node_reasons.get(n.node_id) or {}).get("reason", ""),
                     "quote":  (node_reasons.get(n.node_id) or {}).get("quote",  ""),
                 }

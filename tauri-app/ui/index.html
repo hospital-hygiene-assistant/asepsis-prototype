@@ -51,14 +51,37 @@
   <!-- ── Main ── -->
   <main id="main">
 
-    <!-- Visualizer / Welcome Screen -->
-    <!-- Visualizer / Welcome Screen -->
     <div id="welcome-viewport" style="display:flex; flex:1; flex-direction:column; min-height:0;">
       <div id="welcome-header" style="padding:16px; text-align:center; flex-shrink:0;">
         <div class="welcome-icon" style="font-size:32px; opacity:0.4; margin-bottom:8px;">⬡</div>
         <h2 style="font-size:18px; margin-bottom:6px;">PageIndex Explorer</h2>
         <p id="welcome-status" style="font-size:12px; color:var(--muted);">Select a test case from the sidebar or enter a custom query below to start.</p>
+        <button id="welcome-toggle-setup-btn" class="welcome-toggle-setup-btn" style="display:none; margin-top:8px;">📁 Configure Source Folder</button>
       </div>
+
+      <!-- PDF Source Configuration (Directly in main welcome screen) -->
+      <div id="welcome-setup-card" class="welcome-setup-card" style="display:none;">
+        <div class="setup-card-title">Configure PDF Corpus Source</div>
+        <p class="setup-card-desc">
+          Choose a folder containing your PDFs to reconstruct them into structure-faithful markdown with bounding box metadata. Everything runs locally.
+        </p>
+        <div class="setup-path-row">
+          <input id="welcome-source-path" type="text" spellcheck="false" placeholder="No folder selected — paste path or browse...">
+          <button id="welcome-browse-btn" class="setup-btn">Browse…</button>
+        </div>
+        <div id="welcome-file-list" class="setup-file-list" style="display:none;"></div>
+        <div id="welcome-ingest-progress" class="setup-progress" style="display:none;">
+          <div class="setup-progress-track">
+            <div id="welcome-progress-fill" class="setup-progress-fill"></div>
+          </div>
+          <div id="welcome-progress-msg" class="setup-progress-msg">Starting…</div>
+        </div>
+        <div id="welcome-warnings" class="setup-warnings"></div>
+        <div class="setup-actions">
+          <button id="welcome-run-btn" class="setup-run-btn" disabled>Ingest & Index PDFs</button>
+        </div>
+      </div>
+
       <div id="treemap-pack" style="flex:1; min-height:0; overflow:hidden;"></div>
       <div id="treemap-pack-legend" class="circle-legend" style="display:flex; justify-content:center; gap:16px; padding:10px; border-top:1px solid var(--border); background:var(--surface); font-size:10px; color:var(--muted);">
         <span class="legend-item"><span style="display:inline-block; width:8px; height:8px; background:#fff; border:1px solid #94a3b8; margin-right:4px;"></span>Pending / Unevaluated</span>
@@ -142,6 +165,9 @@
   <div class="doc-modal-window">
     <div class="doc-modal-header">
       <span id="doc-modal-title">Document</span>
+      <label id="doc-pins-toggle" class="doc-pins-toggle" style="display:none;" title="Show provenance pins (page + bounding box metadata) inline">
+        <input type="checkbox" id="doc-pins-checkbox"> Pins
+      </label>
       <div id="doc-verdict-legend" class="doc-verdict-legend" style="display:none;">
         <span class="lg"><span class="sw sw-acc"></span>Retrieved</span>
         <span class="lg"><span class="sw sw-rej"></span>Rejected</span>
@@ -154,6 +180,40 @@
     <div class="doc-modal-body">
       <nav id="doc-modal-toc" class="doc-modal-toc"></nav>
       <article id="doc-modal-content" class="doc-modal-content markdown-body"></article>
+    </div>
+  </div>
+</div>
+
+<!-- ── Ingest setup modal (folder picker for PDF-based ingest modules) ── -->
+<div id="ingest-modal" class="doc-modal" style="display:none;">
+  <div class="doc-modal-backdrop"></div>
+  <div class="ingest-modal-window">
+    <div class="doc-modal-header">
+      <span id="ingest-modal-title">BetterIngest PDF — choose a corpus</span>
+      <button id="ingest-modal-close" title="Close (Esc)">✕</button>
+    </div>
+    <div class="ingest-modal-body">
+      <p class="ingest-hint">
+        Pick a flat folder of PDF files. Each PDF is reconstructed into
+        structure-faithful markdown (layout OCR → heading hierarchy → figure/table
+        crops) with provenance pins linking every section back to its page and
+        bounding box in the source PDF. Everything runs locally.
+      </p>
+      <div class="ingest-source-row">
+        <input id="ingest-source-path" type="text" spellcheck="false"
+               placeholder="/path/to/folder/of/pdfs">
+        <button id="ingest-browse-btn">Browse…</button>
+      </div>
+      <div id="ingest-file-list" class="ingest-file-list"></div>
+      <div id="ingest-progress" class="ingest-progress" style="display:none;">
+        <div class="ingest-progress-track"><div id="ingest-progress-fill" class="ingest-progress-fill"></div></div>
+        <div id="ingest-progress-msg" class="ingest-progress-msg"></div>
+      </div>
+      <div id="ingest-warnings" class="ingest-warnings"></div>
+      <div class="ingest-actions">
+        <button id="ingest-cancel-btn">Cancel</button>
+        <button id="ingest-run-btn" disabled>Ingest &amp; Index</button>
+      </div>
     </div>
   </div>
 </div>
