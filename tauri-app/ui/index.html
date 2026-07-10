@@ -8,174 +8,238 @@
   <script src="/static/d3.v7.min.js"></script>
 </head>
 <body>
-<div id="app">
 
-  <!-- ── Sidebar ── -->
-  <aside id="sidebar">
-    <div class="sidebar-header">
-      <span class="logo">⬡</span>
-      <span>PageIndex Explorer</span>
+<!-- ══ Top bar: brand · workflow steps · activity · settings ══ -->
+<header id="topbar">
+  <div class="topbar-brand">
+    <span class="logo">⬡</span>
+    <span class="brand-name">PageIndex</span>
+  </div>
+
+  <nav id="flow-steps" aria-label="Workflow">
+    <button class="flow-step" data-step="library"><span class="flow-num">1</span> Library</button>
+    <span class="flow-sep">›</span>
+    <button class="flow-step" data-step="ask"><span class="flow-num">2</span> Ask</button>
+    <span class="flow-sep">›</span>
+    <button class="flow-step" data-step="review"><span class="flow-num">3</span> Review</button>
+  </nav>
+
+  <div class="topbar-right">
+    <div id="run-pill" class="run-pill" hidden>
+      <span class="run-pill-spinner"></span>
+      <span id="run-pill-text">Evaluating…</span>
     </div>
+    <div id="inst-indicators" class="inst-indicators" title="Ollama instance activity"></div>
+    <button id="settings-btn" class="icon-btn" title="Pipeline & engine settings (⌘,)">
+      <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
+    </button>
+  </div>
+</header>
 
-    <!-- Pipeline module selectors -->
-    <div id="pipeline-config" class="sidebar-section">
-      <div class="section-label">Pipeline</div>
-      <div class="pipeline-row">
-        <span class="pipeline-stage-label">1 · Ingest</span>
-        <select id="sel-ingest" class="module-select"></select>
-      </div>
-      <div class="pipeline-row">
-        <span class="pipeline-stage-label">2 · Index</span>
-        <select id="sel-index" class="module-select"></select>
-      </div>
-      <div class="pipeline-row">
-        <span class="pipeline-stage-label">3 · Query</span>
-        <select id="sel-query" class="module-select"></select>
-      </div>
-      <div class="pipeline-row" style="margin-top:8px;border-top:1px solid var(--border);padding-top:8px;">
-        <span class="pipeline-stage-label">Ollama instances</span>
-        <div class="instance-stepper">
-          <button id="inst-dec" class="inst-btn">−</button>
-          <span id="inst-count">1</span>
-          <button id="inst-inc" class="inst-btn">+</button>
-        </div>
-      </div>
-      <div id="inst-indicators" class="inst-indicators"></div>
-      <div id="inst-status" class="inst-status"></div>
+<!-- ══ Settings popover ══ -->
+<div id="settings-popover" class="popover" hidden>
+  <div class="popover-section">
+    <div class="popover-title">Pipeline</div>
+    <label class="settings-row">
+      <span class="settings-label">① Ingest</span>
+      <select id="sel-ingest" class="module-select"></select>
+    </label>
+    <label class="settings-row">
+      <span class="settings-label">② Index</span>
+      <select id="sel-index" class="module-select"></select>
+    </label>
+    <label class="settings-row">
+      <span class="settings-label">③ Query</span>
+      <select id="sel-query" class="module-select"></select>
+    </label>
+    <p id="module-desc" class="settings-hint"></p>
+  </div>
+
+  <div class="popover-section" id="settings-source-section" hidden>
+    <div class="popover-title">PDF corpus</div>
+    <div class="settings-source-row">
+      <span id="settings-source-path" class="settings-source-path" title="">No folder selected</span>
+      <button id="settings-source-btn" class="mini-btn">Change…</button>
     </div>
+  </div>
 
-    <div id="test-list"></div>
-
-  </aside>
-
-  <!-- ── Main ── -->
-  <main id="main">
-
-    <div id="welcome-viewport" style="display:flex; flex:1; flex-direction:column; min-height:0;">
-      <div id="welcome-header" style="padding:16px; text-align:center; flex-shrink:0;">
-        <div class="welcome-icon" style="font-size:32px; opacity:0.4; margin-bottom:8px;">⬡</div>
-        <h2 style="font-size:18px; margin-bottom:6px;">PageIndex Explorer</h2>
-        <p id="welcome-status" style="font-size:12px; color:var(--muted);">Select a test case from the sidebar or enter a custom query below to start.</p>
-        <button id="welcome-toggle-setup-btn" class="welcome-toggle-setup-btn" style="display:none; margin-top:8px;">📁 Configure Source Folder</button>
-      </div>
-
-      <!-- PDF Source Configuration (Directly in main welcome screen) -->
-      <div id="welcome-setup-card" class="welcome-setup-card" style="display:none;">
-        <div class="setup-card-title">Configure PDF Corpus Source</div>
-        <p class="setup-card-desc">
-          Choose a folder containing your PDFs to reconstruct them into structure-faithful markdown with bounding box metadata. Everything runs locally.
-        </p>
-        <div class="setup-path-row">
-          <input id="welcome-source-path" type="text" spellcheck="false" placeholder="No folder selected — paste path or browse...">
-          <button id="welcome-browse-btn" class="setup-btn">Browse…</button>
-        </div>
-        <div id="welcome-file-list" class="setup-file-list" style="display:none;"></div>
-        <div id="welcome-ingest-progress" class="setup-progress" style="display:none;">
-          <div class="setup-progress-track">
-            <div id="welcome-progress-fill" class="setup-progress-fill"></div>
-          </div>
-          <div id="welcome-progress-msg" class="setup-progress-msg">Starting…</div>
-        </div>
-        <div id="welcome-warnings" class="setup-warnings"></div>
-        <div class="setup-actions">
-          <button id="welcome-run-btn" class="setup-run-btn" disabled>Ingest & Index PDFs</button>
-        </div>
-      </div>
-
-      <div id="treemap-pack" style="flex:1; min-height:0; overflow:hidden;"></div>
-      <div id="treemap-pack-legend" class="circle-legend" style="display:flex; justify-content:center; gap:16px; padding:10px; border-top:1px solid var(--border); background:var(--surface); font-size:10px; color:var(--muted);">
-        <span class="legend-item"><span style="display:inline-block; width:8px; height:8px; background:#fff; border:1px solid #94a3b8; margin-right:4px;"></span>Pending / Unevaluated</span>
-        <span class="legend-item"><span style="display:inline-block; width:8px; height:8px; background:#22c55e; margin-right:4px;"></span>Retrieved</span>
-        <span class="legend-item"><span style="display:inline-block; width:8px; height:8px; background:#334155; border:1.5px dashed #ef4444; margin-right:4px;"></span>Rejected</span>
-        <span class="legend-item"><span style="display:inline-block; width:8px; height:8px; background:#475569; opacity:0.5; margin-right:4px;"></span>Pruned</span>
+  <div class="popover-section">
+    <div class="popover-title">Engine</div>
+    <div class="settings-row">
+      <span class="settings-label">Ollama instances</span>
+      <div class="instance-stepper">
+        <button id="inst-dec" class="inst-btn" title="Fewer instances">−</button>
+        <span id="inst-count">1</span>
+        <button id="inst-inc" class="inst-btn" title="More instances (more parallel retrieval)">+</button>
       </div>
     </div>
-
-    <!-- Results -->
-    <div id="results" style="display:none; flex-direction:column; height:100%; flex:1;">
-
-      <!-- Query + pass/fail -->
-      <div id="status-bar">
-        <div id="query-display"></div>
-        <div id="test-status"></div>
-      </div>
-
-      <!-- Per-doc retrieval stats -->
-      <div id="stats-bar"></div>
-
-      <!-- Tree area -->
-      <div id="tree-area">
-        <div id="view-tabs">
-          <button id="tab-graph" class="view-tab active" title="Hierarchical graph">⊟ Graph</button>
-          <button id="tab-boxes" class="view-tab" title="Packed boxes (treemap)">▦ Boxes</button>
-        </div>
-        <div id="tree-container"></div>
-        <div id="result-treemap" style="display:none;"></div>
-        <div id="tree-legend" style="display:flex; flex-wrap:wrap; gap:10px 16px; padding:8px 16px; background:var(--surface); border-top:1px solid var(--border); font-size:10px; color:var(--muted);">
-          <span class="legend-item" style="color:#86efac">● Retrieved</span>
-          <span class="legend-item" style="color:#f97316">● Evaluated & Rejected</span>
-          <span class="legend-item" style="color:#ef4444">● Expected (missing)</span>
-          <span class="legend-item" style="color:#22c55e">● Expected (hit)</span>
-          <span class="legend-item" style="color:#0ea5e9">● Kept (passed pruning)</span>
-          <span class="legend-item" style="color:#64748b">● Pruned</span>
-          <span class="legend-item" style="color:#3b82f6">● Section (unevaluated)</span>
-          <span class="legend-item" style="color:#374151">● Leaf (unevaluated)</span>
-          <span style="color:#a78bfa;font-size:10px;white-space:nowrap">◈ [synth] = overview leaf</span>
-        </div>
-      </div>
-
-      <!-- Snippets -->
-      <div id="snippets-panel">
-        <div class="panel-header">Retrieved Snippets</div>
-        <div id="snippets-list"></div>
-      </div>
-
-    </div>
-
-    <!-- Chat/Search Input at bottom (collapsed into a launcher by default) -->
-    <div id="chat-input-container" class="collapsed">
-      <button id="chat-launcher" title="Ask a question (⌘K)">
-        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
-        </svg>
-        <span class="chat-launcher-label">Ask a question</span>
-        <span class="chat-kbd">⌘K</span>
-      </button>
-      <div class="chat-input-box">
-        <button id="chat-collapse" title="Collapse (Esc)">
-          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round">
-            <polyline points="6 9 12 15 18 9"></polyline>
-          </svg>
-        </button>
-        <textarea id="main-query-input" rows="1" placeholder="Ask a question or enter a query… (⌘↵ to run, Esc to collapse)"></textarea>
-        <button id="main-run-btn" title="Run Query">
-          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="22" y1="2" x2="11" y2="13"></line>
-            <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
-          </svg>
-        </button>
-      </div>
-    </div>
-  </main>
+    <div id="inst-status" class="inst-status"></div>
+  </div>
 </div>
 
-<!-- ── Document viewer modal ── -->
-<div id="doc-modal" class="doc-modal" style="display:none;">
+<!-- ══ Stage ══ -->
+<main id="stage">
+
+  <!-- ── ① Library: the corpus, browsable & live during runs ── -->
+  <section id="view-library" class="view">
+    <div class="stage-toolbar">
+      <div class="stage-heading">
+        <h1 id="library-title">Library</h1>
+        <span id="library-count" class="stage-sub"></span>
+      </div>
+      <div class="stage-tools">
+        <div class="filter-field">
+          <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><line x1="21" y1="21" x2="16.5" y2="16.5"></line></svg>
+          <input id="library-filter" type="text" placeholder="Filter sections" spellcheck="false">
+        </div>
+        <button id="library-source-btn" class="tool-btn" hidden>
+          <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
+          PDF folder…
+        </button>
+      </div>
+    </div>
+
+    <p id="library-status" class="stage-status"></p>
+
+    <!-- Corpus setup — the ONE ingest surface (empty state, or on demand) -->
+    <div id="setup-card" class="setup-card" hidden>
+      <div class="setup-icon">⬡</div>
+      <h2 class="setup-title">Build your library</h2>
+      <p class="setup-desc">
+        Choose a folder of PDFs. Each one is reconstructed locally into
+        structure-faithful markdown — headings, figures, tables — with every
+        section pinned to its exact page and position in the source file.
+      </p>
+      <div class="setup-path-row">
+        <input id="setup-source-path" type="text" spellcheck="false"
+               placeholder="Choose or paste a folder path…">
+        <button id="setup-browse-btn" class="tool-btn">Browse…</button>
+      </div>
+      <div id="setup-file-list" class="setup-file-list" hidden></div>
+      <div id="setup-progress" class="setup-progress" hidden>
+        <div class="progress-track"><div id="setup-progress-fill" class="progress-fill"></div></div>
+        <div id="setup-progress-msg" class="progress-msg"></div>
+      </div>
+      <div id="setup-warnings" class="setup-warnings"></div>
+      <div class="setup-actions">
+        <button id="setup-dismiss-btn" class="tool-btn" hidden>Not now</button>
+        <button id="setup-run-btn" class="primary-btn" disabled>Ingest &amp; Index</button>
+      </div>
+    </div>
+
+    <div id="treemap-pack"></div>
+
+    <footer id="treemap-legend" class="legend-row" hidden>
+      <span class="legend-chip"><i class="dot dot-pending"></i>Pending</span>
+      <span class="legend-chip"><i class="dot dot-retrieved"></i>Retrieved</span>
+      <span class="legend-chip"><i class="dot dot-rejected"></i>Rejected</span>
+      <span class="legend-chip"><i class="dot dot-pruned"></i>Pruned</span>
+    </footer>
+  </section>
+
+  <!-- ── ③ Review: what the model chose, and why ── -->
+  <section id="view-results" class="view" hidden>
+    <div class="stage-toolbar results-toolbar">
+      <button id="back-to-library" class="tool-btn" title="Back to the library (Esc)">‹ Library</button>
+      <div class="results-query">
+        <div id="query-display" title=""></div>
+        <div id="test-status"></div>
+      </div>
+      <div class="stage-tools">
+        <button id="rerun-btn" class="tool-btn" title="Run this question again">↻ Re-run</button>
+        <button id="display-btn" class="tool-btn" title="Display options">Aa</button>
+      </div>
+    </div>
+
+    <div id="display-popover" class="popover" hidden>
+      <div class="popover-section">
+        <div class="popover-title">Display</div>
+        <label class="settings-row"><span class="settings-label">Card width</span>
+          <input type="range" id="ctrl-tab-size" min="80" max="220" value="160"></label>
+        <label class="settings-row"><span class="settings-label">Node spacing</span>
+          <input type="range" id="ctrl-node-spacing" min="20" max="60" value="36"></label>
+        <label class="settings-row settings-check"><span class="settings-label">Evidence panel</span>
+          <input type="checkbox" id="ctrl-toggle-snippets" checked></label>
+      </div>
+    </div>
+
+    <div id="stats-bar"></div>
+
+    <div id="results-body">
+      <div id="tree-area">
+        <div class="tree-toolbar">
+          <div id="view-tabs" class="segmented">
+            <button id="tab-graph" class="seg-btn active" title="Hierarchical graph">⊟ Graph</button>
+            <button id="tab-boxes" class="seg-btn" title="Treemap">▦ Boxes</button>
+          </div>
+        </div>
+        <div id="tree-container"></div>
+        <div id="result-treemap" hidden></div>
+        <footer id="tree-legend" class="legend-row">
+          <span class="legend-chip" style="--c:#86efac"><i class="dot"></i>Retrieved</span>
+          <span class="legend-chip" style="--c:#f97316"><i class="dot"></i>Rejected</span>
+          <span class="legend-chip" style="--c:#22c55e"><i class="dot"></i>Expected · hit</span>
+          <span class="legend-chip" style="--c:#ef4444"><i class="dot"></i>Expected · missing</span>
+          <span class="legend-chip" style="--c:#0ea5e9"><i class="dot"></i>Kept</span>
+          <span class="legend-chip" style="--c:#64748b"><i class="dot"></i>Pruned</span>
+          <span class="legend-chip" style="--c:#3b82f6"><i class="dot"></i>Section</span>
+          <span class="legend-chip" style="--c:#a78bfa">◈ synth = overview leaf</span>
+        </footer>
+      </div>
+
+      <aside id="snippets-panel">
+        <div class="panel-header">
+          <span>Evidence</span>
+          <span id="snippets-count" class="panel-count"></span>
+        </div>
+        <div id="snippets-list"></div>
+      </aside>
+    </div>
+  </section>
+
+</main>
+
+<!-- ══ ② Ask: the command bar (⌘K) ══ -->
+<div id="command-bar" class="collapsed">
+  <button id="chat-launcher" title="Ask a question (⌘K)">
+    <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+    <span class="chat-launcher-label">Ask a question</span>
+    <span class="chat-kbd">⌘K</span>
+  </button>
+
+  <div class="command-box">
+    <div id="suggestions" class="suggestions" hidden></div>
+    <div class="command-input-row">
+      <button id="chat-collapse" title="Collapse (Esc)">
+        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+      </button>
+      <textarea id="main-query-input" rows="1" spellcheck="false"
+                placeholder="Ask about your documents…  (↵ to run · ⇧↵ newline)"></textarea>
+      <button id="main-run-btn" title="Run (↵)">
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ Reader (document viewer) ══ -->
+<div id="doc-modal" class="doc-modal" hidden>
   <div class="doc-modal-backdrop"></div>
   <div class="doc-modal-window">
     <div class="doc-modal-header">
       <span id="doc-modal-title">Document</span>
-      <label id="doc-pins-toggle" class="doc-pins-toggle" style="display:none;" title="Show provenance pins (page + bounding box metadata) inline">
+      <label id="doc-pins-toggle" class="doc-pins-toggle" hidden
+             title="Show provenance pins (page + bounding-box metadata) inline">
         <input type="checkbox" id="doc-pins-checkbox"> Pins
       </label>
-      <div id="doc-verdict-legend" class="doc-verdict-legend" style="display:none;">
+      <div id="doc-verdict-legend" class="doc-verdict-legend" hidden>
         <span class="lg"><span class="sw sw-acc"></span>Retrieved</span>
         <span class="lg"><span class="sw sw-rej"></span>Rejected</span>
-        <span class="lg"><span class="sw sw-kept"></span>Section kept</span>
+        <span class="lg"><span class="sw sw-kept"></span>Kept</span>
         <span class="lg"><span class="sw sw-pru"></span>Pruned</span>
-        <span class="lg"><span class="sw sw-q"></span>Deciding quote</span>
+        <span class="lg"><span class="sw sw-q"></span>Quote</span>
       </div>
-      <button id="doc-modal-close" title="Close (Esc)">✕</button>
+      <button id="doc-modal-close" class="icon-btn" title="Close (Esc)">✕</button>
     </div>
     <div class="doc-modal-body">
       <nav id="doc-modal-toc" class="doc-modal-toc"></nav>
@@ -184,39 +248,7 @@
   </div>
 </div>
 
-<!-- ── Ingest setup modal (folder picker for PDF-based ingest modules) ── -->
-<div id="ingest-modal" class="doc-modal" style="display:none;">
-  <div class="doc-modal-backdrop"></div>
-  <div class="ingest-modal-window">
-    <div class="doc-modal-header">
-      <span id="ingest-modal-title">BetterIngest PDF — choose a corpus</span>
-      <button id="ingest-modal-close" title="Close (Esc)">✕</button>
-    </div>
-    <div class="ingest-modal-body">
-      <p class="ingest-hint">
-        Pick a flat folder of PDF files. Each PDF is reconstructed into
-        structure-faithful markdown (layout OCR → heading hierarchy → figure/table
-        crops) with provenance pins linking every section back to its page and
-        bounding box in the source PDF. Everything runs locally.
-      </p>
-      <div class="ingest-source-row">
-        <input id="ingest-source-path" type="text" spellcheck="false"
-               placeholder="/path/to/folder/of/pdfs">
-        <button id="ingest-browse-btn">Browse…</button>
-      </div>
-      <div id="ingest-file-list" class="ingest-file-list"></div>
-      <div id="ingest-progress" class="ingest-progress" style="display:none;">
-        <div class="ingest-progress-track"><div id="ingest-progress-fill" class="ingest-progress-fill"></div></div>
-        <div id="ingest-progress-msg" class="ingest-progress-msg"></div>
-      </div>
-      <div id="ingest-warnings" class="ingest-warnings"></div>
-      <div class="ingest-actions">
-        <button id="ingest-cancel-btn">Cancel</button>
-        <button id="ingest-run-btn" disabled>Ingest &amp; Index</button>
-      </div>
-    </div>
-  </div>
-</div>
+<div id="toasts"></div>
 
 <script src="/static/marked.min.js"></script>
 <script src="/static/main.js"></script>
