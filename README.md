@@ -6,6 +6,28 @@ answers a natural-language query by walking the document trees with an LLM, and
 visualizes **which parts of each document the model selected, rejected, or skipped —
 and why**.
 
+The app has **two tabs that share one backend run state**:
+
+- **💬 Chatbot** — an ASEPSIS-styled practitioner chat (visual language ported from
+  the Prototype_UCL surface). A question triggers the exact same retrieval workflow
+  as the Retrieval tab, then a synthesis call produces a structured, citation-anchored
+  answer (`Short answer · Recommended action · Rationale · Limitations`) with a
+  grounding badge. Each inline `[n]` citation links to a source card showing the
+  passage with its **deciding quote highlighted**, the model's *why selected* reason,
+  the **original PDF page with the passage's bounding box highlighted** (for
+  PDF-ingested documents), a live **retrieval-reasoning trace** (every kept / pruned /
+  rejected / retrieved decision as it happens), and buttons into the annotated reader
+  and the Retrieval tab. A right-docked **evidence library** groups all sources by answer.
+- **⊟ Retrieval** — the original explorer: Library → Ask → Review workflow, live
+  treemap, graph/boxes verdict views, snippets, reader, and "why not?" explanations.
+
+Asking in the Chatbot animates the Retrieval tab's treemap live, and the finished
+run is immediately inspectable there — the two tabs are two lenses on one run.
+
+**One-click start (macOS):** double-click **`run_tauri.command`** — it creates a
+private `.venv`, installs any missing Python dependencies, starts Ollama and pulls
+`gemma3:4b` if needed, then launches the app.
+
 This README walks through a full session as a **timeline**. At each timestamp `t`
 the same moment is described from two angles:
 
@@ -227,6 +249,7 @@ Both phases run in parallel across the configured Ollama instances.
 | `GET` | `/api/document/{stem}/full` | Raw markdown for the document viewer |
 | `GET` | `/api/status` | Live run state: instance activity, progress, verdict sets + `meta` |
 | `POST` | `/api/run` | Run retrieval for a query/test |
+| `POST` | `/api/chat` | Chatbot: same retrieval, then a cited structured answer + sources (also returns the full run payload) |
 | `POST` | `/api/explain` | On-demand grounded "why not selected" (dedicated instance) |
 
 ### Pipeline modules
@@ -266,11 +289,12 @@ astepsis/
 ├── index/                    # Heading-tree indexes, one JSON per doc (index output)
 ├── pageindex.py              # Heading parser, indexer, two-phase LLM retrieval, explainer
 ├── run-tauri.py              # One-command launcher (pipeline + server + window)
+├── run_tauri.command         # Double-clickable macOS launcher (installs deps, starts Ollama)
 ├── modules/                  # ingest / index / query strategy modules + registry
 ├── tauri-app/
-│   ├── server.py             # FastAPI app: API, Ollama lifecycle, run state
+│   ├── server.py             # FastAPI app: API, chat synthesis, Ollama lifecycle, run state
 │   ├── src-tauri/            # Tauri desktop shell config
-│   └── ui/                   # index.html · main.js · style.css · d3/marked (vendored)
+│   └── ui/                   # index.html · main.js/style.css (retrieval) · chat.js/chat.css (chatbot)
 └── tests/                    # Unit tests (deterministic) + retrieval tests (need Ollama)
 ```
 

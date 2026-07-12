@@ -384,6 +384,7 @@ function startStatusPolling() {
       renderInstanceDots(status);
       applyTreemapEvents(status);
       refreshOpenDocViewer();
+      if (typeof chatOnStatus === 'function') chatOnStatus(status);
     } catch { /* transient */ }
   }, 250);
 }
@@ -396,6 +397,7 @@ async function stopStatusPolling() {
     renderInstanceDots(status);
     applyTreemapEvents(status);
     refreshOpenDocViewer();
+    if (typeof chatOnStatus === 'function') chatOnStatus(status);
   } catch { renderInstanceDots(null); }
 }
 

@@ -298,6 +298,8 @@ def get_tests():
 @app.get("/api/status")
 def get_status():
     activity = _pi.get_activity()
+    with _chat_lock:
+        chat_phase = dict(_chat_phase)
     return JSONResponse({
         "instances": [
             {"url": url, "index": i, "active": activity.get(url, 0)}
@@ -306,6 +308,7 @@ def get_status():
         "any_busy": any(v > 0 for v in activity.values()),
         "progress": _pi.get_progress(),
         "live":     _pi.get_live_events(),
+        "chat":     chat_phase,
     })
 
 
@@ -504,6 +507,13 @@ def ingest_progress():
         return JSONResponse(dict(_ingest_state))
 
 
+# Rendered-page cache — chat citation previews request the same page/bbox
+# repeatedly; pdfium renders are ~100ms each, so memoize the PNG bytes.
+_page_png_cache: dict = {}
+_page_png_lock = threading.Lock()
+_PAGE_CACHE_MAX = 64
+
+
 @app.get("/api/document/{stem}/page/{page}")
 def get_document_page(stem: str, page: int, bbox: Optional[str] = None,
                       regions: Optional[str] = None):
@@ -528,6 +538,12 @@ def get_document_page(stem: str, page: int, bbox: Optional[str] = None,
         return JSONResponse(
             {"error": f"page rendering needs pypdfium2 + Pillow: {exc}"},
             status_code=501)
+
+    cache_key = (str(pdf_path), pdf_path.stat().st_mtime, page, bbox or "", regions or "")
+    with _page_png_lock:
+        cached = _page_png_cache.get(cache_key)
+    if cached is not None:
+        return Response(content=cached, media_type="image/png")
 
     scale = float(src.get("ocr_scale", 2.0))
     doc = pdfium.PdfDocument(str(pdf_path))
@@ -556,7 +572,12 @@ def get_document_page(stem: str, page: int, bbox: Optional[str] = None,
     import io
     buf = io.BytesIO()
     img.save(buf, format="PNG")
-    return Response(content=buf.getvalue(), media_type="image/png")
+    data = buf.getvalue()
+    with _page_png_lock:
+        if len(_page_png_cache) >= _PAGE_CACHE_MAX:
+            _page_png_cache.pop(next(iter(_page_png_cache)))
+        _page_png_cache[cache_key] = data
+    return Response(content=data, media_type="image/png")
 
 
 class ExplainRequest(BaseModel):
@@ -606,27 +627,10 @@ class RunRequest(BaseModel):
     query_module:  Optional[str] = None
 
 
-@app.post("/api/run")
-def run_query(req: RunRequest):
-    test = None
-    query = req.query
-
-    if req.test_id:
-        test = next((t for t in TEST_CASES if t["id"] == req.test_id), None)
-        if test:
-            query = test["query"]
-
-    if not query:
-        return JSONResponse({"error": "No query provided"}, status_code=400)
-
-    # Resolve modules
-    defs = _module_defaults()
-    index_mod_name = req.index_module or defs["index"]
-    try:
-        index_mod = _load_module("index", index_mod_name)
-    except Exception as exc:
-        return JSONResponse({"error": f"Could not load index module '{index_mod_name}': {exc}"}, status_code=400)
-
+def _run_retrieval(query: str, index_mod) -> dict:
+    """Two-phase retrieval across every indexed document. Shared by /api/run
+    (retrieval tab) and /api/chat (chatbot tab) so both drive the same live
+    treemap/progress state."""
     index_dir = getattr(index_mod, "INDEX_DIR", Path("index"))
 
     # Count total leaves across all docs so progress polling has a denominator
@@ -669,6 +673,31 @@ def run_query(req: RunRequest):
                 for n in nodes
             ],
         }
+    return results
+
+
+@app.post("/api/run")
+def run_query(req: RunRequest):
+    test = None
+    query = req.query
+
+    if req.test_id:
+        test = next((t for t in TEST_CASES if t["id"] == req.test_id), None)
+        if test:
+            query = test["query"]
+
+    if not query:
+        return JSONResponse({"error": "No query provided"}, status_code=400)
+
+    # Resolve modules
+    defs = _module_defaults()
+    index_mod_name = req.index_module or defs["index"]
+    try:
+        index_mod = _load_module("index", index_mod_name)
+    except Exception as exc:
+        return JSONResponse({"error": f"Could not load index module '{index_mod_name}': {exc}"}, status_code=400)
+
+    results = _run_retrieval(query, index_mod)
 
     test_result = _eval_test(test, results) if test else None
     return JSONResponse({
@@ -681,6 +710,188 @@ def run_query(req: RunRequest):
             "query":  req.query_module  or _module_defaults()["query"],
         },
     })
+
+
+# ---------------------------------------------------------------------------
+# Chat — retrieval + grounded answer synthesis for the chatbot tab
+# ---------------------------------------------------------------------------
+
+_chat_lock = threading.Lock()
+_chat_phase: dict = {"phase": "idle", "detail": ""}
+
+
+def _set_chat_phase(phase: str, detail: str = "") -> None:
+    with _chat_lock:
+        _chat_phase.update({"phase": phase, "detail": detail})
+
+
+CHAT_SYNTHESIS_PROMPT = """\
+You are a clinical knowledge assistant. Answer the question using ONLY the
+numbered source passages below. Every claim must cite its passage inline as
+[n] (e.g. [1] or [2][3]). Never invent a source number.
+
+Question: {query}
+
+Source passages:
+{passages}
+
+Respond in EXACTLY this format (keep the labels, fill in the text; each
+section is 1-3 sentences of plain text with inline [n] citations):
+
+SHORT_ANSWER: <the direct answer to the question>
+RECOMMENDED_ACTION: <what the clinician should do>
+RATIONALE: <why, grounded in the cited passages>
+LIMITATIONS: <what the sources do not cover, or uncertainty>
+
+If the passages cannot answer the question, say so in SHORT_ANSWER and leave
+the other sections brief.
+"""
+
+_SECTION_KEYS = ["SHORT_ANSWER", "RECOMMENDED_ACTION", "RATIONALE", "LIMITATIONS"]
+
+
+def _parse_answer_sections(text: str) -> dict:
+    """Parse the labeled sections out of the model's answer. Tolerant of
+    markdown bolding and missing sections; anything unmatched stays in
+    'content' as the fallback body."""
+    pattern = re.compile(
+        r"^\s*\**\s*(" + "|".join(_SECTION_KEYS) + r")\s*\**\s*:\s*",
+        re.MULTILINE | re.IGNORECASE,
+    )
+    sections: dict[str, str] = {}
+    matches = list(pattern.finditer(text))
+    for i, m in enumerate(matches):
+        key = m.group(1).upper()
+        end = matches[i + 1].start() if i + 1 < len(matches) else len(text)
+        sections[key.lower()] = text[m.end():end].strip().strip("*").strip()
+    return sections
+
+
+def _breadcrumbs_for(results: dict) -> dict:
+    """{doc: {node_id: 'Doc › Section › Leaf'}} for every retrieved node."""
+    crumbs: dict[str, dict] = {}
+    for doc_name, doc_data in results.items():
+        nodes = [_node_from_dict(d) for d in doc_data["tree"]]
+        nodes_by_id = _pi._build_nodes_by_id(nodes)
+        parent_map = _pi._build_parent_map(nodes)
+        crumbs[doc_name] = {
+            nid: _pi._make_breadcrumb(nid, parent_map, nodes_by_id)
+            for nid in doc_data["retrieved_ids"]
+        }
+    return crumbs
+
+
+class ChatRequest(BaseModel):
+    query: str
+    index_module: Optional[str] = None
+
+
+@app.post("/api/chat")
+def chat(req: ChatRequest):
+    """The chatbot workflow: the same two-phase retrieval as /api/run, then a
+    synthesis call that produces a structured, citation-anchored answer.
+
+    The response carries both the chat payload (answer + sources) and the full
+    run payload, so the retrieval tab can render the identical run state.
+    """
+    query = (req.query or "").strip()
+    if not query:
+        return JSONResponse({"error": "No query provided"}, status_code=400)
+
+    defs = _module_defaults()
+    index_mod_name = req.index_module or defs["index"]
+    try:
+        index_mod = _load_module("index", index_mod_name)
+    except Exception as exc:
+        return JSONResponse({"error": f"Could not load index module '{index_mod_name}': {exc}"}, status_code=400)
+
+    _set_chat_phase("retrieval", "Reading the document trees…")
+    try:
+        results = _run_retrieval(query, index_mod)
+
+        # Flatten retrieved nodes into numbered sources (stable order: doc, tree order)
+        crumbs = _breadcrumbs_for(results)
+        sources = []
+        for doc_name, doc_data in results.items():
+            for node in doc_data["nodes"]:
+                pin = node.get("pin") or {}
+                sources.append({
+                    "id": f"s{len(sources) + 1}",
+                    "n": len(sources) + 1,
+                    "doc": doc_name,
+                    "node_id": node["node_id"],
+                    "title": node["title"],
+                    "breadcrumb": crumbs.get(doc_name, {}).get(node["node_id"], ""),
+                    "excerpt": node["content"],
+                    "quote": node["quote"],
+                    "reason": node["reason"],
+                    "synthetic": node["synthetic"],
+                    "pin": node.get("pin"),
+                    "page": pin.get("page"),
+                    "image": pin.get("image"),
+                    "has_source_pdf": doc_name in _load_sources(),
+                })
+
+        answer_text = ""
+        sections: dict = {}
+        if sources:
+            _set_chat_phase("synthesis", f"Composing an answer from {len(sources)} passages…")
+            passages = "\n\n".join(
+                f"[{s['n']}] {s['doc'].replace('_', ' ')} › {s['breadcrumb'] or s['title']}\n{s['excerpt'] or '(no content)'}"
+                for s in sources
+            )
+            prompt = CHAT_SYNTHESIS_PROMPT.format(query=query, passages=passages)
+            client = _pi.make_client(_pi.OLLAMA_URLS[0])
+            response = client.chat(
+                model=_pi.MODEL,
+                messages=[{"role": "user", "content": prompt}],
+                options={"temperature": 0},
+            )
+            answer_text = response["message"]["content"]
+            sections = _parse_answer_sections(answer_text)
+
+        cited = set(int(n) for n in re.findall(r"\[(\d+)\]", answer_text))
+        valid_cited = {n for n in cited if 1 <= n <= len(sources)}
+        if not sources:
+            status = "insufficient_evidence"
+            summary = "No passage in the library was judged relevant to this question."
+        elif valid_cited:
+            status = "grounded"
+            summary = (f"{len(valid_cited)} of {len(sources)} retrieved passages are "
+                       f"cited inline; every source below was selected with a verbatim quote.")
+        else:
+            status = "partially_grounded"
+            summary = (f"{len(sources)} passages were retrieved, but the answer text "
+                       f"carries no inline citations — verify against the sources below.")
+
+        return JSONResponse({
+            "query": query,
+            "answer": {
+                "content": answer_text,
+                "short_answer": sections.get("short_answer", ""),
+                "recommended_action": sections.get("recommended_action", ""),
+                "rationale": sections.get("rationale", ""),
+                "limitations": sections.get("limitations", ""),
+            },
+            "grounding": {"status": status, "summary": summary, "sources": sources},
+            "run": {
+                "query": query,
+                "results": results,
+                "test_result": None,
+                "pipeline": {
+                    "ingest": defs["ingest"],
+                    "index":  index_mod_name,
+                    "query":  defs["query"],
+                },
+            },
+        })
+    except Exception as exc:
+        _set_chat_phase("error", str(exc))
+        return JSONResponse({"error": str(exc)}, status_code=500)
+    finally:
+        with _chat_lock:
+            if _chat_phase["phase"] != "error":
+                _chat_phase.update({"phase": "idle", "detail": ""})
 
 
 # ---------------------------------------------------------------------------

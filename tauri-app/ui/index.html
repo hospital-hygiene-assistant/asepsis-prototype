@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>PageIndex Explorer</title>
   <link rel="stylesheet" href="/static/style.css">
+  <link rel="stylesheet" href="/static/chat.css">
   <script src="/static/d3.v7.min.js"></script>
 </head>
 <body>
@@ -15,6 +16,17 @@
     <span class="logo">⬡</span>
     <span class="brand-name">PageIndex</span>
   </div>
+
+  <nav id="app-tabs" aria-label="App tabs">
+    <button class="app-tab" data-tab="chat">
+      <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
+      Chatbot
+    </button>
+    <button class="app-tab" data-tab="retrieval">
+      <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
+      Retrieval
+    </button>
+  </nav>
 
   <nav id="flow-steps" aria-label="Workflow">
     <button class="flow-step" data-step="library"><span class="flow-num">1</span> Library</button>
@@ -79,6 +91,54 @@
 
 <!-- ══ Stage ══ -->
 <main id="stage">
+
+  <!-- ── Chatbot tab: ASEPSIS practitioner chat over the same backend ── -->
+  <section id="view-chat" class="view" hidden>
+    <div class="chat-shell">
+      <div class="chat-main">
+        <header class="chat-header">
+          <p class="chat-eyebrow">ASEPSIS · Direct question</p>
+          <h1 class="chat-title">Ask a clinical question</h1>
+          <p class="chat-intro" id="chat-intro">Answers are grounded in your indexed library.
+            Every claim cites the exact passage the retrieval model selected — with its page,
+            highlight, and the reasoning that led there.</p>
+          <div class="chat-notice" id="chat-notice">
+            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+            <p>Retrieval runs locally over the document trees. The full decision map for each
+            answer — every kept, pruned and rejected section — is one click away in the
+            <b>Retrieval</b> tab.</p>
+          </div>
+        </header>
+
+        <div id="chat-scroll" class="chat-scroll">
+          <div id="chat-empty" class="chat-empty"></div>
+          <div id="chat-messages"></div>
+        </div>
+
+        <form id="chat-form" class="chat-inputbar">
+          <textarea id="chat-input" rows="2" spellcheck="false"
+                    placeholder="Type your question…"></textarea>
+          <button id="chat-send" type="submit" disabled>
+            <span id="chat-send-label">Send</span>
+            <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+          </button>
+        </form>
+      </div>
+
+      <aside id="evidence-library" class="evidence-library" hidden>
+        <header class="ev-header">
+          <p class="chat-eyebrow">Sources</p>
+          <h2 class="ev-title">Document passages</h2>
+          <p class="ev-sub">Grouped by answer.</p>
+          <div class="ev-mode" id="ev-mode">
+            <button data-mode="current" class="ev-mode-btn">Current answer</button>
+            <button data-mode="all" class="ev-mode-btn active">All sources</button>
+          </div>
+        </header>
+        <div id="evidence-groups" class="ev-groups"></div>
+      </aside>
+    </div>
+  </section>
 
   <!-- ── ① Library: the corpus, browsable & live during runs ── -->
   <section id="view-library" class="view">
@@ -252,5 +312,6 @@
 
 <script src="/static/marked.min.js"></script>
 <script src="/static/main.js"></script>
+<script src="/static/chat.js"></script>
 </body>
 </html>
