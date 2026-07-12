@@ -1,4 +1,4 @@
-"""PageIndex Explorer — FastAPI backend. Serves the UI and wraps pageindex retrieval."""
+"""Asepsis Prototype — FastAPI backend. Serves the UI and wraps pageindex retrieval."""
 
 import atexit
 import json
@@ -164,7 +164,7 @@ _initial_n = int(os.environ.get("OLLAMA_INSTANCES", "1"))
 if _initial_n > 1:
     set_ollama_instances(_initial_n)
 
-app = FastAPI(title="PageIndex Explorer")
+app = FastAPI(title="Asepsis Prototype")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
 
@@ -501,6 +501,73 @@ def run_ingest(req: IngestRunRequest):
     return JSONResponse({"started": True})
 
 
+class IngestAddRequest(BaseModel):
+    path: str
+    ingest_module: str = "betteringest_pdf"
+    index_module: Optional[str] = None
+
+
+@app.post("/api/ingest/add")
+def add_to_library(req: IngestAddRequest):
+    """Additive ingest: bring a single PDF or a folder of PDFs into the
+    library on top of the existing corpus, then re-index. Existing documents
+    are untouched (same-named stems are refreshed)."""
+    p = Path(req.path).expanduser()
+    if p.is_file() and p.suffix.lower() == ".pdf":
+        pdfs = [p]
+    elif p.is_dir():
+        pdfs = sorted(p.glob("*.pdf"))
+    else:
+        return JSONResponse({"error": f"Not a .pdf file or a folder: {p}"},
+                            status_code=400)
+    if not pdfs:
+        return JSONResponse({"error": f"No .pdf files in {p}"}, status_code=400)
+
+    try:
+        ingest_mod = _load_module("ingest", req.ingest_module)
+    except Exception as exc:
+        return JSONResponse({"error": f"unknown ingest module '{req.ingest_module}': {exc}"},
+                            status_code=404)
+    if not hasattr(ingest_mod, "run_paths"):
+        return JSONResponse({"error": f"module '{req.ingest_module}' does not support additive ingest"},
+                            status_code=400)
+
+    with _ingest_lock:
+        if _ingest_state["state"] == "running":
+            return JSONResponse({"error": "an ingest run is already in progress"},
+                                status_code=409)
+        _ingest_state.update({"state": "running", "phase": "starting", "doc": "",
+                              "done": 0, "total": len(pdfs), "message": "Starting…",
+                              "warnings": [], "docs": []})
+
+    index_name = req.index_module or _module_defaults()["index"]
+
+    def work():
+        try:
+            result = ingest_mod.run_paths(
+                [str(x) for x in pdfs],
+                progress=lambda info: _set_ingest_state(**info)) or {}
+
+            _set_ingest_state(phase="index", message="Rebuilding index…")
+            index_mod = _load_module("index", index_name)
+            kb_dir = getattr(ingest_mod, "KB_DIR", Path("knowledge_base"))
+            if not Path(kb_dir).is_absolute():
+                kb_dir = ROOT / kb_dir
+            for md in sorted(Path(kb_dir).glob("*.md")):
+                index_mod.build_index(md.stem)
+
+            _set_ingest_state(state="done", phase="done",
+                              message=f"Added {len(result.get('docs', []))} document(s)",
+                              warnings=result.get("warnings", []),
+                              docs=result.get("docs", []))
+        except Exception as exc:
+            _set_ingest_state(state="error", message=str(exc))
+
+    threading.Thread(target=work, daemon=True).start()
+    return JSONResponse({"started": True, "pdf_count": len(pdfs),
+                         "pdfs": [x.name for x in pdfs]})
+
+
 @app.get("/api/ingest/progress")
 def ingest_progress():
     with _ingest_lock:
@@ -779,6 +846,28 @@ def _breadcrumbs_for(results: dict) -> dict:
             for nid in doc_data["retrieved_ids"]
         }
     return crumbs
+
+
+@app.get("/api/chat/config")
+def chat_config():
+    """Introspection for the chatbot tab: which model answers, over which
+    engine pool, with exactly which prompts — nothing hidden."""
+    activity = _pi.get_activity()
+    defs = _module_defaults()
+    return JSONResponse({
+        "model": _pi.MODEL,
+        "temperature": 0,
+        "ollama_urls": _pi.OLLAMA_URLS,
+        "ollama_instances": len(_pi.OLLAMA_URLS),
+        "any_busy": any(v > 0 for v in activity.values()),
+        "pipeline": defs,
+        "prompts": {
+            "synthesis": CHAT_SYNTHESIS_PROMPT,
+            "section_pruning": getattr(_pi, "SECTION_CHECK_PROMPT", ""),
+            "leaf_evaluation": getattr(_pi, "LEAF_EVAL_PROMPT", ""),
+            "why_not_explainer": getattr(_pi, "EXPLAIN_PROMPT", ""),
+        },
+    })
 
 
 class ChatRequest(BaseModel):

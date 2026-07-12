@@ -3,7 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>PageIndex Explorer</title>
+  <title>Asepsis Prototype</title>
+  <link rel="icon" type="image/png" href="/static/asepsis-icon.png">
   <link rel="stylesheet" href="/static/style.css">
   <link rel="stylesheet" href="/static/chat.css">
   <script src="/static/d3.v7.min.js"></script>
@@ -13,8 +14,8 @@
 <!-- ══ Top bar: brand · workflow steps · activity · settings ══ -->
 <header id="topbar">
   <div class="topbar-brand">
-    <span class="logo">⬡</span>
-    <span class="brand-name">PageIndex</span>
+    <img class="logo-img" src="/static/asepsis-icon.png" alt="">
+    <span class="brand-name">Asepsis</span>
   </div>
 
   <nav id="app-tabs" aria-label="App tabs">
@@ -97,6 +98,10 @@
     <div class="chat-shell">
       <div class="chat-main">
         <header class="chat-header">
+          <button id="chat-config-btn" class="chat-config-btn" title="Inspect the chatbot: model, engine, prompts">
+            <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"></line><line x1="4" y1="10" x2="4" y2="3"></line><line x1="12" y1="21" x2="12" y2="12"></line><line x1="12" y1="8" x2="12" y2="3"></line><line x1="20" y1="21" x2="20" y2="16"></line><line x1="20" y1="12" x2="20" y2="3"></line><line x1="1" y1="14" x2="7" y2="14"></line><line x1="9" y1="8" x2="15" y2="8"></line><line x1="17" y1="16" x2="23" y2="16"></line></svg>
+            Model &amp; prompts
+          </button>
           <p class="chat-eyebrow">ASEPSIS · Direct question</p>
           <h1 class="chat-title">Ask a clinical question</h1>
           <p class="chat-intro" id="chat-intro">Answers are grounded in your indexed library.
@@ -123,6 +128,22 @@
             <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
           </button>
         </form>
+      </div>
+
+      <!-- Chatbot inspector: model, engine, and the exact prompts in use -->
+      <div id="chat-config-modal" class="chat-config-modal" hidden>
+        <div class="ccm-backdrop"></div>
+        <div class="ccm-window">
+          <header class="ccm-head">
+            <div>
+              <p class="chat-eyebrow">Chatbot settings</p>
+              <h2 class="ccm-title">Model &amp; prompts</h2>
+              <p class="ccm-sub">Read-only view of exactly what powers each answer — nothing hidden.</p>
+            </div>
+            <button id="chat-config-close" class="ccm-close" title="Close (Esc)">✕</button>
+          </header>
+          <div id="chat-config-body" class="ccm-body"></div>
+        </div>
       </div>
 
       <aside id="evidence-library" class="evidence-library" hidden>
@@ -156,6 +177,32 @@
           <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path></svg>
           PDF folder…
         </button>
+        <button id="library-add-btn" class="tool-btn" title="Add more PDFs to the library (a folder or a single file)">
+          <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+          Add PDFs
+        </button>
+      </div>
+    </div>
+
+    <!-- ＋ Add-to-library popover: additive ingest of folders or single PDFs -->
+    <div id="add-popover" class="popover" hidden>
+      <div class="popover-section">
+        <div class="popover-title">Add to the library</div>
+        <p class="settings-hint">Ingest more PDFs on top of the current corpus —
+          a whole folder or one file. Existing documents stay untouched.</p>
+        <div class="setup-path-row">
+          <input id="add-path" type="text" spellcheck="false"
+                 placeholder="Paste a folder or .pdf path…">
+        </div>
+        <div class="setup-actions">
+          <button id="add-browse-folder" class="tool-btn">Folder…</button>
+          <button id="add-browse-file" class="tool-btn">PDF…</button>
+          <button id="add-run-btn" class="primary-btn" disabled>Add &amp; index</button>
+        </div>
+        <div id="add-progress" class="setup-progress" hidden>
+          <div class="progress-track"><div id="add-progress-fill" class="progress-fill"></div></div>
+          <div id="add-progress-msg" class="progress-msg"></div>
+        </div>
       </div>
     </div>
 

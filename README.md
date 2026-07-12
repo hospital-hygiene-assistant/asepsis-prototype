@@ -1,4 +1,4 @@
-# PageIndex Explorer
+# Asepsis Prototype
 
 A retrieval-augmented-generation (RAG) **exploration and explainability** tool. It
 indexes a corpus of heading-structured documents (currently medical guidelines),
@@ -104,7 +104,7 @@ Both phases run in parallel across the configured Ollama instances.
 
 🖥️ **Frontend**
 - **Action available:** run `python3 run-tauri.py` (optionally `--ollama-instances N`).
-- **Outcome:** a desktop window titled *PageIndex Explorer* opens (or the system browser, if Tauri's CLI isn't installed). Nothing is interactive yet — the UI is loading.
+- **Outcome:** a desktop window titled *Asepsis Prototype* opens (or the system browser, if Tauri's CLI isn't installed). Nothing is interactive yet — the UI is loading.
 
 ⚙️ **Backend**
 - `run-tauri.py` installs Python deps if missing, then **runs the pipeline only if needed**: ingest (`docs/ → knowledge_base/`) if the knowledge base is stale, and index (`knowledge_base/ → index/*.json`) if any document is unindexed.

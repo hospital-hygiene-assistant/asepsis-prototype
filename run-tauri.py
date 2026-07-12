@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-One-click launcher for PageIndex Explorer.
+One-click launcher for the Asepsis Prototype.
 
   python3 run-tauri.py
 
@@ -103,12 +103,12 @@ def _print_ollama_tip():
 
 def main():
     import argparse
-    parser = argparse.ArgumentParser(description="Launch PageIndex Explorer")
+    parser = argparse.ArgumentParser(description="Launch the Asepsis Prototype")
     parser.add_argument("--ollama-instances", type=int, default=1,
                         help="Number of Ollama instances to use for parallel retrieval (default: 1)")
     args = parser.parse_args()
 
-    print("\nPageIndex Explorer — starting up")
+    print("\nAsepsis Prototype — starting up")
     print("─" * 40)
 
     _ensure_python_deps()

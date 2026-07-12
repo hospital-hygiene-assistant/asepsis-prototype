@@ -384,6 +384,13 @@ function finalizeAnswerCard(p, data) {
   srcWrap.appendChild(rule);
   p.card.appendChild(srcWrap);
 
+  // Deterministic AI disclaimer — rendered by the app on every answer,
+  // never left to the model's prompt.
+  const disclaimer = el('footer', 'answer-disclaimer');
+  disclaimer.innerHTML = `${ICONS.info}<span><b>AI-generated answer.</b> ` +
+    `Always double-check against the cited document passages before acting on it.</span>`;
+  p.card.appendChild(disclaimer);
+
   // Citation chips → scroll to the source card
   p.card.addEventListener('click', (e) => {
     const chip = e.target.closest('.cite-chip');
@@ -471,11 +478,24 @@ function buildSourceCard(s, answerId) {
   }
 
   const actions = el('div', 'source-actions');
-  if (pin?.page) {
+  if (pin?.page && s.has_source_pdf) {
     const b = el('button', 'source-action');
     b.type = 'button';
     b.innerHTML = `${ICONS.zoom} Open source page`;
     b.addEventListener('click', () => openSourceView(s.doc, pin));
+    actions.appendChild(b);
+  } else {
+    // No provenance pin or the source PDF is unavailable — keep the button,
+    // but as an explicit warning instead of silently hiding the affordance.
+    const b = el('button', 'source-action warn');
+    b.type = 'button';
+    b.innerHTML = `${ICONS.alert} Open source page`;
+    b.title = 'No source PDF is available for this passage';
+    b.addEventListener('click', () => toast(
+      `No source PDF was found for “${prettyDoc(s.doc)}”. The original may have been ` +
+      `markdown-only (no page provenance), the PDF may have been moved — or the ` +
+      `reference could be a hallucination. Verify against the cited text.`,
+      'warn', 8000));
     actions.appendChild(b);
   }
   const read = el('button', 'source-action');
@@ -576,6 +596,70 @@ function selectEvidenceSource(answerId, n) {
   });
 }
 
+/* ── Chatbot inspector: model, engine, prompts ─────────────── */
+
+const PROMPT_LABELS = {
+  synthesis:        ['Answer synthesis', 'Turns the retrieved passages into the structured, cited answer.'],
+  section_pruning:  ['Section pruning', 'Phase 1 of retrieval — decides which branches of each document tree are worth reading.'],
+  leaf_evaluation:  ['Leaf evaluation', 'Phase 2 — judges every surviving passage and demands a verbatim quote for a yes.'],
+  why_not_explainer:['“Why not?” explainer', 'On-demand, grounded explanation for passages that were not selected.'],
+};
+
+async function openChatConfig() {
+  const modal = document.getElementById('chat-config-modal');
+  const body = document.getElementById('chat-config-body');
+  modal.hidden = false;
+  body.innerHTML = '<p class="chat-loading">Loading…</p>';
+  let cfg;
+  try {
+    cfg = await apiGet('/api/chat/config');
+  } catch (e) {
+    body.innerHTML = `<p class="chat-error">Could not load the configuration: ${escHtml(e.message)}</p>`;
+    return;
+  }
+
+  body.innerHTML = '';
+  const facts = el('dl', 'ccm-facts');
+  const fact = (label, value) => {
+    facts.appendChild(el('dt', '', label));
+    const dd = el('dd', '');
+    dd.innerHTML = value;
+    facts.appendChild(dd);
+  };
+  fact('Language model', `<code>${escHtml(cfg.model)}</code> · temperature ${cfg.temperature}`);
+  fact('Engine', `${cfg.ollama_instances} local Ollama instance${cfg.ollama_instances > 1 ? 's' : ''} — ` +
+    cfg.ollama_urls.map(u => `<code>${escHtml(u)}</code>`).join(', ') +
+    (cfg.any_busy ? ' · <b>busy</b>' : ' · idle'));
+  fact('Pipeline', ['ingest', 'index', 'query']
+    .map(s => `${s}: <code>${escHtml(cfg.pipeline?.[s] || '—')}</code>`).join(' · '));
+  body.appendChild(facts);
+
+  const promptsLabel = el('p', 'ccm-section-label', 'Prompts');
+  body.appendChild(promptsLabel);
+  for (const [key, prompt] of Object.entries(cfg.prompts || {})) {
+    if (!prompt) continue;
+    const [label, hint] = PROMPT_LABELS[key] || [key, ''];
+    const det = document.createElement('details');
+    det.className = 'ccm-prompt';
+    const sum = document.createElement('summary');
+    sum.innerHTML = `<b>${escHtml(label)}</b><span>${escHtml(hint)}</span>`;
+    const pre = el('pre', '', prompt);
+    det.appendChild(sum);
+    det.appendChild(pre);
+    body.appendChild(det);
+  }
+}
+
+function initChatConfig() {
+  const modal = document.getElementById('chat-config-modal');
+  document.getElementById('chat-config-btn').addEventListener('click', openChatConfig);
+  document.getElementById('chat-config-close').addEventListener('click', () => { modal.hidden = true; });
+  modal.querySelector('.ccm-backdrop').addEventListener('click', () => { modal.hidden = true; });
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && !modal.hidden) modal.hidden = true;
+  });
+}
+
 /* ── Boot ──────────────────────────────────────────────────── */
 
 function initChatTab() {
@@ -599,6 +683,8 @@ function initChatTab() {
     autoGrowTextarea(input);
     document.getElementById('chat-send').disabled = !input.value.trim() || state.running;
   });
+
+  initChatConfig();
 
   document.querySelectorAll('.ev-mode-btn').forEach(b => {
     b.addEventListener('click', () => {

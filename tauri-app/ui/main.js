@@ -1,7 +1,7 @@
 'use strict';
 
 /* ═══════════════════════════════════════════════════════════════════
-   PageIndex Explorer — frontend
+   Asepsis Prototype — retrieval frontend
    One sequential workflow:  ① Library  →  ② Ask  →  ③ Review.
 
    Sections
@@ -198,6 +198,8 @@ function attachPopover(btnId, popId, place) {
 function closeAllPopovers() {
   document.getElementById('settings-popover').hidden = true;
   document.getElementById('display-popover').hidden = true;
+  const add = document.getElementById('add-popover');
+  if (add) add.hidden = true;
 }
 
 /* ── Settings: pipeline modules · corpus source · engine ────── */
@@ -579,6 +581,7 @@ function initLibrary(docs) {
   resetLibraryStatus();
 
   document.getElementById('library-source-btn').addEventListener('click', openSetupCard);
+  initLibraryAdd();
 
   const filter = document.getElementById('library-filter');
   filter.addEventListener('input', () => applyLibraryFilter(filter.value.trim().toLowerCase()));
@@ -607,6 +610,87 @@ function applyLibraryFilter(needle) {
     const hay = `${d.data.title || ''} ${d.data.nodeId || ''}`.toLowerCase();
     rect.classList.toggle('tm-filter-dim', !!needle && !hay.includes(needle));
   }
+}
+
+/* ── ＋ Add PDFs: additive ingest on top of the current corpus ── */
+
+function initLibraryAdd() {
+  const input  = document.getElementById('add-path');
+  const runBtn = document.getElementById('add-run-btn');
+
+  attachPopover('library-add-btn', 'add-popover', (pop, r) => {
+    pop.style.top  = `${r.bottom + 8}px`;
+    pop.style.left = `${Math.max(10, r.right - 320)}px`;
+    pop.style.right = 'auto';
+    requestAnimationFrame(() => input.focus());
+  });
+
+  input.addEventListener('input', () => { runBtn.disabled = !input.value.trim(); });
+
+  async function browse(opts) {
+    const dialog = window.__TAURI__?.dialog;
+    if (!dialog?.open) {
+      input.placeholder = 'No native dialog in browser mode — paste the path here';
+      input.focus();
+      return;
+    }
+    const picked = await dialog.open(opts);
+    if (picked) {
+      input.value = Array.isArray(picked) ? picked[0] : picked;
+      input.dispatchEvent(new Event('input'));
+    }
+  }
+  document.getElementById('add-browse-folder').addEventListener('click', () =>
+    browse({ directory: true, multiple: false, title: 'Choose a folder of PDFs' }));
+  document.getElementById('add-browse-file').addEventListener('click', () =>
+    browse({ multiple: false, title: 'Choose a PDF',
+             filters: [{ name: 'PDF', extensions: ['pdf'] }] }));
+
+  runBtn.addEventListener('click', async () => {
+    const path = input.value.trim();
+    if (!path) return;
+    runBtn.disabled = true;
+    try {
+      const res = await apiPost('/api/ingest/add', { path });
+      toast(`Ingesting ${res.pdf_count} PDF(s)…`, 'ok', 3000);
+    } catch (e) {
+      toast(`Could not add: ${e.message}`, 'err', 7000);
+      runBtn.disabled = false;
+      return;
+    }
+
+    const progWrap = document.getElementById('add-progress');
+    const fill = document.getElementById('add-progress-fill');
+    const msg  = document.getElementById('add-progress-msg');
+    progWrap.hidden = false;
+
+    const poll = setInterval(async () => {
+      let p;
+      try { p = await apiGet('/api/ingest/progress'); } catch { return; }
+      const pct = p.total ? Math.round((p.done / p.total) * 100) : 0;
+      fill.style.width = `${p.phase === 'index' || p.state === 'done' ? 100 : pct}%`;
+      msg.textContent = p.message || p.phase || '';
+      if (p.state !== 'done' && p.state !== 'error') return;
+
+      clearInterval(poll);
+      runBtn.disabled = false;
+      if (p.state === 'error') {
+        toast(`Add failed: ${p.message}`, 'err', 9000);
+        return;
+      }
+      for (const w of p.warnings || []) toast(w, 'warn', 7000);
+      toast(`Library updated — ${p.docs?.length ?? 0} document(s) added.`, 'ok');
+      document.getElementById('add-popover').hidden = true;
+      progWrap.hidden = true;
+      input.value = '';
+      _docsCache = null;
+      try {
+        const docs = await getDocs();
+        renderTreemap(docs);
+        updateLibraryCount(docs);
+      } catch (e) { console.error('refresh error:', e); }
+    }, 500);
+  });
 }
 
 function renderTreemap(docs) {

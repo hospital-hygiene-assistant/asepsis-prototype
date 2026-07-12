@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════════
-   PageIndex Explorer — design system
+   Asepsis Prototype — retrieval-tab design system
    One dark, quiet surface; hairline borders; an 8-pt spacing grid;
    a single accent. Verdict colors are shared verbatim with the D3
    renderers (STATUS_COLOR in main.js) — change them together.
@@ -749,8 +749,9 @@ button { font-family: inherit; }
   border-radius: var(--r-sm); }
 #source-popover .sp-head button:hover { color: var(--text); }
 #source-popover .sp-body { overflow: auto; background: #060b14;
-  display: flex; justify-content: center; padding: 14px; }
-#source-popover .sp-body img { max-width: 100%; height: auto;
+  display: flex; justify-content: center; align-items: flex-start; padding: 14px; }
+#source-popover .sp-body img { max-width: 100%; width: auto; height: auto;
+  align-self: flex-start; /* flex 'stretch' must never distort the page's aspect ratio */
   border: 1px solid var(--border); border-radius: 4px; background: #fff; }
 #source-popover.sp-loading .sp-body::before {
   content: "Rendering page…"; color: var(--muted); font-size: 12px; padding: 44px; }

@@ -1,6 +1,6 @@
 #!/bin/bash
 # ══════════════════════════════════════════════════════════════════
-#  ASEPSIS / PageIndex Explorer — one-click launcher (macOS)
+#  Asepsis Prototype — one-click launcher (macOS)
 #
 #  Double-click this file in Finder. It installs anything that is
 #  missing (a private Python environment, the Python packages, the
@@ -15,7 +15,7 @@ warn() { printf '\033[1;33m⚠ %s\033[0m\n' "$*"; }
 die()  { printf '\033[1;31m✗ %s\033[0m\n' "$*"; printf 'Press Enter to close… '; read -r; exit 1; }
 
 echo
-echo "  ASEPSIS · PageIndex Explorer"
+echo "  Asepsis Prototype"
 echo "  ────────────────────────────"
 
 # ── 1 · Python ────────────────────────────────────────────────
