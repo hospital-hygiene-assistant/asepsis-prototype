@@ -118,18 +118,9 @@ def _betteringester_chat_factory(model: str | None):
             "The 'betteringester' backend needs an explicit model name "
             "(e.g. gemma-4-31b-it) — set $BETTERINGEST_CAPTION_MODEL.")
 
-    # run_pipeline imports `bench.*` and `ingest.*` from ITS repo root, and
-    # astepsis has an unrelated top-level ingest.py.  Give BetterIngester's
-    # root import priority and drop any astepsis-owned 'ingest'/'bench'
-    # entries from sys.modules before importing.  (Nothing in the astepsis
-    # server imports plain `ingest` — run-tauri runs it as a script — so
-    # leaving BetterIngester's package under that name afterwards is safe.)
-    astepsis_root = str(Path(__file__).resolve().parents[2])
-    for name in list(sys.modules):
-        if name == "ingest" or name.startswith(("ingest.", "bench")):
-            mod_file = getattr(sys.modules[name], "__file__", "") or ""
-            if mod_file.startswith(astepsis_root):
-                del sys.modules[name]
+    # run_pipeline imports `bench.*` and `ingest.*` from its own repo root, so
+    # that root needs import priority. This repo owns no top-level module by
+    # either name, so there is nothing here to shadow them.
     if root not in sys.path:
         sys.path.insert(0, root)
     import run_pipeline  # noqa: E402  (BetterIngester's harness)

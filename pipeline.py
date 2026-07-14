@@ -69,10 +69,12 @@ def cmd_index(args) -> None:
     if args.doc:
         mod.build_index(args.doc)
     else:
-        index_dir = Path("knowledge_base")
-        docs = sorted(index_dir.glob("*.md"))
+        # Ask the ingest module where it writes, rather than resolving
+        # "knowledge_base" against whatever directory the caller happens to be in.
+        kb_dir = getattr(load("ingest", defaults()["ingest"]), "KB_DIR", Path("knowledge_base"))
+        docs = sorted(kb_dir.glob("*.md"))
         if not docs:
-            print("No documents found in knowledge_base/. Run 'pipeline.py ingest' first.")
+            print(f"No documents found in {kb_dir}/. Run 'pipeline.py ingest' first.")
             sys.exit(1)
         print(f"Building index for {len(docs)} documents...")
         for p in docs:

@@ -15,7 +15,6 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-import ingest  # noqa: E402
 import pageindex  # noqa: E402
 from modules.ingest import basic_markdown  # noqa: E402
 
@@ -39,15 +38,13 @@ class TestPathsAreAbsolute:
             pytest.param(pageindex.INDEX_DIR, id="pageindex.INDEX_DIR"),
             pytest.param(basic_markdown.DOCS_DIR, id="basic_markdown.DOCS_DIR"),
             pytest.param(basic_markdown.KB_DIR, id="basic_markdown.KB_DIR"),
-            pytest.param(ingest.DOCS_DIR, id="ingest.DOCS_DIR"),
-            pytest.param(ingest.KB_DIR, id="ingest.KB_DIR"),
         ],
     )
     def test_is_absolute(self, path):
         assert path.is_absolute(), f"{path} is CWD-relative"
 
     def test_all_modules_agree_on_the_repo(self):
-        for path in (pageindex.KB_DIR, basic_markdown.KB_DIR, ingest.KB_DIR):
+        for path in (pageindex.KB_DIR, basic_markdown.KB_DIR):
             assert path == ROOT / "knowledge_base"
 
 

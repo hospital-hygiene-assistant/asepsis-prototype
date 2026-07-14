@@ -1086,7 +1086,7 @@ def main() -> None:
     else:
         docs = sorted(KB_DIR.glob("*.md"))
         if not docs:
-            print(f"No documents in {KB_DIR}/. Run ingest.py first.")
+            print(f"No documents in {KB_DIR}/. Run 'pipeline.py ingest' first.")
             sys.exit(1)
         print(f"Building index for {len(docs)} documents...")
         for p in docs:

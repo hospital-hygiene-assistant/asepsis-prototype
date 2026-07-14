@@ -19,6 +19,9 @@ from pathlib import Path
 
 ROOT      = Path(__file__).parent
 TAURI_DIR = ROOT / "tauri-app"
+# Both stages go through pipeline.py so the launcher and the server resolve
+# modules the same way, rather than the launcher calling implementations directly.
+PIPELINE  = ROOT / "pipeline.py"
 KB_DIR    = ROOT / "knowledge_base"
 INDEX_DIR = ROOT / "index"
 DOCS_DIR  = ROOT / "docs"
@@ -49,19 +52,13 @@ def _run_pipeline_if_needed():
     doc_stems = set(p.stem for p in docs)
     if not kb_files >= doc_stems:
         print("  Running ingest…")
-        subprocess.check_call(
-            [sys.executable, str(ROOT / "ingest.py")],
-            cwd=ROOT,
-        )
+        subprocess.check_call([sys.executable, str(PIPELINE), "ingest"], cwd=ROOT)
 
     # Index: run if any doc is missing from the index
     idx_files = set(p.stem for p in INDEX_DIR.glob("*.json")) if INDEX_DIR.exists() else set()
     if not idx_files >= doc_stems:
         print("  Building index…")
-        subprocess.check_call(
-            [sys.executable, str(ROOT / "pageindex.py")],
-            cwd=ROOT,
-        )
+        subprocess.check_call([sys.executable, str(PIPELINE), "index"], cwd=ROOT)
 
 
 # ── server readiness ──────────────────────────────────────────
