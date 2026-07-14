@@ -8,16 +8,12 @@ Run: pytest tests/test_pageindex_units.py -v
 import sys
 from pathlib import Path
 
-import pytest
-
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from pageindex.nodes import (
     PageNode,
     _build_tree,
     _clean_node_id,
-    _collect_leaves,
     _extract_leaf_content,
-    _extract_preamble,
     _find_nodes_by_ids,
     _flatten_toc,
     _generate_summary,

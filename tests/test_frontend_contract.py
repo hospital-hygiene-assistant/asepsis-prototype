@@ -18,7 +18,6 @@ from api.routers import documents as documents_router  # noqa: E402
 from api.routers.chat import ChatRequest  # noqa: E402
 from api import prompts  # noqa: E402
 from api.prompts import (  # noqa: E402
-    CHAT_CONTEXT_BLOCK,
     CHAT_SYNTHESIS_PROMPT,
     MAX_CONTEXT_CHARS,
     _sanitize_context,

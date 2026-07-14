@@ -229,6 +229,7 @@ def _prune_and_collect(
     recurse only into relevant ones. Leaves always survive to full evaluation.
     Returns the list of leaf candidates that passed pruning.
     """
+    default_instance = pool()[0]
     candidate_leaves: list["PageNode"] = []
     frontier = list(nodes)
 
@@ -245,7 +246,7 @@ def _prune_and_collect(
                     _check_section_relevant,
                     node, query,
                     _make_breadcrumb(node.node_id, parent_map, nodes_by_id),
-                    *node_assignment.get(node.node_id, pool()[0]),
+                    *node_assignment.get(node.node_id, default_instance),
                 ): node
                 for node in sections
             }
@@ -317,17 +318,19 @@ def retrieve_with_metadata(doc_name: str, query: str) -> tuple[list[PageNode], d
     parent_map  = _build_parent_map(nodes)
     nodes_by_id = _build_nodes_by_id(nodes)
 
-    # Assign every node (section + leaf) to an Ollama instance round-robin by branch.
+    # Assign every node (section + leaf) to an Ollama instance round-robin by
+    # branch. Read the pool once: it can be swapped while a run is in flight,
+    # and a branch has to keep the instance its nodes were assigned to.
+    instances = pool()
     branch_roots = nodes[0].children if (len(nodes) == 1 and nodes[0].children) else nodes
     node_assignment: dict[str, tuple[ollama.Client, str]] = {}
     for i, branch in enumerate(branch_roots):
-        client, url = pool()[i % len(pool())]
+        client, url = instances[i % len(instances)]
         for node in _collect_all_nodes([branch]):
             node_assignment[node.node_id] = (client, url)
     # Fallback for any node not covered (e.g., single-root flat doc)
     for node in _collect_all_nodes(nodes):
-        if node.node_id not in node_assignment:
-            node_assignment[node.node_id] = pool()[0]
+        node_assignment.setdefault(node.node_id, instances[0])
 
     node_meta: dict[str, dict] = {}
     if nodes:
@@ -356,7 +359,7 @@ def retrieve_with_metadata(doc_name: str, query: str) -> tuple[list[PageNode], d
                     doc_name,
                     _make_breadcrumb(leaf.node_id, parent_map, nodes_by_id),
                     parent_map[leaf.node_id].summary if leaf.node_id in parent_map else "",
-                    *node_assignment.get(leaf.node_id, pool()[0]),
+                    *node_assignment.get(leaf.node_id, instances[0]),
                 ): leaf
                 for leaf in surviving
             }
