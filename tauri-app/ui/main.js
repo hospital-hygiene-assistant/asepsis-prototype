@@ -876,6 +876,7 @@ function renderStatusBar(data) {
     const issues = [];
     if (Object.keys(r.missing).length)     issues.push('required missing');
     if (Object.keys(r.any_missing).length) issues.push('any-of missing');
+    if (Object.keys(r.spurious || {}).length) issues.push('forbidden retrieved');
     elx.appendChild(el('span', 'status-badge fail', `✗ FAIL — ${issues.join('; ')}`));
   }
 }
