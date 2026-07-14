@@ -15,24 +15,24 @@ TAURI_APP = Path(__file__).parent.parent / "tauri-app"
 sys.path.insert(0, str(TAURI_APP))
 
 
-def _reload_server(monkeypatch, **env):
-    """Import server with a specific environment, isolated from other tests."""
-    for key in ("ASEPSIS_SERVE_UI", "ASEPSIS_CORS_ORIGINS"):
-        monkeypatch.delenv(key, raising=False)
-    for key, value in env.items():
-        monkeypatch.setenv(key, value)
-    sys.modules.pop("server", None)
-    module = importlib.import_module("server")
-    yield module
-    sys.modules.pop("server", None)
-
-
 @pytest.fixture
 def server_env(monkeypatch):
-    def build(**env):
-        return next(_reload_server(monkeypatch, **env))
+    """Import server under a chosen environment; both settings are read at import.
 
-    return build
+    Drops the module from sys.modules afterwards so a later `import server`
+    cannot inherit this test's patched settings.
+    """
+
+    def build(**env):
+        for key in ("ASEPSIS_SERVE_UI", "ASEPSIS_CORS_ORIGINS"):
+            monkeypatch.delenv(key, raising=False)
+        for key, value in env.items():
+            monkeypatch.setenv(key, value)
+        sys.modules.pop("server", None)
+        return importlib.import_module("server")
+
+    yield build
+    sys.modules.pop("server", None)
 
 
 class TestEnvFlag:
