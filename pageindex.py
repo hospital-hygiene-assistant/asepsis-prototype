@@ -24,12 +24,8 @@ from typing import Optional
 
 import ollama
 
-# Anchored to the repo, not the caller's working directory: the server, the
-# pipeline CLI and the Tauri launcher all start from different places, and a
-# relative path silently resolves to an empty corpus rather than failing.
-ROOT = Path(__file__).resolve().parent
-KB_DIR = ROOT / "knowledge_base"
-INDEX_DIR = ROOT / "index"
+from paths import INDEX_DIR, KB_DIR
+
 MODEL = "gemma3:4b"
 SYNTHESIS_MODEL = "gemma3:4b"
 

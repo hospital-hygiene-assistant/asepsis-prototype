@@ -37,12 +37,11 @@ MODULE_INFO = {
     "source": "pdf_folder",
 }
 
-ROOT = Path(__file__).resolve().parents[2]
-KB_DIR = ROOT / "knowledge_base"
+from paths import KB_DIR, ROOT, SOURCES_MANIFEST
+
 OUT_DIR = ROOT / ".betteringest_out"        # BetterIngest working area (crops, raw md)
 OCR_CACHE_DIR = ROOT / ".ocr_cache"         # BetterIngester's own OCR cache format
 CONFIG_PATH = ROOT / ".betteringest.json"
-SOURCES_MANIFEST = KB_DIR / ".sources.json"
 
 
 # ── source-folder config ─────────────────────────────────────────────────────

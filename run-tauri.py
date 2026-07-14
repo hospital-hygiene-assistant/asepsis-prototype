@@ -17,14 +17,13 @@ import time
 import urllib.request
 from pathlib import Path
 
-ROOT      = Path(__file__).parent
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from paths import DOCS_DIR, INDEX_DIR, KB_DIR, ROOT  # noqa: E402
+
 TAURI_DIR = ROOT / "tauri-app"
 # Both stages go through pipeline.py so the launcher and the server resolve
 # modules the same way, rather than the launcher calling implementations directly.
 PIPELINE  = ROOT / "pipeline.py"
-KB_DIR    = ROOT / "knowledge_base"
-INDEX_DIR = ROOT / "index"
-DOCS_DIR  = ROOT / "docs"
 PORT      = 8765
 URL       = f"http://127.0.0.1:{PORT}"
 

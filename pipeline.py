@@ -26,10 +26,12 @@ Commands:
 import argparse
 import sys
 from pathlib import Path
+from typing import Optional
 
-sys.path.insert(0, str(Path(__file__).parent))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from modules.registry import discover, load, defaults
+from paths import INDEX_DIR, KB_DIR
 
 
 # ── helpers ──────────────────────────────────────────────────
@@ -49,94 +51,99 @@ def _print_modules(registry: dict) -> None:
     print("\n  * = default")
 
 
-# ── sub-commands ─────────────────────────────────────────────
+# ── stages ───────────────────────────────────────────────────
+
+def ingest(module: Optional[str] = None) -> None:
+    """Bring docs/ into the knowledge base using the chosen ingest module."""
+    name = module or defaults()["ingest"]
+    print(f"[ingest] using module: {name}")
+    load("ingest", name).run()
+
+
+def index(module: Optional[str] = None, doc: Optional[str] = None) -> None:
+    """Build the heading tree for one document, or for the whole corpus."""
+    name = module or defaults()["index"]
+    print(f"[index] using module: {name}")
+    mod = load("index", name)
+    if doc:
+        mod.build_index(doc)
+        return
+    docs = sorted(KB_DIR.glob("*.md"))
+    if not docs:
+        print(f"No documents found in {KB_DIR}/. Run 'pipeline.py ingest' first.")
+        sys.exit(1)
+    print(f"Building index for {len(docs)} documents...")
+    for path in docs:
+        mod.build_index(path.stem)
+    print("Done.")
+
+
+def query(text: str, index_module: Optional[str] = None,
+          query_module: Optional[str] = None) -> str:
+    """Retrieve across the whole index and synthesise an answer."""
+    index_name = index_module or defaults()["index"]
+    query_name = query_module or defaults()["query"]
+    print(f"[query] index={index_name}  synthesis={query_name}")
+
+    index_mod = load("index", index_name)
+    index_files = sorted(INDEX_DIR.glob("*.json"))
+    if not index_files:
+        print(f"No index files in {INDEX_DIR}/. Run 'pipeline.py index' first.")
+        sys.exit(1)
+
+    nodes_by_doc: dict = {}
+    for idx_file in index_files:
+        try:
+            nodes = index_mod.retrieve(idx_file.stem, text)
+        except Exception as exc:
+            print(f"  Warning: retrieval failed for {idx_file.stem}: {exc}")
+            continue
+        if nodes:
+            nodes_by_doc[idx_file.stem] = nodes
+
+    total = sum(len(v) for v in nodes_by_doc.values())
+    print(f"\nRetrieved {total} leaf node(s) across {len(nodes_by_doc)} document(s):")
+    for doc, nodes in nodes_by_doc.items():
+        for node in nodes:
+            tag = " [synth]" if getattr(node, "synthetic", False) else ""
+            print(f"  {doc} / {node.node_id}{tag}")
+
+    return load("query", query_name).synthesise(text, nodes_by_doc)
+
+
+# ── CLI ──────────────────────────────────────────────────────
+
+def _resolve_query(text: Optional[str]) -> str:
+    text = (text or "").strip() or input("Enter your query: ").strip()
+    if not text:
+        print("No query provided.")
+        sys.exit(1)
+    return text
+
 
 def cmd_list(_args) -> None:
     _print_modules(discover())
 
 
 def cmd_ingest(args) -> None:
-    name = args.module or defaults()["ingest"]
-    print(f"[ingest] using module: {name}")
-    mod = load("ingest", name)
-    mod.run()
+    ingest(args.module)
 
 
 def cmd_index(args) -> None:
-    name = args.module or defaults()["index"]
-    print(f"[index] using module: {name}")
-    mod = load("index", name)
-    if args.doc:
-        mod.build_index(args.doc)
-    else:
-        # Ask the ingest module where it writes, rather than resolving
-        # "knowledge_base" against whatever directory the caller happens to be in.
-        kb_dir = getattr(load("ingest", defaults()["ingest"]), "KB_DIR", Path("knowledge_base"))
-        docs = sorted(kb_dir.glob("*.md"))
-        if not docs:
-            print(f"No documents found in {kb_dir}/. Run 'pipeline.py ingest' first.")
-            sys.exit(1)
-        print(f"Building index for {len(docs)} documents...")
-        for p in docs:
-            mod.build_index(p.stem)
-        print("Done.")
+    index(args.module, args.doc)
 
 
 def cmd_query(args) -> None:
-    query = args.query_text
-    if not query:
-        query = input("Enter your query: ").strip()
-    if not query:
-        print("No query provided.")
-        sys.exit(1)
-
-    index_name = args.index_module or defaults()["index"]
-    query_name = args.query_module or defaults()["query"]
-
-    print(f"[query] index={index_name}  synthesis={query_name}")
-    index_mod = load("index", index_name)
-
-    from pathlib import Path as _Path
-    index_dir = getattr(index_mod, "INDEX_DIR", _Path("index"))
-    index_files = sorted(index_dir.glob("*.json"))
-    if not index_files:
-        print(f"No index files in {index_dir}/. Run 'pipeline.py index' first.")
-        sys.exit(1)
-
-    import json
-    nodes_by_doc: dict = {}
-    for idx_file in index_files:
-        doc_name = idx_file.stem
-        try:
-            nodes = index_mod.retrieve(doc_name, query)
-        except Exception as exc:
-            print(f"  Warning: retrieval failed for {doc_name}: {exc}")
-            continue
-        if nodes:
-            nodes_by_doc[doc_name] = nodes
-
-    total = sum(len(v) for v in nodes_by_doc.values())
-    print(f"\nRetrieved {total} leaf node(s) across {len(nodes_by_doc)} document(s):")
-    for doc, nodes in nodes_by_doc.items():
-        for n in nodes:
-            tag = " [synth]" if getattr(n, "synthetic", False) else ""
-            print(f"  {doc} / {n.node_id}{tag}")
-
     print("\n" + "=" * 60)
-    query_mod = load("query", query_name)
-    answer = query_mod._synthesise(query, nodes_by_doc)
-    print(answer)
+    print(query(_resolve_query(args.query_text), args.index_module, args.query_module))
 
 
 def cmd_run(args) -> None:
-    cmd_ingest(type("A", (), {"module": args.ingest})())
-    cmd_index(type("A", (), {"module": args.index, "doc": None})())
-    args2 = type("A", (), {
-        "query_text": args.query_text,
-        "index_module": args.index,
-        "query_module": args.query,
-    })()
-    cmd_query(args2)
+    text = _resolve_query(args.query_text)
+    ingest(args.ingest)
+    index(args.index)
+    print("\n" + "=" * 60)
+    print(query(text, args.index, args.query))
 
 
 # ── main ─────────────────────────────────────────────────────

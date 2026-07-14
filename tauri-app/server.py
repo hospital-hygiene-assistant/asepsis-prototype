@@ -15,6 +15,7 @@ sys.path.insert(0, str(ROOT))
 
 import pageindex as _pi
 from pageindex import _node_from_dict
+from paths import ASSETS_DIR, SOURCES_MANIFEST
 from modules.registry import discover as _discover_modules, load as _load_module, defaults as _module_defaults
 
 import re
@@ -97,13 +98,8 @@ UI_DIR = Path(__file__).parent / "ui"
 if SERVE_UI:
     app.mount("/static", StaticFiles(directory=UI_DIR, check_dir=False), name="static")
 
-# Asset crops extracted by the betteringest_pdf ingest module
-# (knowledge_base/assets/<stem>/*.png), referenced from the massaged markdown
-# as /assets/<stem>/<file>. check_dir=False: the dir appears on first ingest.
-KB_ASSETS_DIR = ROOT / "knowledge_base" / "assets"
-app.mount("/assets", StaticFiles(directory=KB_ASSETS_DIR, check_dir=False), name="assets")
-
-SOURCES_MANIFEST = ROOT / "knowledge_base" / ".sources.json"
+# check_dir=False: the crops directory only appears on the first PDF ingest.
+app.mount("/assets", StaticFiles(directory=ASSETS_DIR, check_dir=False), name="assets")
 
 
 def _load_sources() -> dict:
