@@ -1,33 +1,13 @@
 """
 Module 2 — Index: PageIndex (Custom)
-Deterministic heading-based tree indexing with LLM-guided retrieval via Ollama.
+Deterministic heading-tree indexing with model-guided retrieval via Ollama.
 
-Build step is fully deterministic: parses markdown heading hierarchy, promotes
-preamble text to synthetic leaf nodes, extracts leaf content, generates heuristic
-summaries. Retrieval sends the TOC to Ollama and gets nodeIds back.
+The build is deterministic: markdown headings become the tree, preamble text
+becomes synthetic leaves, summaries are heuristic. The model is consulted only
+at query time, to prune sections and judge leaves.
 """
-# Delegate to the root implementation — all logic lives in pageindex.py
-from pageindex import (
-    PageNode,
-    build_index,
-    retrieve,
-    retrieve_with_metadata,
-    INDEX_DIR,
-    MODEL,
-    _parse_headings,
-    _build_tree,
-    _promote_preambles,
-    _populate_content,
-    _populate_summaries,
-    _flatten_toc,
-    _collect_leaves,
-    _find_nodes_by_ids,
-    _generate_summary,
-    _extract_leaf_content,
-    _extract_preamble,
-    _node_to_dict,
-    _node_from_dict,
-)
+
+from pageindex import build_index, retrieve, retrieve_with_metadata  # noqa: F401
 
 MODULE_INFO = {
     "stage": "index",

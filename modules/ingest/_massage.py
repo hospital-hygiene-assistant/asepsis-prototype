@@ -123,7 +123,7 @@ def massage(doc: IngestedDoc, stem: str, asset_url_base: str) -> str:
     # pageindex.py lives at the astepsis root (already on sys.path via the
     # module registry).  Using ITS heading parser guarantees pin ids match the
     # node_ids the index stage will assign — same slugs, same dedup order.
-    from pageindex import _parse_headings
+    from pageindex.nodes import _parse_headings
 
     assets_by_relpath = {
         f"assets/{Path(a.image).name}": a for a in doc.assets}

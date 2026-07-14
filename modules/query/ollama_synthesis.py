@@ -4,7 +4,7 @@ Turns retrieved PageIndex leaf nodes into a cited answer with one Ollama call.
 """
 
 import pageindex as _pi
-from pageindex import PageNode
+from pageindex.nodes import PageNode
 
 MODULE_INFO = {
     "stage": "query",
@@ -49,7 +49,7 @@ def synthesise(query: str, nodes_by_doc: dict[str, list[PageNode]]) -> str:
     # the API rather than whatever host the ollama default points at.
     client = _pi.make_client(_pi.OLLAMA_URLS[0])
     response = client.chat(
-        model=getattr(_pi, "SYNTHESIS_MODEL", _pi.MODEL),
+        model=_pi.settings.synthesis_model,
         messages=[{"role": "user", "content": prompt}],
         options={"temperature": 0},
     )

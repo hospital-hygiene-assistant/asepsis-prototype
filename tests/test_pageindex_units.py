@@ -11,7 +11,7 @@ from pathlib import Path
 import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from pageindex import (
+from pageindex.nodes import (
     PageNode,
     _build_tree,
     _clean_node_id,

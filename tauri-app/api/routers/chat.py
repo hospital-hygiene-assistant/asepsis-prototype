@@ -33,9 +33,9 @@ def chat_config():
     activity = _pi.get_activity()
     defs = _module_defaults()
     return JSONResponse({
-        "model": _pi.MODEL,
-        "retrieval_model": _pi.MODEL,
-        "synthesis_model": getattr(_pi, "SYNTHESIS_MODEL", _pi.MODEL),
+        "model": _pi.settings.model,
+        "retrieval_model": _pi.settings.model,
+        "synthesis_model": _pi.settings.synthesis_model,
         "temperature": 0,
         "ollama_urls": _pi.OLLAMA_URLS,
         "ollama_instances": len(_pi.OLLAMA_URLS),
@@ -134,7 +134,7 @@ def chat(req: ChatRequest):
             )
             client = _pi.make_client(_pi.OLLAMA_URLS[0])
             response = client.chat(
-                model=getattr(_pi, "SYNTHESIS_MODEL", _pi.MODEL),
+                model=_pi.settings.synthesis_model,
                 messages=[{"role": "user", "content": prompt}],
                 options={"temperature": 0},
             )

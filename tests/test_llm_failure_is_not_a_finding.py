@@ -22,7 +22,9 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "tauri-app"))
 
-import pageindex  # noqa: E402
+from pageindex import run_state  # noqa: E402
+from pageindex import search as pi_search  # noqa: E402
+from pageindex.nodes import PageNode  # noqa: E402
 import server  # noqa: E402
 from api.retrieval import count_eval_errors  # noqa: E402
 from api.routers import chat as chat_router  # noqa: E402
@@ -34,7 +36,7 @@ def client():
 
 
 def leaf(node_id="glycaemic-targets"):
-    return pageindex.PageNode(
+    return PageNode(
         node_id=node_id, title="Glycaemic Targets", heading_level=2,
         line_idx=8, summary="s", content="HbA1c target is <53 mmol/mol.",
     )
@@ -42,45 +44,45 @@ def leaf(node_id="glycaemic-targets"):
 
 class TestUnevaluatedLeafIsNotRejected:
     def test_model_failure_yields_error_not_rejected(self):
-        with patch.object(pageindex, "_chat", side_effect=RuntimeError("llama runner died")):
-            _, result = pageindex._evaluate_leaf(leaf(), "q", "doc", "crumb", "parent")
+        with patch.object(pi_search, "_chat", side_effect=RuntimeError("llama runner died")):
+            _, result = pi_search._evaluate_leaf(leaf(), "q", "doc", "crumb", "parent")
         # "rejected" would assert the passage is clinically irrelevant.
         assert result["status"] == "error"
         assert result["relevant"] is False
 
     def test_failure_reason_is_carried_not_silently_dropped(self):
-        with patch.object(pageindex, "_chat", side_effect=RuntimeError("llama runner died")):
-            _, result = pageindex._evaluate_leaf(leaf(), "q", "doc", "crumb", "parent")
+        with patch.object(pi_search, "_chat", side_effect=RuntimeError("llama runner died")):
+            _, result = pi_search._evaluate_leaf(leaf(), "q", "doc", "crumb", "parent")
         assert "llama runner died" in result["reason"]
 
     def test_unparseable_verdict_is_also_an_error(self):
         # The model answered, but with nothing usable. Still not a judgement.
-        with patch.object(pageindex, "_chat", return_value="I'm afraid I can't do that"):
-            with patch.object(pageindex, "_parse_json_response", return_value=None):
-                _, result = pageindex._evaluate_leaf(leaf(), "q", "doc", "crumb", "parent")
+        with patch.object(pi_search, "_chat", return_value="I'm afraid I can't do that"):
+            with patch.object(pi_search, "_parse_json_response", return_value=None):
+                _, result = pi_search._evaluate_leaf(leaf(), "q", "doc", "crumb", "parent")
         assert result["status"] == "error"
 
     def test_errored_leaves_are_tracked_apart_from_rejected(self):
-        pageindex.start_run(1)
-        with patch.object(pageindex, "_chat", side_effect=RuntimeError("down")):
-            pageindex._evaluate_leaf(leaf("n1"), "q", "doc", "crumb", "parent")
-        events = pageindex.get_live_events()
+        run_state.start_run(1)
+        with patch.object(pi_search, "_chat", side_effect=RuntimeError("down")):
+            pi_search._evaluate_leaf(leaf("n1"), "q", "doc", "crumb", "parent")
+        events = run_state.get_live_events()
         assert "n1" in events["errored"]
         assert "n1" not in events["rejected"]
 
     def test_a_real_rejection_still_rejects(self):
         # The honest negative must survive: this is a genuine model verdict.
-        with patch.object(pageindex, "_chat", return_value='{"relevant": false, "reason": "off topic"}'):
-            _, result = pageindex._evaluate_leaf(leaf(), "q", "doc", "crumb", "parent")
+        with patch.object(pi_search, "_chat", return_value='{"relevant": false, "reason": "off topic"}'):
+            _, result = pi_search._evaluate_leaf(leaf(), "q", "doc", "crumb", "parent")
         assert result["status"] == "rejected"
         assert result["reason"] == "off topic"
 
     def test_a_real_hit_still_retrieves(self):
         with patch.object(
-            pageindex, "_chat",
+            pi_search, "_chat",
             return_value='{"relevant": true, "reason": "states the target", "quote": "HbA1c <53"}',
         ):
-            _, result = pageindex._evaluate_leaf(leaf(), "q", "doc", "crumb", "parent")
+            _, result = pi_search._evaluate_leaf(leaf(), "q", "doc", "crumb", "parent")
         assert result["status"] == "retrieved"
         assert result["quote"] == "HbA1c <53"
 

@@ -42,8 +42,8 @@ def get_config():
         "ollama_instances": len(_pi.OLLAMA_URLS),
         "ollama_urls": _pi.OLLAMA_URLS,
         "ollama_bin_available": ollama_bin() is not None,
-        "retrieval_model": _pi.MODEL,
-        "synthesis_model": getattr(_pi, "SYNTHESIS_MODEL", _pi.MODEL),
+        "retrieval_model": _pi.settings.model,
+        "synthesis_model": _pi.settings.synthesis_model,
     })
 
 
@@ -57,11 +57,11 @@ class ConfigRequest(BaseModel):
 def post_config(req: ConfigRequest):
     result = set_ollama_instances(req.ollama_instances)
     if req.retrieval_model:
-        _pi.MODEL = req.retrieval_model
+        _pi.settings.model = req.retrieval_model
     if req.synthesis_model:
-        _pi.SYNTHESIS_MODEL = req.synthesis_model
-    result["retrieval_model"] = _pi.MODEL
-    result["synthesis_model"] = getattr(_pi, "SYNTHESIS_MODEL", _pi.MODEL)
+        _pi.settings.synthesis_model = req.synthesis_model
+    result["retrieval_model"] = _pi.settings.model
+    result["synthesis_model"] = _pi.settings.synthesis_model
     return JSONResponse(result)
 
 

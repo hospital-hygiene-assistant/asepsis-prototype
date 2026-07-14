@@ -8,7 +8,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-import pageindex as pi
+from pageindex import nodes as pi  # tree-building internals
 from modules.ingest._betteringest.betteringest import Asset, IngestedDoc
 from modules.ingest._betteringest.ocr import Block
 from modules.ingest._massage import massage
