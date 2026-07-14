@@ -1,1 +1,12 @@
-ollama
+# Core runtime: the API, retrieval, and PDF-backed citations.
+# The default pipeline (basic_markdown -> pageindex_custom -> ollama_synthesis)
+# needs nothing beyond this. The PDF ingest path adds requirements-ocr.txt.
+fastapi>=0.115
+uvicorn>=0.30
+pydantic>=2.7
+ollama>=0.3
+
+# Rendering a source page and normalizing its pin bbox. Imported lazily, so the
+# server still starts without them; visual citations are simply unavailable.
+pypdfium2>=4
+pillow>=10

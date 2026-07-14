@@ -31,10 +31,9 @@ def _ensure_python_deps():
     try:
         import fastapi, uvicorn  # noqa: F401
     except ImportError:
-        req = TAURI_DIR / "requirements-tauri.txt"
         print("  Installing Python dependencies…")
         subprocess.check_call(
-            [sys.executable, "-m", "pip", "install", "-q", "-r", str(req)]
+            [sys.executable, "-m", "pip", "install", "-q", "-r", str(ROOT / "requirements.txt")]
         )
 
 

@@ -33,7 +33,7 @@ if [ ! -x .venv/bin/python ]; then
 fi
 say "Checking Python dependencies…"
 .venv/bin/python -m pip install -q --upgrade pip >/dev/null 2>&1
-.venv/bin/python -m pip install -q -r tauri-app/requirements-tauri.txt \
+.venv/bin/python -m pip install -q -r requirements.txt \
   || die "Dependency installation failed. Check your network connection and retry."
 
 # ── 3 · Ollama runtime + model ────────────────────────────────

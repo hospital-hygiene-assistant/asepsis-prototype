@@ -1,0 +1,5 @@
+# Test dependencies. httpx is what fastapi.testclient.TestClient runs on.
+-r requirements.txt
+
+pytest>=8
+httpx>=0.27

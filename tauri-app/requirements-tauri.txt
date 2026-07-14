@@ -1,6 +1,0 @@
-fastapi>=0.104
-uvicorn>=0.24
-pydantic>=2
-ollama>=0.3
-pypdfium2>=4
-pillow>=10
