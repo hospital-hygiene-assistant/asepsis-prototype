@@ -52,7 +52,6 @@ def ollama_bin() -> Optional[str]:
 
 def set_ollama_instances(n: int) -> dict:
     """Start/stop Ollama instances so exactly n are running. Returns status dict."""
-    global _extra_procs
     n = max(1, n)
 
     # Drop extras beyond what's needed. A None entry is an instance that was

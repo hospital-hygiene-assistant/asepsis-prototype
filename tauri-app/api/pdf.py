@@ -95,3 +95,22 @@ def _normalized_bbox(stem: str, pin: dict) -> Optional[dict]:
     if width <= 0 or height <= 0:
         return None
     return {"page": int(page), "x": left, "y": top, "width": width, "height": height}
+
+
+# Chat citation previews request the same page and bbox repeatedly, and a pdfium
+# render is ~100ms, so memoize the PNG bytes.
+_png_cache: dict = {}
+_png_lock = threading.Lock()
+_PNG_CACHE_MAX = 64
+
+
+def cached_png(key: tuple):
+    with _png_lock:
+        return _png_cache.get(key)
+
+
+def cache_png(key: tuple, data: bytes) -> None:
+    with _png_lock:
+        if len(_png_cache) >= _PNG_CACHE_MAX:
+            _png_cache.pop(next(iter(_png_cache)))
+        _png_cache[key] = data

@@ -13,7 +13,7 @@ from modules.registry import load as _load_module, defaults as _module_defaults
 from ..pdf import _normalized_bbox
 from ..prompts import CHAT_SYNTHESIS_PROMPT, _context_block, _parse_answer_sections
 from ..retrieval import breadcrumbs_for, count_eval_errors, run_retrieval
-from ..run_state import chat_phase, is_error, set_chat_phase
+from ..run_state import is_error, set_chat_phase
 from ..sources import load_sources
 
 router = APIRouter()

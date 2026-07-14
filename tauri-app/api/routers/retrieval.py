@@ -31,7 +31,6 @@ def explain_node(req: ExplainRequest):
 
     Runs on a dedicated Ollama instance so it never disturbs an in-flight query.
     """
-    index_mod = _load_module("index", _module_defaults()["index"])
     idx = INDEX_DIR / f"{Path(req.stem).name}.json"
     if not idx.exists():
         return JSONResponse({"error": f"unknown document '{req.stem}'"}, status_code=404)

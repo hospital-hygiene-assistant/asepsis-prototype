@@ -9,6 +9,7 @@ from fastapi.responses import FileResponse, JSONResponse, Response
 
 from paths import INDEX_DIR, KB_DIR
 
+from ..pdf import cache_png, cached_png
 from ..sources import load_sources
 from ..trees import leaf_count, read_tree
 
@@ -95,8 +96,7 @@ def get_document_page(stem: str, page: int, bbox: Optional[str] = None,
             status_code=501)
 
     cache_key = (str(pdf_path), pdf_path.stat().st_mtime, page, bbox or "", regions or "")
-    with _page_png_lock:
-        cached = _page_png_cache.get(cache_key)
+    cached = cached_png(cache_key)
     if cached is not None:
         return Response(content=cached, media_type="image/png")
 
@@ -128,8 +128,5 @@ def get_document_page(stem: str, page: int, bbox: Optional[str] = None,
     buf = io.BytesIO()
     img.save(buf, format="PNG")
     data = buf.getvalue()
-    with _page_png_lock:
-        if len(_page_png_cache) >= _PAGE_CACHE_MAX:
-            _page_png_cache.pop(next(iter(_page_png_cache)))
-        _page_png_cache[cache_key] = data
+    cache_png(cache_key, data)
     return Response(content=data, media_type="image/png")
