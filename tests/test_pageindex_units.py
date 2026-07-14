@@ -1,5 +1,5 @@
 """
-Unit tests for all deterministic functions in pageindex.py.
+Unit tests for all deterministic functions in pageindex.
 No Ollama calls — fast, fully self-contained.
 
 Run: pytest tests/test_pageindex_units.py -v

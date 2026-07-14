@@ -187,10 +187,3 @@ def add_to_library(req: IngestAddRequest):
 def ingest_progress():
     with _ingest_lock:
         return JSONResponse(dict(_ingest_state))
-
-
-# Rendered-page cache — chat citation previews request the same page/bbox
-# repeatedly; pdfium renders are ~100ms each, so memoize the PNG bytes.
-_page_png_cache: dict = {}
-_page_png_lock = threading.Lock()
-_PAGE_CACHE_MAX = 64

@@ -9,7 +9,7 @@ deterministic page-anchor helpers.  BetterIngester's benchmark/scoring study
 vendored.
 
 Upstream: /Users/fede/Desktop/VSCODEProjects/BetterIngester (see each file's
-docstring for the per-file deviations, all of which are astepsis-specific
+docstring for the per-file deviations, all of which are asepsis-specific
 plumbing rather than algorithm changes).
 """
 from .betteringest import Asset, BetterIngest, IngestedDoc

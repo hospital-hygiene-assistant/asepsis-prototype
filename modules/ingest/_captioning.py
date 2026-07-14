@@ -8,7 +8,7 @@ Ollama vision model.  Backends:
 
   ollama          (default) local vision model via the Ollama HTTP API.
                   Model from $BETTERINGEST_CAPTION_MODEL, else gemma4:e2b
-                  (vision-capable and already used by astepsis retrieval).
+                  (vision-capable and already used by asepsis retrieval).
                   The model must actually be pulled — a missing model is a
                   hard error, never a silent downgrade.
   betteringester  BetterIngester's own cached, rate-limited cloud transport

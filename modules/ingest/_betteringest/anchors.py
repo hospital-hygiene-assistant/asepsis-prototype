@@ -2,7 +2,7 @@
 Vendored subset of BetterIngester's ingest/pageindex_vendor.py — only the
 deterministic page-anchor helpers that need no LLM transport and no vendored
 PageIndex checkout.  These are the exact functions IngestedDoc.to_pageindex()
-uses to enrich the tree with physical_index page anchors; astepsis's massager
+uses to enrich the tree with physical_index page anchors; asepsis's massager
 reuses them so provenance comes from the same source of truth instead of being
 re-extracted.
 

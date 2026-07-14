@@ -9,7 +9,7 @@ at query time, to prune sections and judge leaves.
     retrieve_with_metadata(...)   the same, plus why each was chosen
 
 The pieces live alongside and can be imported directly: settings, clients,
-run_state, pins, nodes, build, prompts, llm, search, cli.
+run_state, pins, nodes, build, prompts, llm, search.
 """
 
 from paths import INDEX_DIR, KB_DIR

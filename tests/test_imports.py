@@ -2,8 +2,8 @@
 
 A broken import is invisible to both the suite and to pyflakes: pyflakes checks
 names within a file and never resolves `from .x import y`, and a module nothing
-imports is a module nothing tests. pageindex/cli.py shipped importing a module
-that had been renamed, and everything was green.
+imports is a module nothing tests. That is how a module once shipped importing a
+renamed sibling with the whole suite green.
 """
 
 import importlib

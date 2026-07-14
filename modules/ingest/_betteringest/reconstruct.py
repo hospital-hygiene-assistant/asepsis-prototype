@@ -412,7 +412,7 @@ def save_asset_crops(blocks: list[Block], pdf_path, out_dir,
             "number": int(nm.group()) if nm else count[atype],
             "image": str(out_dir / fname), "page": cap.page,
             "has_content": best is not None,
-            # astepsis addition: crop bbox (render px at ocr_scale) so pins can
+            # asepsis addition: crop bbox (render px at ocr_scale) so pins can
             # locate the asset in the source PDF without re-detecting it.
             "bbox": [x0, y0, x1, y1],
             "physical_section": physical_sections.get(id(cap), ""),

@@ -1,6 +1,6 @@
 """
 The "massager" — post-processes BetterIngest's structure-faithful markdown
-into astepsis knowledge_base/ markdown with reliable provenance.
+into asepsis knowledge_base/ markdown with reliable provenance.
 
 What it adds, all deterministic across re-runs of the same folder:
 
@@ -8,7 +8,7 @@ What it adds, all deterministic across re-runs of the same folder:
     under every heading, carrying the page / bbox / body-text regions of that
     section in the source PDF.  Locations come straight from the OCR layout
     blocks (Block.bbox, cached by BetterIngester) — nothing is re-extracted.
-  · pin ids that are byte-identical to the node_ids astepsis's own indexer
+  · pin ids that are byte-identical to the node_ids asepsis's own indexer
     (pageindex._parse_headings) will assign to the same headings — the pin id
     IS the join key between RAG chunks, the doc viewer, and the PDF.
   · assets as "extra leaves": each figure/table image link BetterIngest placed
@@ -20,7 +20,7 @@ What it adds, all deterministic across re-runs of the same folder:
 
 The pin blocks are ordinary fenced code blocks (info string "pin", YAML body),
 so any markdown renderer shows them and one CSS toggle hides them — a single
-render path.  astepsis's pageindex.py strips them from LLM-visible content and
+render path.  asepsis's pageindex strips them from LLM-visible content and
 lifts them into structured node metadata.
 """
 from __future__ import annotations
@@ -120,7 +120,7 @@ def massage(doc: IngestedDoc, stem: str, asset_url_base: str) -> str:
     `asset_url_base` is the URL prefix the app serves this document's asset
     crops under (e.g. "/assets/<stem>").  Returns the massaged markdown.
     """
-    # pageindex.py lives at the astepsis root (already on sys.path via the
+    # pageindex lives at the asepsis root (already on sys.path via the
     # module registry).  Using ITS heading parser guarantees pin ids match the
     # node_ids the index stage will assign — same slugs, same dedup order.
     from pageindex.nodes import _parse_headings

@@ -1,9 +1,9 @@
 """
 Vendored BetterIngester ingest/betteringest.py — the deterministic
 PDF → structure-faithful-markdown + managed-assets pipeline, adapted for
-astepsis.  Deviations from upstream (all documented inline):
+asepsis.  Deviations from upstream (all documented inline):
 
-  · package-relative imports (astepsis has its own top-level `ingest.py`,
+  · package-relative imports (asepsis has its own top-level `ingest.py`,
     so upstream's `ingest.*` package name cannot be used here);
   · `Asset.bbox` — the crop's bounding box (render px at ocr_scale) is kept
     from the save_asset_crops manifest so pins can point into the source PDF;
@@ -12,11 +12,11 @@ astepsis.  Deviations from upstream (all documented inline):
     reused, keyed by (pdf sha, config));
   · `describe_assets` takes a REQUIRED `chat` callable — upstream defaulted to
     run_pipeline._api_chat, which is part of BetterIngester's benchmark
-    harness and out of scope here.  astepsis supplies the callable from
+    harness and out of scope here.  asepsis supplies the callable from
     modules/ingest/_captioning.py (local Ollama by default);
   · `to_pageindex()` is not vendored: it drives the vendored PageIndex
-    checkout (vendor/pageindex) which astepsis does not carry — astepsis's own
-    pageindex.py builds the tree from the massaged markdown instead.  The
+    checkout (vendor/pageindex) which asepsis does not carry — asepsis's own
+    pageindex builds the tree from the massaged markdown instead.  The
     page-anchor metadata it would attach comes from the same helpers, vendored
     in anchors.py.
 """
@@ -106,7 +106,7 @@ class BetterIngest:
         self.out_dir = Path(out_dir)
         self.ocr_scale = ocr_scale
         self.ladder_llm = ladder_llm    # optional rung-4 tiebreak callback
-        # astepsis: explicit OCR cache location (None → upstream default
+        # asepsis: explicit OCR cache location (None → upstream default
         # `.ocr_cache` relative to cwd).  Same cache format either way.
         self.cache_dir = Path(cache_dir) if cache_dir is not None else None
         # rung-0 docs: what happens to headings the validated outline disowns.
@@ -210,10 +210,10 @@ class BetterIngest:
         receives OpenAI-style messages with a data-URL image part.  Assets
         whose call fails keep description="" (retry = rerun).
 
-        astepsis deviation: `chat` is required — upstream defaulted to the
+        asepsis deviation: `chat` is required — upstream defaulted to the
         benchmark harness's cached transport (run_pipeline._api_chat), which
         is out of scope here.  See modules/ingest/_captioning.py for the
-        pluggable backends astepsis provides."""
+        pluggable backends asepsis provides."""
         for a in doc.assets:
             if a.description:
                 continue
