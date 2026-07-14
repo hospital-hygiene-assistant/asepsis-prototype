@@ -1,11 +1,8 @@
 """Deterministic unit tests for the chat endpoint helpers (no Ollama needed)."""
 
-import sys
-from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).parent.parent / "tauri-app"))
 
-from api.prompts import _parse_answer_sections  # noqa: E402
+from api.prompts import _parse_answer_sections
 
 
 class TestParseAnswerSections:

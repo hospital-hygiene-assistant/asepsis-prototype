@@ -4,19 +4,14 @@ No test reached this route before, so a refactor could leave it raising
 NameError on every request with the whole suite green.
 """
 
-import sys
-from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
 
-ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT))
-sys.path.insert(0, str(ROOT / "tauri-app"))
 
-import server  # noqa: E402
-from api import pdf  # noqa: E402
-from api.routers import documents as documents_router  # noqa: E402
+import server
+from api import pdf
+from api.routers import documents as documents_router
 
 pdfium = pytest.importorskip("pypdfium2")
 

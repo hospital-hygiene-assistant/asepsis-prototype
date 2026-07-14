@@ -4,17 +4,12 @@ They used to hold separate copies of the cases and check different things, so a
 case could pass in one and fail in the other.
 """
 
-import sys
-from pathlib import Path
 
 import pytest
 
-ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT))
-sys.path.insert(0, str(ROOT / "tauri-app"))
 
-from retrieval_cases import RETRIEVAL_CASES  # noqa: E402
-from api.scoring import eval_case  # noqa: E402
+from retrieval_cases import RETRIEVAL_CASES
+from api.scoring import eval_case
 
 
 def results_with(**by_doc):

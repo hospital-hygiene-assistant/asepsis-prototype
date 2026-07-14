@@ -6,21 +6,16 @@ whoever asked a blend of both — including reasons and verbatim quotes derived
 from the other's question.
 """
 
-import sys
 import threading
 import time
-from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
 
-ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT))
-sys.path.insert(0, str(ROOT / "tauri-app"))
 
-import server  # noqa: E402
-from api.runs import Run, RunRegistry  # noqa: E402
-from pageindex import RunState  # noqa: E402
+import server
+from api.runs import RunRegistry
+from pageindex import RunState
 
 
 @pytest.fixture

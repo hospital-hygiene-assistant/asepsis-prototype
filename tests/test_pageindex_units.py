@@ -5,10 +5,7 @@ No Ollama calls — fast, fully self-contained.
 Run: pytest tests/test_pageindex_units.py -v
 """
 
-import sys
-from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).parent.parent))
 from pageindex.nodes import (
     PageNode,
     _build_tree,

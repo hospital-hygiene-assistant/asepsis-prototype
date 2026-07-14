@@ -11,23 +11,18 @@ That is a statement about the documents. Nothing had been read. A practitioner
 could reasonably conclude no guideline covers their question.
 """
 
-import sys
-from pathlib import Path
 from unittest.mock import patch
 
 import pytest
 from fastapi.testclient import TestClient
 
-ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT))
-sys.path.insert(0, str(ROOT / "tauri-app"))
 
-from pageindex import RunState  # noqa: E402
-from pageindex import search as pi_search  # noqa: E402
-from pageindex.nodes import PageNode  # noqa: E402
-import server  # noqa: E402
-from api.retrieval import count_eval_errors  # noqa: E402
-from api.routers import chat as chat_router  # noqa: E402
+from pageindex import RunState
+from pageindex import search as pi_search
+from pageindex.nodes import PageNode
+import server
+from api.retrieval import count_eval_errors
+from api.routers import chat as chat_router
 
 
 @pytest.fixture

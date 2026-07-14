@@ -8,15 +8,12 @@ The cases live in retrieval_cases.py, shared with /api/tests in the dev console.
 Run: pytest tests/test_retrieval.py -v
 """
 
-import sys
-from pathlib import Path
 
 import pytest
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from pageindex import retrieve  # noqa: E402
-from paths import INDEX_DIR  # noqa: E402
-from retrieval_cases import RETRIEVAL_CASES  # noqa: E402
+from pageindex import retrieve
+from paths import INDEX_DIR
+from retrieval_cases import RETRIEVAL_CASES
 
 
 def _retrieved_ids(doc_name: str, query: str) -> set[str]:

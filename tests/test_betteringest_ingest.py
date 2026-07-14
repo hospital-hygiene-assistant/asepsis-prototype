@@ -3,10 +3,7 @@ Deterministic unit tests for the BetterIngest PDF ingest integration:
 the massager (pins, asset leaves, id join) and pageindex's pin handling.
 No OCR, no Ollama, no PDFs — blocks and markdown are synthesised.
 """
-import sys
-from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from pageindex import nodes as pi  # tree-building internals
 from modules.ingest._betteringest.betteringest import Asset, IngestedDoc

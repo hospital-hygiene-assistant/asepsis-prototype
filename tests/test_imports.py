@@ -8,14 +8,9 @@ renamed sibling with the whole suite green.
 
 import importlib
 import pkgutil
-import sys
-from pathlib import Path
 
 import pytest
 
-ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT))
-sys.path.insert(0, str(ROOT / "tauri-app"))
 
 
 def _modules_under(package_name: str) -> list[str]:

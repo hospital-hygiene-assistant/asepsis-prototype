@@ -5,25 +5,23 @@ model or the filesystem is stubbed, so these run anywhere.
 """
 
 import re
-import sys
 from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
 
-sys.path.insert(0, str(Path(__file__).parent.parent / "tauri-app"))
 
-import server  # noqa: E402
-from api.routers import documents as documents_router  # noqa: E402
-from api.routers.chat import ChatRequest  # noqa: E402
-from api import prompts  # noqa: E402
-from api.prompts import (  # noqa: E402
+import server
+from api.routers import documents as documents_router
+from api.routers.chat import ChatRequest
+from api import prompts
+from api.prompts import (
     CHAT_SYNTHESIS_PROMPT,
     MAX_CONTEXT_CHARS,
     _sanitize_context,
 )
-from api import pdf  # noqa: E402
-from api.pdf import _normalized_bbox  # noqa: E402
+from api import pdf
+from api.pdf import _normalized_bbox
 
 
 @pytest.fixture
