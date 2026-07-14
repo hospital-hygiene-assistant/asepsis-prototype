@@ -24,7 +24,8 @@ sys.path.insert(0, str(ROOT / "tauri-app"))
 
 import pageindex  # noqa: E402
 import server  # noqa: E402
-from server import _count_eval_errors  # noqa: E402
+from api.retrieval import count_eval_errors  # noqa: E402
+from api.routers import chat as chat_router  # noqa: E402
 
 
 @pytest.fixture
@@ -90,21 +91,21 @@ class TestCountEvalErrors:
             "doc_a": {"node_meta": {"n1": {"status": "error"}, "n2": {"status": "rejected"}}},
             "doc_b": {"node_meta": {"n3": {"status": "error"}, "n4": {"status": "retrieved"}}},
         }
-        assert _count_eval_errors(results) == 2
+        assert count_eval_errors(results) == 2
 
     def test_zero_when_everything_was_evaluated(self):
         results = {"doc_a": {"node_meta": {"n1": {"status": "retrieved"}, "n2": {"status": "rejected"}}}}
-        assert _count_eval_errors(results) == 0
+        assert count_eval_errors(results) == 0
 
     @pytest.mark.parametrize("results", [{}, {"doc": {}}, {"doc": {"node_meta": None}}])
     def test_tolerates_missing_metadata(self, results):
-        assert _count_eval_errors(results) == 0
+        assert count_eval_errors(results) == 0
 
 
 class TestChatEndpointRefusesToFakeAFinding:
     def test_total_failure_is_503_not_insufficient_evidence(self, client, monkeypatch):
         """The exact observed bug."""
-        monkeypatch.setattr(server, "_run_retrieval", lambda *a, **k: {
+        monkeypatch.setattr(chat_router, "run_retrieval", lambda *a, **k: {
             "doc": {"nodes": [], "tree": [], "retrieved_ids": [], "node_meta": {"n1": {"status": "error"}, "n2": {"status": "error"}}},
         })
         response = client.post("/api/chat", json={"query": "What PPE for MRSA?"})
@@ -115,7 +116,7 @@ class TestChatEndpointRefusesToFakeAFinding:
         assert "insufficient_evidence" not in body
 
     def test_the_error_says_it_is_not_a_finding(self, client, monkeypatch):
-        monkeypatch.setattr(server, "_run_retrieval", lambda *a, **k: {
+        monkeypatch.setattr(chat_router, "run_retrieval", lambda *a, **k: {
             "doc": {"nodes": [], "tree": [], "retrieved_ids": [], "node_meta": {"n1": {"status": "error"}}},
         })
         response = client.post("/api/chat", json={"query": "q"})
@@ -123,7 +124,7 @@ class TestChatEndpointRefusesToFakeAFinding:
 
     def test_genuine_empty_result_still_reports_insufficient_evidence(self, client, monkeypatch):
         """A real "nothing matched" must survive — every leaf was checked."""
-        monkeypatch.setattr(server, "_run_retrieval", lambda *a, **k: {
+        monkeypatch.setattr(chat_router, "run_retrieval", lambda *a, **k: {
             "doc": {"nodes": [], "tree": [], "retrieved_ids": [], "node_meta": {"n1": {"status": "rejected"}, "n2": {"status": "rejected"}}},
         })
         response = client.post("/api/chat", json={"query": "unrelated question"})

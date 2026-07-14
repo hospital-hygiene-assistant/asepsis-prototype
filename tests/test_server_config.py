@@ -11,8 +11,23 @@ from pathlib import Path
 import pytest
 from fastapi.testclient import TestClient
 
-TAURI_APP = Path(__file__).parent.parent / "tauri-app"
-sys.path.insert(0, str(TAURI_APP))
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(ROOT / "tauri-app"))
+
+
+
+
+def _purge() -> None:
+    """Drop server and the whole api package from sys.modules.
+
+    The settings are read at import, so a stale module would keep the previous
+    environment. Popping api.config alone is not enough: the cached `api`
+    package still holds the old submodule as an attribute, and `from api import
+    config` would hand it straight back.
+    """
+    for name in [m for m in sys.modules if m == "server" or m == "api" or m.startswith("api.")]:
+        sys.modules.pop(name, None)
 
 
 @pytest.fixture
@@ -28,15 +43,11 @@ def server_env(monkeypatch):
             monkeypatch.delenv(key, raising=False)
         for key, value in env.items():
             monkeypatch.setenv(key, value)
-        # api.config reads the environment at import, and server binds its values
-        # at import, so both have to go for the new environment to take effect.
-        for module in ("server", "api.config"):
-            sys.modules.pop(module, None)
+        _purge()
         return importlib.import_module("server")
 
     yield build
-    for module in ("server", "api.config"):
-        sys.modules.pop(module, None)
+    _purge()
 
 
 class TestEnvFlag:
@@ -73,7 +84,7 @@ class TestHeadlessMode:
         """The mount used to have no check_dir=False, so deleting ui/ took the
         entire API down at import. Serving the console must stay optional."""
         module = server_env()
-        monkeypatch.setattr(module, "UI_DIR", Path("/nonexistent/ui"))
+        monkeypatch.setattr(sys.modules["api.console"], "UI_DIR", Path("/nonexistent/ui"))
         client = TestClient(module.app)
         assert client.get("/api/status").status_code == 200
         assert client.get("/").status_code == 404

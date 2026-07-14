@@ -14,6 +14,8 @@ from fastapi.testclient import TestClient
 sys.path.insert(0, str(Path(__file__).parent.parent / "tauri-app"))
 
 import server  # noqa: E402
+from api.routers import documents as documents_router  # noqa: E402
+from api.routers.chat import ChatRequest  # noqa: E402
 from api import prompts  # noqa: E402
 from api.prompts import (  # noqa: E402
     CHAT_CONTEXT_BLOCK,
@@ -203,20 +205,20 @@ class TestNormalizedBbox:
 
 class TestDocumentPdfRoute:
     def test_unknown_stem_is_404(self, client, monkeypatch):
-        monkeypatch.setattr(server, "load_sources", dict)
+        monkeypatch.setattr(documents_router, "load_sources", dict)
         assert client.get("/api/document/nothing/pdf").status_code == 404
 
     @pytest.mark.parametrize("stem", ["../../etc/passwd", "..%2f..%2fsecret", "/etc/hosts"])
     def test_path_traversal_is_rejected(self, client, monkeypatch, stem):
         """`stem` must never reach the filesystem — it only keys the manifest."""
-        monkeypatch.setattr(server, "load_sources", lambda: {"real_doc": {"pdf": "/tmp/x.pdf"}})
+        monkeypatch.setattr(documents_router, "load_sources", lambda: {"real_doc": {"pdf": "/tmp/x.pdf"}})
         response = client.get(f"/api/document/{stem}/pdf")
         assert response.status_code == 404
         assert "passwd" not in response.text and "hosts" not in response.text
 
     def test_missing_file_is_404_without_leaking_the_path(self, client, monkeypatch):
         secret = "/home/someone/private/guidelines.pdf"
-        monkeypatch.setattr(server, "load_sources", lambda: {"doc": {"pdf": secret}})
+        monkeypatch.setattr(documents_router, "load_sources", lambda: {"doc": {"pdf": secret}})
         response = client.get("/api/document/doc/pdf")
         assert response.status_code == 404
         assert secret not in response.text
@@ -224,7 +226,7 @@ class TestDocumentPdfRoute:
     def test_serves_the_pdf(self, client, monkeypatch, tmp_path):
         pdf_file = tmp_path / "guide.pdf"
         pdf_file.write_bytes(b"%PDF-1.4 fake")
-        monkeypatch.setattr(server, "load_sources", lambda: {"guide": {"pdf": str(pdf_file)}})
+        monkeypatch.setattr(documents_router, "load_sources", lambda: {"guide": {"pdf": str(pdf_file)}})
         response = client.get("/api/document/guide/pdf")
         assert response.status_code == 200
         assert response.headers["content-type"] == "application/pdf"
@@ -233,10 +235,10 @@ class TestDocumentPdfRoute:
 
 class TestChatRequestContract:
     def test_context_is_optional(self):
-        assert server.ChatRequest(query="q").context is None
+        assert ChatRequest(query="q").context is None
 
     def test_context_is_accepted(self):
-        assert server.ChatRequest(query="q", context="MRSA").context == "MRSA"
+        assert ChatRequest(query="q", context="MRSA").context == "MRSA"
 
     def test_empty_query_is_rejected(self, client):
         assert client.post("/api/chat", json={"query": "   "}).status_code == 400

@@ -14,7 +14,7 @@ sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "tauri-app"))
 
 from retrieval_cases import RETRIEVAL_CASES  # noqa: E402
-from server import _eval_test  # noqa: E402
+from api.scoring import eval_case  # noqa: E402
 
 
 def results_with(**by_doc):
@@ -43,36 +43,36 @@ class TestCaseData:
 class TestEvalTest:
     def test_passes_when_every_expectation_holds(self):
         case = {"expected": {"doc": ["a"]}, "expected_any": {}, "forbidden": {}}
-        assert _eval_test(case, results_with(doc=["a", "b"]))["passed"]
+        assert eval_case(case, results_with(doc=["a", "b"]))["passed"]
 
     def test_fails_on_a_missing_required_node(self):
         case = {"expected": {"doc": ["a"]}, "expected_any": {}, "forbidden": {}}
-        verdict = _eval_test(case, results_with(doc=["b"]))
+        verdict = eval_case(case, results_with(doc=["b"]))
         assert not verdict["passed"]
         assert verdict["missing"] == {"doc": ["a"]}
 
     def test_fails_when_no_any_of_node_is_present(self):
         case = {"expected": {}, "expected_any": {"doc": ["a", "b"]}, "forbidden": {}}
-        assert not _eval_test(case, results_with(doc=["z"]))["passed"]
+        assert not eval_case(case, results_with(doc=["z"]))["passed"]
 
     def test_one_any_of_node_is_enough(self):
         case = {"expected": {}, "expected_any": {"doc": ["a", "b"]}, "forbidden": {}}
-        assert _eval_test(case, results_with(doc=["b"]))["passed"]
+        assert eval_case(case, results_with(doc=["b"]))["passed"]
 
     def test_fails_when_a_forbidden_node_is_retrieved(self):
         # The console ignored forbidden entirely, so a case the suite failed
         # could still show a green tick.
         case = {"expected": {"doc": ["a"]}, "expected_any": {}, "forbidden": {"doc": ["x"]}}
-        verdict = _eval_test(case, results_with(doc=["a", "x"]))
+        verdict = eval_case(case, results_with(doc=["a", "x"]))
         assert not verdict["passed"]
         assert verdict["spurious"] == {"doc": ["x"]}
 
     def test_forbidden_node_absent_is_a_pass(self):
         case = {"expected": {"doc": ["a"]}, "expected_any": {}, "forbidden": {"doc": ["x"]}}
-        assert _eval_test(case, results_with(doc=["a"]))["passed"]
+        assert eval_case(case, results_with(doc=["a"]))["passed"]
 
     def test_a_document_that_returned_nothing_is_not_an_error(self):
         case = {"expected": {"doc": ["a"]}, "expected_any": {}, "forbidden": {}}
-        verdict = _eval_test(case, {})
+        verdict = eval_case(case, {})
         assert not verdict["passed"]
         assert verdict["missing"] == {"doc": ["a"]}
