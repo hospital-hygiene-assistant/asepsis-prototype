@@ -142,6 +142,23 @@ body[data-tab="chat"] #command-bar { display: none !important; }
   background: var(--as-border-2); border-radius: 4px; padding: 1px 5px;
   font-size: 11.5px; color: var(--as-teal-dark);
 }
+.ccm-select-model {
+  background: var(--as-border-2);
+  border: 1px solid var(--as-border);
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-size: 12px;
+  color: var(--as-teal-dark);
+  font-weight: 600;
+  outline: none;
+  font-family: inherit;
+  cursor: pointer;
+  max-width: 100%;
+}
+.ccm-select-model:focus {
+  border-color: var(--as-teal);
+  background: var(--as-teal-soft);
+}
 .ccm-section-label {
   margin: 18px 0 8px; font-size: 11px; font-weight: 600;
   text-transform: uppercase; letter-spacing: 0.14em; color: var(--as-muted);

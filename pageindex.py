@@ -27,6 +27,7 @@ import ollama
 KB_DIR = Path("knowledge_base")
 INDEX_DIR = Path("index")
 MODEL = "gemma3:4b"
+SYNTHESIS_MODEL = "gemma3:4b"
 
 # ---------------------------------------------------------------------------
 # Ollama instance pool — set OLLAMA_URLS=url1,url2,... for parallelism

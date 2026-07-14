@@ -7,7 +7,7 @@ should not leave the machine by default, so the default backend is a local
 Ollama vision model.  Backends:
 
   ollama          (default) local vision model via the Ollama HTTP API.
-                  Model from $BETTERINGEST_CAPTION_MODEL, else gemma3:4b
+                  Model from $BETTERINGEST_CAPTION_MODEL, else gemma4:e2b
                   (vision-capable and already used by astepsis retrieval).
                   The model must actually be pulled — a missing model is a
                   hard error, never a silent downgrade.
@@ -32,7 +32,7 @@ import sys
 import threading
 from pathlib import Path
 
-DEFAULT_OLLAMA_MODEL = os.environ.get("BETTERINGEST_CAPTION_MODEL", "gemma3:4b")
+DEFAULT_OLLAMA_MODEL = os.environ.get("BETTERINGEST_CAPTION_MODEL", "gemma4:e2b")
 DEFAULT_OLLAMA_URL = os.environ.get("BETTERINGEST_CAPTION_URL",
                                     "http://127.0.0.1:11434")
 

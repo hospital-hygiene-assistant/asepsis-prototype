@@ -320,13 +320,16 @@ function chatOnStatus(status) {
 
 // Escape + linebreaks + [n] → clickable citation chips.
 function renderRichText(text, sources, answerId) {
-  let html = escHtml(text || '');
+  let html = (typeof marked !== 'undefined')
+    ? (marked.parse ? marked.parse(text || '') : marked(text || ''))
+    : escHtml(text || '').replace(/\n/g, '<br>');
+
   html = html.replace(/\[(\d+)\]/g, (whole, n) => {
     const num = parseInt(n, 10);
     if (!sources || num < 1 || num > sources.length) return whole;
     return `<button type="button" class="cite-chip" data-cite="${num}" data-answer="${answerId}" title="Jump to source [${num}]">${num}</button>`;
   });
-  return html.replace(/\n/g, '<br>');
+  return html;
 }
 
 function finalizeAnswerCard(p, data) {
@@ -610,9 +613,12 @@ async function openChatConfig() {
   const body = document.getElementById('chat-config-body');
   modal.hidden = false;
   body.innerHTML = '<p class="chat-loading">Loading…</p>';
-  let cfg;
+  let cfg, modelsRes;
   try {
-    cfg = await apiGet('/api/chat/config');
+    [cfg, modelsRes] = await Promise.all([
+      apiGet('/api/chat/config'),
+      apiGet('/api/models').catch(() => ({ models: [] }))
+    ]);
   } catch (e) {
     body.innerHTML = `<p class="chat-error">Could not load the configuration: ${escHtml(e.message)}</p>`;
     return;
@@ -620,13 +626,63 @@ async function openChatConfig() {
 
   body.innerHTML = '';
   const facts = el('dl', 'ccm-facts');
-  const fact = (label, value) => {
+  const fact = (label, valueNodeOrHtml) => {
     facts.appendChild(el('dt', '', label));
     const dd = el('dd', '');
-    dd.innerHTML = value;
+    if (valueNodeOrHtml instanceof HTMLElement) {
+      dd.appendChild(valueNodeOrHtml);
+    } else {
+      dd.innerHTML = valueNodeOrHtml;
+    }
     facts.appendChild(dd);
   };
-  fact('Language model', `<code>${escHtml(cfg.model)}</code> · temperature ${cfg.temperature}`);
+
+  const avail = modelsRes.models && modelsRes.models.length > 0
+    ? modelsRes.models
+    : [cfg.model, 'gemma3:4b', 'gemma4:e2b'];
+
+  const configuredRetrieval = cfg.retrieval_model || cfg.model;
+  const configuredSynthesis = cfg.synthesis_model || cfg.model;
+  const uniqueAvail = Array.from(new Set([...avail, configuredRetrieval, configuredSynthesis]));
+
+  const retrievalSelect = document.createElement('select');
+  retrievalSelect.className = 'ccm-select-model';
+
+  const synthesisSelect = document.createElement('select');
+  synthesisSelect.className = 'ccm-select-model';
+
+  for (const m of uniqueAvail) {
+    const opt1 = document.createElement('option');
+    opt1.value = m;
+    opt1.textContent = m;
+    opt1.selected = m === configuredRetrieval;
+    retrievalSelect.appendChild(opt1);
+
+    const opt2 = document.createElement('option');
+    opt2.value = m;
+    opt2.textContent = m;
+    opt2.selected = m === configuredSynthesis;
+    synthesisSelect.appendChild(opt2);
+  }
+
+  const saveConfig = async () => {
+    try {
+      await apiPost('/api/config', {
+        ollama_instances: cfg.ollama_instances,
+        retrieval_model: retrievalSelect.value,
+        synthesis_model: synthesisSelect.value
+      });
+      toast('Model configuration updated!', 'info');
+    } catch (e) {
+      toast(`Failed to update config: ${e.message}`, 'err');
+    }
+  };
+
+  retrievalSelect.addEventListener('change', saveConfig);
+  synthesisSelect.addEventListener('change', saveConfig);
+
+  fact('Retrieval model', retrievalSelect);
+  fact('Synthesis model', synthesisSelect);
   fact('Engine', `${cfg.ollama_instances} local Ollama instance${cfg.ollama_instances > 1 ? 's' : ''} — ` +
     cfg.ollama_urls.map(u => `<code>${escHtml(u)}</code>`).join(', ') +
     (cfg.any_busy ? ' · <b>busy</b>' : ' · idle'));

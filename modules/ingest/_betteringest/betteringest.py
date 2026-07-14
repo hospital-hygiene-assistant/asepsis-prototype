@@ -162,11 +162,18 @@ class BetterIngest:
                 aid = f"{aid}_{seen[aid]}"
             else:
                 seen[aid] = 1
+            
+            sections = sorted(cites.get((m["type"], m["number"]), []))
+            if not sections and m.get("physical_section"):
+                norm_phys = normalise_title(m["physical_section"])
+                if norm_phys:
+                    sections = [norm_phys]
+
             assets.append(Asset(
                 asset_id=aid, type=m["type"], number=m["number"],
                 caption=m["caption"], page=int(m["page"]) + 1,
                 image=m["image"],
-                sections=sorted(cites.get((m["type"], m["number"]), [])),
+                sections=sections,
                 bbox=list(m.get("bbox") or [])))
 
         # markdown with asset links under their citing sections

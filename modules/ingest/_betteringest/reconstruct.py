@@ -356,6 +356,15 @@ def save_asset_crops(blocks: list[Block], pdf_path, out_dir,
 
     out_dir = Path(out_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
+    
+    # Walk blocks in reading order to map each block to the active heading/section
+    physical_sections = {}
+    active = ""
+    for b in reading_order(blocks):
+        if b.label == "paragraph_title":
+            active = b.text.strip()
+        physical_sections[id(b)] = active
+
     captions = [b for b in reading_order(blocks)
                 if b.label == "figure_title" and b.text.strip()
                 and not _SUBCAPTION.match(b.text)]
@@ -406,7 +415,32 @@ def save_asset_crops(blocks: list[Block], pdf_path, out_dir,
             # astepsis addition: crop bbox (render px at ocr_scale) so pins can
             # locate the asset in the source PDF without re-detecting it.
             "bbox": [x0, y0, x1, y1],
+            "physical_section": physical_sections.get(id(cap), ""),
         })
+
+    # Process remaining uncaptioned content blocks (image, chart, table)
+    for i, cb in enumerate(content):
+        if i in used:
+            continue
+        atype = "table" if cb.label == "table" else "figure"
+        x0, y0, x1, y1 = cb.bbox
+
+        count[atype] += 1
+        fname = f"{atype}_{count[atype]}.png"
+        page_img(cb.page).crop((int(x0), int(y0), int(x1), int(y1))).save(out_dir / fname)
+
+        caption = f"{atype.capitalize()} (unlabeled)"
+        manifest.append({
+            "type": atype,
+            "caption": caption,
+            "number": count[atype],
+            "image": str(out_dir / fname),
+            "page": cb.page,
+            "has_content": True,
+            "bbox": [x0, y0, x1, y1],
+            "physical_section": physical_sections.get(id(cb), ""),
+        })
+
     return manifest
 
 

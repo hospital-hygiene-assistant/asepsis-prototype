@@ -318,17 +318,38 @@ def get_config():
         "ollama_instances": len(_pi.OLLAMA_URLS),
         "ollama_urls": _pi.OLLAMA_URLS,
         "ollama_bin_available": _ollama_bin() is not None,
+        "retrieval_model": _pi.MODEL,
+        "synthesis_model": getattr(_pi, "SYNTHESIS_MODEL", _pi.MODEL),
     })
 
 
 class ConfigRequest(BaseModel):
     ollama_instances: int
+    retrieval_model: Optional[str] = None
+    synthesis_model: Optional[str] = None
 
 
 @app.post("/api/config")
 def post_config(req: ConfigRequest):
     result = set_ollama_instances(req.ollama_instances)
+    if req.retrieval_model:
+        _pi.MODEL = req.retrieval_model
+    if req.synthesis_model:
+        _pi.SYNTHESIS_MODEL = req.synthesis_model
+    result["retrieval_model"] = _pi.MODEL
+    result["synthesis_model"] = getattr(_pi, "SYNTHESIS_MODEL", _pi.MODEL)
     return JSONResponse(result)
+
+
+@app.get("/api/models")
+def list_models():
+    try:
+        client = _pi.make_client(_pi.OLLAMA_URLS[0])
+        res = client.list()
+        models = [m["name"] for m in res.get("models", [])]
+        return JSONResponse({"models": models})
+    except Exception as e:
+        return JSONResponse({"error": str(e), "models": []})
 
 
 @app.get("/api/modules")
@@ -821,14 +842,16 @@ def _parse_answer_sections(text: str) -> dict:
     """Parse the labeled sections out of the model's answer. Tolerant of
     markdown bolding and missing sections; anything unmatched stays in
     'content' as the fallback body."""
+    pattern_keys = [k.replace("_", r"[\s_-]?") for k in _SECTION_KEYS]
     pattern = re.compile(
-        r"^\s*\**\s*(" + "|".join(_SECTION_KEYS) + r")\s*\**\s*:\s*",
+        r"^\s*(?:#+\s*)?\**\s*(" + "|".join(pattern_keys) + r")\s*\**\s*:?\s*",
         re.MULTILINE | re.IGNORECASE,
     )
     sections: dict[str, str] = {}
     matches = list(pattern.finditer(text))
     for i, m in enumerate(matches):
-        key = m.group(1).upper()
+        raw_key = m.group(1)
+        key = raw_key.upper().replace(" ", "_").replace("-", "_")
         end = matches[i + 1].start() if i + 1 < len(matches) else len(text)
         sections[key.lower()] = text[m.end():end].strip().strip("*").strip()
     return sections
@@ -856,6 +879,8 @@ def chat_config():
     defs = _module_defaults()
     return JSONResponse({
         "model": _pi.MODEL,
+        "retrieval_model": _pi.MODEL,
+        "synthesis_model": getattr(_pi, "SYNTHESIS_MODEL", _pi.MODEL),
         "temperature": 0,
         "ollama_urls": _pi.OLLAMA_URLS,
         "ollama_instances": len(_pi.OLLAMA_URLS),
@@ -929,14 +954,28 @@ def chat(req: ChatRequest):
                 f"[{s['n']}] {s['doc'].replace('_', ' ')} › {s['breadcrumb'] or s['title']}\n{s['excerpt'] or '(no content)'}"
                 for s in sources
             )
-            prompt = CHAT_SYNTHESIS_PROMPT.format(query=query, passages=passages)
+            prompt = (
+                "You are a clinical knowledge assistant. Answer the question using ONLY the provided source passages. "
+                "Every claim must cite its passage inline as [n] (e.g. [1] or [2][3]). Never invent a source number.\n\n"
+                f"Question: {query}\n\n"
+                f"Source passages:\n{passages}\n\n"
+                "Respond in EXACTLY this format (keep the labels, fill in the text; each section is 1-3 sentences of plain text with inline [n] citations):\n\n"
+                "SHORT_ANSWER: <the direct answer to the question>\n"
+                "RECOMMENDED_ACTION: <what the clinician should do>\n"
+                "RATIONALE: <why, grounded in the cited passages>\n"
+                "LIMITATIONS: <what the sources do not cover, or uncertainty>\n\n"
+                "If the passages cannot answer the question, say so in SHORT_ANSWER and leave the other sections brief.\n"
+                "Do not use markdown headers, bullet points, bolding, or lists. Write ONLY plain text under each of the four labels."
+            )
             client = _pi.make_client(_pi.OLLAMA_URLS[0])
             response = client.chat(
-                model=_pi.MODEL,
+                model=getattr(_pi, "SYNTHESIS_MODEL", _pi.MODEL),
                 messages=[{"role": "user", "content": prompt}],
                 options={"temperature": 0},
             )
             answer_text = response["message"]["content"]
+            # Strip thought blocks
+            answer_text = re.sub(r"<thought>.*?(</thought>|$)", "", answer_text, flags=re.S).strip()
             sections = _parse_answer_sections(answer_text)
 
         cited = set(int(n) for n in re.findall(r"\[(\d+)\]", answer_text))

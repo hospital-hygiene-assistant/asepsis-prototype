@@ -155,3 +155,41 @@ def test_registry_discovers_betteringest_pdf():
     assert "betteringest_pdf" in mods["ingest"]
     assert mods["ingest"]["betteringest_pdf"]["source"] == "pdf_folder"
     assert "basic_markdown" in mods["ingest"]       # old module still there
+
+
+def test_save_asset_crops_unlabeled_assets(tmp_path):
+    from unittest.mock import MagicMock, patch
+    from PIL import Image
+    from modules.ingest._betteringest.reconstruct import save_asset_crops
+    from modules.ingest._betteringest.ocr import Block
+
+    with patch('pypdfium2.PdfDocument') as mock_pdf_doc:
+        mock_page = MagicMock()
+        mock_render = MagicMock()
+        mock_pil = MagicMock(spec=Image.Image)
+        mock_pil.height = 1000
+        mock_pil.crop.return_value = mock_pil
+        mock_render.to_pil.return_value = mock_pil
+        mock_page.render.return_value = mock_render
+        mock_doc = MagicMock()
+        mock_doc.__len__.return_value = 1
+        mock_doc.__getitem__.return_value = mock_page
+        mock_pdf_doc.return_value = mock_doc
+
+        blocks = [
+            Block(label="paragraph_title", text="Section 1", page=0, bbox=(50, 100, 300, 130)),
+            Block(label="image", text="", page=0, bbox=(50, 200, 400, 400)), # unlabeled figure
+            Block(label="table", text="", page=0, bbox=(50, 500, 400, 700)), # unlabeled table
+        ]
+
+        manifest = save_asset_crops(blocks, "dummy.pdf", tmp_path / "assets", 2.0)
+        assert len(manifest) == 2
+
+        fig = [m for m in manifest if m["type"] == "figure"][0]
+        tab = [m for m in manifest if m["type"] == "table"][0]
+
+        assert fig["caption"] == "Figure (unlabeled)"
+        assert fig["physical_section"] == "Section 1"
+        assert tab["caption"] == "Table (unlabeled)"
+        assert tab["physical_section"] == "Section 1"
+
