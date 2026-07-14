@@ -7,8 +7,9 @@ Exists as an explicit pipeline step for future hooks (OCR, format normalisation,
 import shutil
 from pathlib import Path
 
-DOCS_DIR = Path("docs")
-KB_DIR = Path("knowledge_base")
+ROOT = Path(__file__).resolve().parent
+DOCS_DIR = ROOT / "docs"
+KB_DIR = ROOT / "knowledge_base"
 
 
 def ingest():

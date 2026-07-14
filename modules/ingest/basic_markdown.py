@@ -13,8 +13,9 @@ MODULE_INFO = {
     "description": "Copies .md files from docs/ to knowledge_base/ unchanged. No transformation — assumes documents are already well-structured markdown.",
 }
 
-DOCS_DIR = Path("docs")
-KB_DIR   = Path("knowledge_base")
+ROOT     = Path(__file__).resolve().parents[2]
+DOCS_DIR = ROOT / "docs"
+KB_DIR   = ROOT / "knowledge_base"
 
 
 def run() -> None:
