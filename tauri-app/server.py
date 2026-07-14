@@ -165,8 +165,32 @@ _initial_n = int(os.environ.get("OLLAMA_INSTANCES", "1"))
 if _initial_n > 1:
     set_ollama_instances(_initial_n)
 
+def _env_flag(name: str, default: bool) -> bool:
+    raw = os.environ.get(name)
+    if raw is None:
+        return default
+    return raw.strip().lower() not in ("0", "false", "no", "off", "")
+
+
+# The vanilla dev console is served from this process by default, so the Tauri
+# launcher keeps working untouched. ASEPSIS_SERVE_UI=0 runs a bare API, which is
+# what a separately-hosted frontend needs.
+SERVE_UI = _env_flag("ASEPSIS_SERVE_UI", True)
+
+# A same-origin deployment needs no CORS at all; the default here only covers the
+# Next.js dev server. Comma-separated list, or "*" to allow any origin.
+CORS_ORIGINS = [
+    o.strip()
+    for o in os.environ.get(
+        "ASEPSIS_CORS_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000"
+    ).split(",")
+    if o.strip()
+]
+
 app = FastAPI(title="Asepsis Prototype")
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
+if CORS_ORIGINS:
+    app.add_middleware(CORSMiddleware, allow_origins=CORS_ORIGINS,
+                       allow_methods=["*"], allow_headers=["*"])
 
 
 @app.middleware("http")
@@ -185,7 +209,10 @@ async def _no_cache(request, call_next):
 
 
 UI_DIR = Path(__file__).parent / "ui"
-app.mount("/static", StaticFiles(directory=UI_DIR), name="static")
+# check_dir=False so a missing or removed ui/ degrades to 404s on the console
+# routes instead of taking the whole API down at import time.
+if SERVE_UI:
+    app.mount("/static", StaticFiles(directory=UI_DIR, check_dir=False), name="static")
 
 # Asset crops extracted by the betteringest_pdf ingest module
 # (knowledge_base/assets/<stem>/*.png), referenced from the massaged markdown
@@ -286,8 +313,14 @@ def _versioned(path: str) -> str:
 
 @app.get("/")
 def root():
-    html = (UI_DIR / "index.html").read_text(encoding="utf-8")
-    html = re.sub(r"/static/[\w.\-]+", lambda m: _versioned(m.group(0)), html)
+    if not SERVE_UI:
+        return JSONResponse(
+            {"service": "asepsis-prototype", "ui": "disabled", "api": "/api"})
+    index = UI_DIR / "index.html"
+    if not index.exists():
+        return JSONResponse({"error": "dev console is not installed"}, status_code=404)
+    html = re.sub(r"/static/[\w.\-]+", lambda m: _versioned(m.group(0)),
+                  index.read_text(encoding="utf-8"))
     return HTMLResponse(html)
 
 
