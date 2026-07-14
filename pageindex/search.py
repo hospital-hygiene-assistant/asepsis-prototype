@@ -162,11 +162,6 @@ def _check_section_relevant(
         release(client_url)
 
 
-def make_client(url: str) -> ollama.Client:
-    """Build an Ollama client for a specific instance URL (used by the explainer)."""
-    return ollama.Client(host=url)
-
-
 def explain_nonselection(
     node: "PageNode",
     query: str,

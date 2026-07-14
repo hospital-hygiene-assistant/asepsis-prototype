@@ -5,7 +5,7 @@ import sys
 
 from paths import KB_DIR
 
-from .retrieve import build_index
+from .build import build_index
 from .settings import settings
 
 

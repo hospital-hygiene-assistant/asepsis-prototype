@@ -71,7 +71,7 @@ browser if Tauri isn't installed.
 ┌─────────────────────────────┐        HTTP (localhost:8765)        ┌──────────────────────────────┐
 │        FRONTEND              │  ───────  GET / , /api/* ────────▶  │          BACKEND               │
 │  Tauri WKWebView / browser   │                                     │  FastAPI (tauri-app/server.py) │
-│  index.html · main.js · D3   │  ◀──────  JSON + live status ─────  │  pageindex.py (index + LLM)    │
+│  index.html · main.js · D3   │  ◀──────  JSON + live status ─────  │  pageindex/ (index + LLM)      │
 └─────────────────────────────┘                                     │  Ollama (gemma3:4b) pool       │
                                                                      └──────────────────────────────┘
 ```
@@ -88,7 +88,7 @@ backend owns the document index, the LLM calls, and all run state.
 | Desktop shell | Tauri (WKWebView) | `tauri-app/src-tauri/` |
 | UI | HTML + vanilla JS + D3 v7 (vendored offline) | `tauri-app/ui/` |
 | Server | FastAPI + Uvicorn, port `8765` | `tauri-app/server.py` |
-| Index + retrieval | Deterministic heading parser + LLM retrieval | `pageindex.py` |
+| Index + retrieval | Deterministic heading parser + LLM retrieval | `pageindex/` |
 | LLM runtime | Ollama, model `gemma3:4b` | pool on `11434+`, explainer on `11500` |
 | Pipeline modules | ingest / index / query strategies | `modules/` |
 
@@ -259,7 +259,7 @@ Discovered automatically from `modules/<stage>/*.py` (each exports a `MODULE_INF
 | Stage | Default module | Role |
 |-------|----------------|------|
 | Ingest | `basic_markdown` | Copy `docs/*.md` into `knowledge_base/` |
-| Index | `pageindex_custom` | Deterministic heading-tree index (delegates to `pageindex.py`) |
+| Index | `pageindex_custom` | Deterministic heading-tree index (delegates to `pageindex/`) |
 | Query | `ollama_synthesis` | LLM retrieval + synthesis over the index |
 
 ### Ollama instances
@@ -287,15 +287,23 @@ astepsis/
 ├── docs/                     # Source documents (.md)
 ├── knowledge_base/           # Ingested markdown  (ingest output)
 ├── index/                    # Heading-tree indexes, one JSON per doc (index output)
-├── pageindex.py              # Heading parser, indexer, two-phase LLM retrieval, explainer
+├── paths.py                  # Where the data lives — one definition, imported everywhere
+├── pageindex/                # The retrieval engine
+│   ├── nodes.py · build.py   #   heading tree; writing it (deterministic, no model)
+│   ├── search.py · llm.py    #   pruning and judging (model-guided); the model call
+│   ├── prompts.py · pins.py  #   retrieval prompts; provenance blocks from PDF ingest
+│   └── settings.py · clients.py · run_state.py
+├── retrieval_cases.py        # Retrieval quality cases — shared by the suite and the console
+├── pipeline.py               # CLI: ingest → index → query, per-stage module selection
 ├── run-tauri.py              # One-command launcher (pipeline + server + window)
 ├── run_tauri.command         # Double-clickable macOS launcher (installs deps, starts Ollama)
 ├── modules/                  # ingest / index / query strategy modules + registry
 ├── tauri-app/
-│   ├── server.py             # FastAPI app: API, chat synthesis, Ollama lifecycle, run state
+│   ├── server.py             # Entrypoint: assembles the app
+│   ├── api/                  # One router per concern, plus what no single route owns
 │   ├── src-tauri/            # Tauri desktop shell config
-│   └── ui/                   # index.html · main.js/style.css (retrieval) · chat.js/chat.css (chatbot)
-└── tests/                    # Unit tests (deterministic) + retrieval tests (need Ollama)
+│   └── ui/                   # The dev console (not the practitioner surface)
+└── tests/                    # Deterministic; tests/test_retrieval.py needs Ollama
 ```
 
 ## Running the tests
