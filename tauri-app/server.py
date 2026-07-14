@@ -1055,6 +1055,19 @@ def _normalized_bbox(stem: str, pin: dict) -> Optional[dict]:
     return {"page": int(page), "x": left, "y": top, "width": width, "height": height}
 
 
+def _count_eval_errors(results: dict) -> int:
+    """Leaves the model could not evaluate, across every document in a run.
+
+    Distinct from rejected leaves: these were never actually checked.
+    """
+    return sum(
+        1
+        for doc_data in results.values()
+        for meta in (doc_data.get("node_meta") or {}).values()
+        if meta.get("status") == "error"
+    )
+
+
 def _breadcrumbs_for(results: dict) -> dict:
     """{doc: {node_id: 'Doc › Section › Leaf'}} for every retrieved node."""
     crumbs: dict[str, dict] = {}
@@ -1125,6 +1138,20 @@ def chat(req: ChatRequest):
     _set_chat_phase("retrieval", "Reading the document trees…")
     try:
         results = _run_retrieval(query, index_mod)
+        eval_errors = _count_eval_errors(results)
+
+        # Nothing retrieved *and* nothing successfully evaluated means retrieval
+        # never ran — the model was unreachable. Reporting that as "no passage
+        # was judged relevant" states a clinical finding the system never made,
+        # and a practitioner could reasonably read it as "no guideline covers
+        # this". Fail loudly, before doing any more work on an empty run.
+        if not any(doc_data.get("nodes") for doc_data in results.values()) and eval_errors:
+            _set_chat_phase("error", "Retrieval could not run")
+            return JSONResponse(
+                {"error": "The retrieval model is unavailable, so the library "
+                          "could not be searched. This is not a finding about "
+                          "the documents."},
+                status_code=503)
 
         # Flatten retrieved nodes into numbered sources (stable order: doc, tree order)
         crumbs = _breadcrumbs_for(results)
@@ -1185,6 +1212,14 @@ def chat(req: ChatRequest):
             status = "partially_grounded"
             summary = (f"{len(sources)} passages were retrieved, but the answer text "
                        f"carries no inline citations — verify against the sources below.")
+
+        if eval_errors:
+            # Some of the library was never actually read. Say so rather than
+            # letting the summary imply the whole corpus was considered.
+            status = "partially_grounded"
+            summary = (f"{summary} {eval_errors} passage(s) could not be checked "
+                       f"because the model was unavailable, so the library was not "
+                       f"fully searched.")
 
         return JSONResponse({
             "query": query,

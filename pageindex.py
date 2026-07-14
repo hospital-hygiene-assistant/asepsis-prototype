@@ -62,6 +62,9 @@ _pruned_ids:     set[str] = set()   # section-pruned (and their descendants)
 _retrieved_ids:  set[str] = set()   # leaves whose LLM verdict was "relevant"
 _kept_ids:       set[str] = set()   # sections that passed the section check
 _rejected_ids:   set[str] = set()   # leaves evaluated but verdict was "not relevant"
+_errored_ids:    set[str] = set()   # leaves the model could not evaluate at all —
+                                    # kept apart from _rejected_ids because "we did
+                                    # not check this" is not "this is irrelevant"
 # Per-node decision detail, populated live as verdicts are made, so the doc
 # viewer can show reasons/quotes in real time mid-run: {node_id: {status, reason, quote}}
 _live_meta:      dict[str, dict] = {}
@@ -98,6 +101,7 @@ def start_run(total_leaves: int) -> None:
         _retrieved_ids.clear()
         _kept_ids.clear()
         _rejected_ids.clear()
+        _errored_ids.clear()
         _live_meta.clear()
 
 
@@ -126,6 +130,11 @@ def _mark_rejected(node_id: str) -> None:
         _rejected_ids.add(node_id)
 
 
+def _mark_errored(node_id: str) -> None:
+    with _event_lock:
+        _errored_ids.add(node_id)
+
+
 def _set_live_meta(node_id: str, status: str, reason: str = "", quote: str = "") -> None:
     """Record a node's decision detail as it happens, for live doc-viewer hover."""
     with _event_lock:
@@ -139,6 +148,7 @@ def get_live_events() -> dict:
             "retrieved":  list(_retrieved_ids),
             "kept":       list(_kept_ids),
             "rejected":   list(_rejected_ids),
+            "errored":    list(_errored_ids),
             "meta":       {k: dict(v) for k, v in _live_meta.items()},
         }
 
@@ -744,18 +754,26 @@ def _evaluate_leaf(
                     "quote": "",
                     "status": "rejected"
                 }
+        failure = "the model returned no usable verdict"
     except Exception as exc:
         print(f"    [warn] leaf eval failed for {leaf.node_id}: {exc}", file=sys.stderr)
+        failure = str(exc)
     finally:
         _dec(client_url)
-    
-    _mark_rejected(leaf.node_id)
-    _set_live_meta(leaf.node_id, "rejected")
+
+    # Reached only when the model could not be consulted, or answered with
+    # something unparseable. That is not a judgement that the passage is
+    # irrelevant, and must not be recorded as one: a caller seeing every leaf
+    # "rejected" would report "nothing relevant was found" to a clinician when
+    # the truth is that nothing was actually checked. Mirrors the section
+    # check, which already refuses to prune on error.
+    _mark_errored(leaf.node_id)
+    _set_live_meta(leaf.node_id, "error", failure)
     return leaf.node_id, {
         "relevant": False,
-        "reason": "",
+        "reason": failure,
         "quote": "",
-        "status": "rejected"
+        "status": "error"
     }
 
 
