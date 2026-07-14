@@ -40,3 +40,34 @@ class TestParseAnswerSections:
 
     def test_freeform_text_yields_nothing(self):
         assert _parse_answer_sections("Just a plain paragraph answer.") == {}
+
+
+class TestGermanAnswers:
+    """The corpus and the question are German; the labels are English.
+
+    The labels are structure, not content — the model writes prose under them in
+    the language it was asked in. Nothing may key off the prose being English.
+    """
+
+    def test_german_prose_under_english_labels(self):
+        text = (
+            "SHORT_ANSWER: Bei MRSA-Kolonisation genügt Standardhygiene [1].\n"
+            "RECOMMENDED_ACTION: Handschuhe und Schutzkittel bei Kontakt anlegen [1].\n"
+            "RATIONALE: Übertragung erfolgt überwiegend über die Hände [1][2].\n"
+            "LIMITATIONS: Die Quellen decken die Sanierung nicht ab."
+        )
+        sections = _parse_answer_sections(text)
+        assert sections["short_answer"] == "Bei MRSA-Kolonisation genügt Standardhygiene [1]."
+        assert sections["recommended_action"].startswith("Handschuhe")
+        assert "Hände" in sections["rationale"]
+        assert "Sanierung" in sections["limitations"]
+
+    def test_umlauts_and_eszett_survive(self):
+        sections = _parse_answer_sections("SHORT_ANSWER: Schutzmaßnahmen für Räume [1].")
+        assert sections["short_answer"] == "Schutzmaßnahmen für Räume [1]."
+
+    def test_citation_markers_are_found_in_german_text(self):
+        # The grounding verdict counts [n] in the answer, whatever language it is.
+        import re
+        text = "SHORT_ANSWER: Einzelzimmer erforderlich [1][2]."
+        assert {int(n) for n in re.findall(r"\[(\d+)\]", text)} == {1, 2}
