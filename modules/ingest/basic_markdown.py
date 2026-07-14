@@ -4,7 +4,6 @@ Copies .md files from docs/ to knowledge_base/ unchanged.
 Simple passthrough for already well-structured markdown documents.
 """
 import shutil
-from pathlib import Path
 
 MODULE_INFO = {
     "stage": "ingest",

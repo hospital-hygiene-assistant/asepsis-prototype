@@ -1,7 +1,6 @@
 """Asepsis Prototype — FastAPI backend. Serves the UI and wraps pageindex retrieval."""
 
 import json
-import os
 import sys
 import threading
 from contextlib import asynccontextmanager
@@ -14,7 +13,7 @@ sys.path.insert(0, str(ROOT))
 
 import pageindex as _pi
 from pageindex import _node_from_dict
-from paths import ASSETS_DIR
+from paths import ASSETS_DIR, INDEX_DIR, KB_DIR
 from retrieval_cases import RETRIEVAL_CASES
 from modules.registry import discover as _discover_modules, load as _load_module, defaults as _module_defaults
 
@@ -27,7 +26,9 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 import uvicorn
 
+from api.config import CORS_ORIGINS, SERVE_UI
 from api.pdf import _normalized_bbox
+from api.run_state import chat_phase, is_error, set_chat_phase
 from api.sources import load_sources
 from api.prompts import (
     CHAT_SYNTHESIS_PROMPT,
@@ -35,7 +36,6 @@ from api.prompts import (
     _parse_answer_sections,
 )
 from api.ollama_pool import (
-    BASE_PORT,
     ensure_explainer,
     ollama_bin,
     set_ollama_instances,
@@ -43,28 +43,6 @@ from api.ollama_pool import (
     start_configured_instances,
 )
 
-
-def _env_flag(name: str, default: bool) -> bool:
-    raw = os.environ.get(name)
-    if raw is None:
-        return default
-    return raw.strip().lower() not in ("0", "false", "no", "off", "")
-
-
-# The vanilla dev console is served from this process by default, so the Tauri
-# launcher keeps working untouched. ASEPSIS_SERVE_UI=0 runs a bare API, which is
-# what a separately-hosted frontend needs.
-SERVE_UI = _env_flag("ASEPSIS_SERVE_UI", True)
-
-# A same-origin deployment needs no CORS at all; the default here only covers the
-# Next.js dev server. Comma-separated list, or "*" to allow any origin.
-CORS_ORIGINS = [
-    o.strip()
-    for o in os.environ.get(
-        "ASEPSIS_CORS_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000"
-    ).split(",")
-    if o.strip()
-]
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -151,8 +129,7 @@ def get_tests():
 @app.get("/api/status")
 def get_status():
     activity = _pi.get_activity()
-    with _chat_lock:
-        chat_phase = dict(_chat_phase)
+
     return JSONResponse({
         "instances": [
             {"url": url, "index": i, "active": activity.get(url, 0)}
@@ -161,7 +138,7 @@ def get_status():
         "any_busy": any(v > 0 for v in activity.values()),
         "progress": _pi.get_progress(),
         "live":     _pi.get_live_events(),
-        "chat":     chat_phase,
+        "chat":     chat_phase(),
     })
 
 
@@ -222,11 +199,8 @@ def get_modules():
 
 @app.get("/api/documents")
 def get_documents():
-    # Use the default index module to find where indices live
-    index_mod = _load_module("index", _module_defaults()["index"])
-    index_dir = getattr(index_mod, "INDEX_DIR", Path("index"))
     docs = []
-    for idx in sorted(index_dir.glob("*.json")):
+    for idx in sorted(INDEX_DIR.glob("*.json")):
         tree = json.loads(idx.read_text(encoding="utf-8"))
         nodes = [_node_from_dict(d) for d in tree]
         docs.append({
@@ -244,19 +218,11 @@ def get_document_full(stem: str):
     The frontend renders the markdown and derives its own table of contents
     from the rendered headings, so anchors always stay consistent.
     """
-    # Resolve the KB directory from the default ingest module, relative to ROOT.
-    try:
-        ingest_mod = _load_module("ingest", _module_defaults()["ingest"])
-        kb_dir = getattr(ingest_mod, "KB_DIR", Path("knowledge_base"))
-    except Exception:
-        kb_dir = Path("knowledge_base")
-    if not kb_dir.is_absolute():
-        kb_dir = ROOT / kb_dir
 
     # Guard against path traversal — only allow plain stems that exist.
     safe_stem = Path(stem).name
-    md_path = kb_dir / f"{safe_stem}.md"
-    if not md_path.exists() or md_path.parent.resolve() != kb_dir.resolve():
+    md_path = KB_DIR / f"{safe_stem}.md"
+    if not md_path.exists() or md_path.parent.resolve() != KB_DIR.resolve():
         return JSONResponse({"error": f"Document '{stem}' not found"}, status_code=404)
 
     return JSONResponse({
@@ -358,10 +324,7 @@ def run_ingest(req: IngestRunRequest):
 
             _set_ingest_state(phase="index", message="Rebuilding index…")
             index_mod = _load_module("index", index_name)
-            kb_dir = getattr(ingest_mod, "KB_DIR", Path("knowledge_base"))
-            if not Path(kb_dir).is_absolute():
-                kb_dir = ROOT / kb_dir
-            for md in sorted(Path(kb_dir).glob("*.md")):
+            for md in sorted(KB_DIR.glob("*.md")):
                 index_mod.build_index(md.stem)
 
             _set_ingest_state(state="done", phase="done",
@@ -424,10 +387,7 @@ def add_to_library(req: IngestAddRequest):
 
             _set_ingest_state(phase="index", message="Rebuilding index…")
             index_mod = _load_module("index", index_name)
-            kb_dir = getattr(ingest_mod, "KB_DIR", Path("knowledge_base"))
-            if not Path(kb_dir).is_absolute():
-                kb_dir = ROOT / kb_dir
-            for md in sorted(Path(kb_dir).glob("*.md")):
+            for md in sorted(KB_DIR.glob("*.md")):
                 index_mod.build_index(md.stem)
 
             _set_ingest_state(state="done", phase="done",
@@ -555,8 +515,7 @@ def explain_node(req: ExplainRequest):
     Runs on a dedicated Ollama instance so it never disturbs an in-flight query.
     """
     index_mod = _load_module("index", _module_defaults()["index"])
-    index_dir = getattr(index_mod, "INDEX_DIR", Path("index"))
-    idx = index_dir / f"{Path(req.stem).name}.json"
+    idx = INDEX_DIR / f"{Path(req.stem).name}.json"
     if not idx.exists():
         return JSONResponse({"error": f"unknown document '{req.stem}'"}, status_code=404)
 
@@ -593,17 +552,15 @@ def _run_retrieval(query: str, index_mod) -> dict:
     """Two-phase retrieval across every indexed document. Shared by /api/run
     (retrieval tab) and /api/chat (chatbot tab) so both drive the same live
     treemap/progress state."""
-    index_dir = getattr(index_mod, "INDEX_DIR", Path("index"))
-
     # Count total leaves across all docs so progress polling has a denominator
     total_leaves = sum(
         _count_leaves([_node_from_dict(d) for d in json.loads(idx.read_text(encoding="utf-8"))])
-        for idx in sorted(index_dir.glob("*.json"))
+        for idx in sorted(INDEX_DIR.glob("*.json"))
     )
     _pi.start_run(total_leaves)
 
     results = {}
-    for idx in sorted(index_dir.glob("*.json")):
+    for idx in sorted(INDEX_DIR.glob("*.json")):
         doc_name = idx.stem
         try:
             retrieve_fn = getattr(index_mod, "retrieve_with_metadata", None)
@@ -677,15 +634,6 @@ def run_query(req: RunRequest):
 # ---------------------------------------------------------------------------
 # Chat — retrieval + grounded answer synthesis for the chatbot tab
 # ---------------------------------------------------------------------------
-
-_chat_lock = threading.Lock()
-_chat_phase: dict = {"phase": "idle", "detail": ""}
-
-
-def _set_chat_phase(phase: str, detail: str = "") -> None:
-    with _chat_lock:
-        _chat_phase.update({"phase": phase, "detail": detail})
-
 
 
 
@@ -770,7 +718,7 @@ def chat(req: ChatRequest):
     except Exception as exc:
         return JSONResponse({"error": f"Could not load index module '{index_mod_name}': {exc}"}, status_code=400)
 
-    _set_chat_phase("retrieval", "Reading the document trees…")
+    set_chat_phase("retrieval", "Reading the document trees…")
     try:
         results = _run_retrieval(query, index_mod)
         eval_errors = _count_eval_errors(results)
@@ -781,7 +729,7 @@ def chat(req: ChatRequest):
         # and a practitioner could reasonably read it as "no guideline covers
         # this". Fail loudly, before doing any more work on an empty run.
         if not any(doc_data.get("nodes") for doc_data in results.values()) and eval_errors:
-            _set_chat_phase("error", "Retrieval could not run")
+            set_chat_phase("error", "Retrieval could not run")
             return JSONResponse(
                 {"error": "The retrieval model is unavailable, so the library "
                           "could not be searched. This is not a finding about "
@@ -815,7 +763,7 @@ def chat(req: ChatRequest):
         answer_text = ""
         sections: dict = {}
         if sources:
-            _set_chat_phase("synthesis", f"Composing an answer from {len(sources)} passages…")
+            set_chat_phase("synthesis", f"Composing an answer from {len(sources)} passages…")
             passages = "\n\n".join(
                 f"[{s['n']}] {s['doc'].replace('_', ' ')} › {s['breadcrumb'] or s['title']}\n{s['excerpt'] or '(no content)'}"
                 for s in sources
@@ -878,12 +826,13 @@ def chat(req: ChatRequest):
             },
         })
     except Exception as exc:
-        _set_chat_phase("error", str(exc))
+        set_chat_phase("error", str(exc))
         return JSONResponse({"error": str(exc)}, status_code=500)
     finally:
-        with _chat_lock:
-            if _chat_phase["phase"] != "error":
-                _chat_phase.update({"phase": "idle", "detail": ""})
+        # An error phase is the answer to the request; leave it for the client
+        # to read rather than resetting it out from under them.
+        if not is_error():
+            set_chat_phase("idle")
 
 
 # ---------------------------------------------------------------------------

@@ -14,8 +14,10 @@ import pytest
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(ROOT / "tauri-app"))
 
 import pageindex  # noqa: E402
+import paths  # noqa: E402
 from modules.ingest import basic_markdown  # noqa: E402
 
 
@@ -46,6 +48,18 @@ class TestPathsAreAbsolute:
     def test_all_modules_agree_on_the_repo(self):
         for path in (pageindex.KB_DIR, basic_markdown.KB_DIR):
             assert path == ROOT / "knowledge_base"
+
+    def test_the_manifest_writer_and_reader_point_at_the_same_file(self):
+        """PDF ingest writes this; the API reads it to render a source page.
+
+        They each held their own copy of the path, so moving either would have
+        broken visual citations without a single test noticing.
+        """
+        from modules.ingest import betteringest_pdf
+        from api import sources
+
+        assert betteringest_pdf.SOURCES_MANIFEST == paths.SOURCES_MANIFEST
+        assert sources.SOURCES_MANIFEST == paths.SOURCES_MANIFEST
 
 
 class TestResolutionIsIndependentOfCwd:

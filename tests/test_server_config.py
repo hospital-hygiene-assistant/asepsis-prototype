@@ -28,11 +28,15 @@ def server_env(monkeypatch):
             monkeypatch.delenv(key, raising=False)
         for key, value in env.items():
             monkeypatch.setenv(key, value)
-        sys.modules.pop("server", None)
+        # api.config reads the environment at import, and server binds its values
+        # at import, so both have to go for the new environment to take effect.
+        for module in ("server", "api.config"):
+            sys.modules.pop(module, None)
         return importlib.import_module("server")
 
     yield build
-    sys.modules.pop("server", None)
+    for module in ("server", "api.config"):
+        sys.modules.pop(module, None)
 
 
 class TestEnvFlag:
