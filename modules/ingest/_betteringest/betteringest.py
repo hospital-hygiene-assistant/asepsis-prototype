@@ -3,8 +3,8 @@ Vendored BetterIngester ingest/betteringest.py — the deterministic
 PDF → structure-faithful-markdown + managed-assets pipeline, adapted for
 asepsis.  Deviations from upstream (all documented inline):
 
-  · package-relative imports (asepsis has its own top-level `ingest.py`,
-    so upstream's `ingest.*` package name cannot be used here);
+  · package-relative imports (this is vendored under
+    `modules/ingest/_betteringest/`, not upstream's own `ingest.*` package);
   · `Asset.bbox` — the crop's bounding box (render px at ocr_scale) is kept
     from the save_asset_crops manifest so pins can point into the source PDF;
   · `BetterIngest(cache_dir=…)` — the OCR cache location is explicit instead
