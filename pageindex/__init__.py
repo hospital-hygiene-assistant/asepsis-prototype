@@ -19,7 +19,7 @@ from .nodes import PageNode, _build_nodes_by_id, _build_parent_map, _make_breadc
 from .prompts import EXPLAIN_PROMPT, LEAF_EVAL_PROMPT, SECTION_CHECK_PROMPT
 from .build import build_index
 from .search import explain_nonselection, retrieve, retrieve_with_metadata
-from .run_state import get_live_events, get_progress, start_run
+from .run_state import RunState
 from .settings import settings
 
 __all__ = [
@@ -27,7 +27,7 @@ __all__ = [
     "PageNode",
     "build_index", "retrieve", "retrieve_with_metadata", "explain_nonselection",
     "make_client", "reconfigure_clients", "get_activity", "OLLAMA_URLS",
-    "start_run", "get_progress", "get_live_events",
+    "RunState",
     "settings",
     "LEAF_EVAL_PROMPT", "SECTION_CHECK_PROMPT", "EXPLAIN_PROMPT",
     # The API renders breadcrumbs and rehydrates trees from stored JSON.

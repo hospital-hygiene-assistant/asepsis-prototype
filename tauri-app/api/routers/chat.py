@@ -13,7 +13,7 @@ from modules.registry import load as _load_module, defaults as _module_defaults
 from ..pdf import _normalized_bbox
 from ..prompts import CHAT_SYNTHESIS_PROMPT, _context_block, _parse_answer_sections
 from ..retrieval import breadcrumbs_for, count_eval_errors, run_retrieval
-from ..run_state import is_error, set_chat_phase
+from ..runs import registry
 from ..sources import load_sources
 
 router = APIRouter()
@@ -51,6 +51,9 @@ def chat_config():
 
 
 class ChatRequest(BaseModel):
+    # The client's own id for this run, so it can poll /api/runs/{run_id} from
+    # the moment it sends this rather than waiting to be told what to watch.
+    run_id: Optional[str] = None
     query: str
     index_module: Optional[str] = None
     # Pre-rendered, human-readable background from a client-side structured
@@ -71,6 +74,7 @@ def chat(req: ChatRequest):
     if not query:
         return JSONResponse({"error": "No query provided"}, status_code=400)
     patient_context = _context_block(req.context)
+    run = registry.create(req.run_id)
 
     defs = _module_defaults()
     index_mod_name = req.index_module or defs["index"]
@@ -79,9 +83,9 @@ def chat(req: ChatRequest):
     except Exception as exc:
         return JSONResponse({"error": f"Could not load index module '{index_mod_name}': {exc}"}, status_code=400)
 
-    set_chat_phase("retrieval", "Reading the document trees…")
+    run.set_phase("retrieval", "Reading the document trees…")
     try:
-        results = run_retrieval(query, index_mod)
+        results = run_retrieval(query, index_mod, run)
         eval_errors = count_eval_errors(results)
 
         # Nothing retrieved *and* nothing successfully evaluated means retrieval
@@ -90,7 +94,7 @@ def chat(req: ChatRequest):
         # and a practitioner could reasonably read it as "no guideline covers
         # this". Fail loudly, before doing any more work on an empty run.
         if not any(doc_data.get("nodes") for doc_data in results.values()) and eval_errors:
-            set_chat_phase("error", "Retrieval could not run")
+            run.set_phase("error", "Retrieval could not run")
             return JSONResponse(
                 {"error": "The retrieval model is unavailable, so the library "
                           "could not be searched. This is not a finding about "
@@ -124,7 +128,7 @@ def chat(req: ChatRequest):
         answer_text = ""
         sections: dict = {}
         if sources:
-            set_chat_phase("synthesis", f"Composing an answer from {len(sources)} passages…")
+            run.set_phase("synthesis", f"Composing an answer from {len(sources)} passages…")
             passages = "\n\n".join(
                 f"[{s['n']}] {s['doc'].replace('_', ' ')} › {s['breadcrumb'] or s['title']}\n{s['excerpt'] or '(no content)'}"
                 for s in sources
@@ -166,6 +170,7 @@ def chat(req: ChatRequest):
                        f"fully searched.")
 
         return JSONResponse({
+            "run_id": run.id,
             "query": query,
             "answer": {
                 "content": answer_text,
@@ -187,10 +192,10 @@ def chat(req: ChatRequest):
             },
         })
     except Exception as exc:
-        set_chat_phase("error", str(exc))
+        run.set_phase("error", str(exc))
         return JSONResponse({"error": str(exc)}, status_code=500)
     finally:
         # An error phase is the answer to the request; leave it for the client
         # to read rather than resetting it out from under them.
-        if not is_error():
-            set_chat_phase("idle")
+        if run.phase != "error":
+            run.set_phase("idle")

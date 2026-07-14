@@ -199,6 +199,7 @@ async function sendChat(text) {
   chatState.pending = pending;
   chatState.nodeInfo = await buildNodeInfo();
   try { renderTreemap(await getDocs()); } catch { /* keep old canvas */ }
+  state.runId = newRunId();
   startStatusPolling();
   updateFlowSteps();
 
@@ -206,6 +207,7 @@ async function sendChat(text) {
     const data = await apiPost('/api/chat', {
       query: text,
       index_module: selectedModules().index_module,
+      run_id: state.runId,
     });
     // Feed the retrieval tab the identical run state (the two tabs talk).
     state.currentResults = data.run;

@@ -10,7 +10,7 @@ from paths import INDEX_DIR
 from .trees import leaf_count, read_tree
 
 
-def run_retrieval(query: str, index_mod) -> dict:
+def run_retrieval(query: str, index_mod, run) -> dict:
     """Two-phase retrieval across every indexed document.
 
     Returns {doc: {tree, retrieved_ids, node_meta, nodes}}. Documents whose
@@ -18,7 +18,7 @@ def run_retrieval(query: str, index_mod) -> dict:
     """
     index_files = sorted(INDEX_DIR.glob("*.json"))
     # Progress polling needs a denominator before the first leaf is evaluated.
-    _pi.start_run(sum(leaf_count(read_tree(idx)) for idx in index_files))
+    run.state.start(sum(leaf_count(read_tree(idx)) for idx in index_files))
 
     results = {}
     for idx in index_files:
@@ -26,9 +26,9 @@ def run_retrieval(query: str, index_mod) -> dict:
         try:
             retrieve_fn = getattr(index_mod, "retrieve_with_metadata", None)
             if retrieve_fn:
-                nodes, node_meta = retrieve_fn(doc_name, query)
+                nodes, node_meta = retrieve_fn(doc_name, query, run.state)
             else:
-                nodes, node_meta = index_mod.retrieve(doc_name, query), {}
+                nodes, node_meta = index_mod.retrieve(doc_name, query, run.state), {}
         except FileNotFoundError:
             continue
 

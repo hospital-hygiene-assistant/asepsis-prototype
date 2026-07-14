@@ -32,6 +32,7 @@ const state = {
   currentResults: null,
   currentDoc: null,
   currentQuery: '',
+  runId: null,                           // the run this client is watching
   running: false,
   view: 'library',                       // 'library' | 'results'
   resultView: 'graph',                   // 'graph' | 'boxes'
@@ -377,11 +378,34 @@ function renderInstanceDots(statusData) {
   }
 }
 
+// The service and the run are separate resources: instance dots belong to the
+// process, progress and verdicts belong to whoever started the run.
+function newRunId() {
+  return (crypto.randomUUID?.() ?? String(Date.now() + Math.random()));
+}
+
+
+async function fetchStatus() {
+  const service = await apiGet('/api/status');
+  if (!state.runId) return service;
+  try {
+    const run = await apiGet(`/api/runs/${state.runId}`);
+    return {
+      ...service,
+      progress: run.progress,
+      live: run.live,
+      chat: { phase: run.phase, detail: run.detail },
+    };
+  } catch {
+    return service;          // the run has expired or never started
+  }
+}
+
 function startStatusPolling() {
   if (_statusPoller) return;
   _statusPoller = setInterval(async () => {
     try {
-      const status = await apiGet('/api/status');
+      const status = await fetchStatus();
       state.liveStatus = status;
       renderInstanceDots(status);
       applyTreemapEvents(status);
@@ -394,7 +418,7 @@ function startStatusPolling() {
 async function stopStatusPolling() {
   if (_statusPoller) { clearInterval(_statusPoller); _statusPoller = null; }
   try {
-    const status = await apiGet('/api/status');
+    const status = await fetchStatus();
     state.liveStatus = status;
     renderInstanceDots(status);
     applyTreemapEvents(status);
@@ -550,10 +574,11 @@ async function executeRun(body, message) {
   document.getElementById('main-query-input').disabled = true;
   document.getElementById('main-run-btn').disabled = true;
   try { renderTreemap(await getDocs()); } catch { /* keep old canvas */ }
+  state.runId = newRunId();
   startStatusPolling();
   updateFlowSteps();
   try {
-    const data = await apiPost('/api/run', { ...body, ...selectedModules() });
+    const data = await apiPost('/api/run', { ...body, ...selectedModules(), run_id: state.runId });
     state.currentResults = data;
     renderResults(data);
     setView('results');

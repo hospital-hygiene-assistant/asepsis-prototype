@@ -10,7 +10,7 @@ from modules.registry import discover as _discover_modules, defaults as _module_
 from retrieval_cases import RETRIEVAL_CASES
 
 from ..ollama_pool import ollama_bin, set_ollama_instances
-from ..run_state import chat_phase
+from ..runs import registry
 
 router = APIRouter()
 
@@ -22,18 +22,28 @@ def get_tests():
 
 @router.get("/api/status")
 def get_status():
-    activity = _pi.get_activity()
+    """The service: which instances exist and whether they are working.
 
+    A run's progress is not here. It belongs to the run, and lives at
+    /api/runs/{run_id}, so two clients cannot read each other's.
+    """
+    activity = _pi.get_activity()
     return JSONResponse({
         "instances": [
             {"url": url, "index": i, "active": activity.get(url, 0)}
             for i, url in enumerate(_pi.OLLAMA_URLS)
         ],
         "any_busy": any(v > 0 for v in activity.values()),
-        "progress": _pi.get_progress(),
-        "live":     _pi.get_live_events(),
-        "chat":     chat_phase(),
     })
+
+
+@router.get("/api/runs/{run_id}")
+def get_run(run_id: str):
+    """One retrieval run: how far it has got, and every verdict so far."""
+    run = registry.get(run_id)
+    if run is None:
+        return JSONResponse({"error": f"unknown run '{run_id}'"}, status_code=404)
+    return JSONResponse(run.snapshot())
 
 
 @router.get("/api/config")

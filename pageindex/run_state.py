@@ -1,93 +1,74 @@
-"""Live state of a retrieval run: progress, and each node's verdict.
+"""The live state of one retrieval run: progress, and each node's verdict.
 
-A run spans one retrieve call per document, so the state outlives any one of
-them. Worker threads write it while /api/status reads it, hence the lock.
+A run spans one retrieve call per document, so its state outlives any single
+call and is passed in rather than reached for. Worker threads write it while a
+client polls it, hence the lock.
 
-There is one run per process. Two clients retrieving at once share it, so the
-second start_run resets the first's progress and /api/status reports a blend of
-both. Serving concurrent clients means keying this by run id and handing the id
-to the caller.
+One object per run is what keeps concurrent clients apart. Sharing one would
+mean the second run resetting the first's progress, and both reading a blend.
 """
 
 import threading
 
-_lock = threading.Lock()
 
-_total = 0
-_done = 0
+class RunState:
+    """One retrieval pass. Safe to write from workers while a client reads it."""
 
-_pruned: set[str] = set()      # sections pruned, and their descendants
-_retrieved: set[str] = set()   # leaves the model judged relevant
-_kept: set[str] = set()        # sections that passed the prune check
-_rejected: set[str] = set()    # leaves evaluated, verdict "not relevant"
-_errored: set[str] = set()     # leaves the model could not evaluate at all —
-                               # apart from _rejected because "not checked" is
-                               # not "irrelevant"
+    def __init__(self) -> None:
+        self._lock = threading.Lock()
+        self._total = 0
+        self._done = 0
+        self._pruned: set[str] = set()      # sections pruned, and their descendants
+        self._retrieved: set[str] = set()   # leaves the model judged relevant
+        self._kept: set[str] = set()        # sections that passed the prune check
+        self._rejected: set[str] = set()    # leaves evaluated, verdict "not relevant"
+        self._errored: set[str] = set()     # leaves the model could not evaluate —
+                                            # apart from rejected, because "not
+                                            # checked" is not "irrelevant"
+        self._meta: dict[str, dict] = {}    # {node_id: {status, reason, quote}}
 
-# {node_id: {status, reason, quote}}, written as each verdict is made so a
-# client can watch the run rather than wait for it.
-_meta: dict[str, dict] = {}
+    def start(self, total_leaves: int) -> None:
+        """Begin a pass over `total_leaves`, discarding anything recorded before."""
+        with self._lock:
+            self._total = total_leaves
+            self._done = 0
+            for group in (self._pruned, self._retrieved, self._kept,
+                          self._rejected, self._errored):
+                group.clear()
+            self._meta.clear()
 
+    def leaf_done(self) -> None:
+        with self._lock:
+            self._done += 1
 
-def start_run(total_leaves: int) -> None:
-    """Begin a pass over `total_leaves`, discarding the previous run."""
-    global _total, _done
-    with _lock:
-        _total = total_leaves
-        _done = 0
-        for group in (_pruned, _retrieved, _kept, _rejected, _errored):
-            group.clear()
-        _meta.clear()
+    def progress(self) -> dict[str, int]:
+        with self._lock:
+            return {"total": self._total, "done": self._done}
 
-
-def leaf_done() -> None:
-    global _done
-    with _lock:
-        _done += 1
-
-
-def get_progress() -> dict[str, int]:
-    with _lock:
-        return {"total": _total, "done": _done}
-
-
-def mark_pruned(node_id: str) -> None:
-    with _lock:
-        _pruned.add(node_id)
-
-
-def mark_retrieved(node_id: str) -> None:
-    with _lock:
-        _retrieved.add(node_id)
-
-
-def mark_kept(node_id: str) -> None:
-    with _lock:
-        _kept.add(node_id)
-
-
-def mark_rejected(node_id: str) -> None:
-    with _lock:
-        _rejected.add(node_id)
-
-
-def mark_errored(node_id: str) -> None:
-    with _lock:
-        _errored.add(node_id)
-
-
-def set_meta(node_id: str, status: str, reason: str = "", quote: str = "") -> None:
-    with _lock:
-        _meta[node_id] = {"status": status, "reason": reason, "quote": quote}
-
-
-def get_live_events() -> dict:
-    with _lock:
-        return {
-            "pruned": list(_pruned),
-            "retrieved": list(_retrieved),
-            "kept": list(_kept),
-            "rejected": list(_rejected),
-            "errored": list(_errored),
-            "meta": {k: dict(v) for k, v in _meta.items()},
+    def mark(self, status: str, node_id: str) -> None:
+        """Record a node in one of the verdict groups."""
+        groups = {
+            "pruned": self._pruned,
+            "retrieved": self._retrieved,
+            "kept": self._kept,
+            "rejected": self._rejected,
+            "errored": self._errored,
         }
+        with self._lock:
+            groups[status].add(node_id)
+
+    def set_meta(self, node_id: str, status: str, reason: str = "", quote: str = "") -> None:
+        """Record why a node got its verdict, as it is decided."""
+        with self._lock:
+            self._meta[node_id] = {"status": status, "reason": reason, "quote": quote}
+
+    def events(self) -> dict:
+        with self._lock:
+            return {
+                "pruned": list(self._pruned),
+                "retrieved": list(self._retrieved),
+                "kept": list(self._kept),
+                "rejected": list(self._rejected),
+                "errored": list(self._errored),
+                "meta": {k: dict(v) for k, v in self._meta.items()},
+            }

@@ -18,7 +18,7 @@ import ollama
 
 from paths import INDEX_DIR
 
-from . import run_state
+from .run_state import RunState
 from .clients import acquire, pool, release
 from .llm import _chat, _parse_json_response
 from .nodes import (
@@ -47,6 +47,8 @@ def _evaluate_leaf(
     parent_summary: str,
     client: Optional[ollama.Client] = None,
     client_url: str = "",
+    *,
+    run: RunState,
 ) -> tuple[str, dict]:
     """Evaluate one leaf. Returns (node_id, {relevant, reason, quote, status})."""
     prompt = (
@@ -68,8 +70,8 @@ def _evaluate_leaf(
             quote = str(result.get("quote") or "").strip()
             
             if relevant:
-                run_state.mark_retrieved(leaf.node_id)
-                run_state.set_meta(leaf.node_id, "retrieved", reason, quote)
+                run.mark("retrieved", leaf.node_id)
+                run.set_meta(leaf.node_id, "retrieved", reason, quote)
                 return leaf.node_id, {
                     "relevant": True,
                     "reason": reason,
@@ -77,8 +79,8 @@ def _evaluate_leaf(
                     "status": "retrieved"
                 }
             else:
-                run_state.mark_rejected(leaf.node_id)
-                run_state.set_meta(leaf.node_id, "rejected", reason)
+                run.mark("rejected", leaf.node_id)
+                run.set_meta(leaf.node_id, "rejected", reason)
                 return leaf.node_id, {
                     "relevant": False,
                     "reason": reason,
@@ -98,8 +100,8 @@ def _evaluate_leaf(
     # "rejected" would report "nothing relevant was found" to a clinician when
     # the truth is that nothing was actually checked. Mirrors the section
     # check, which already refuses to prune on error.
-    run_state.mark_errored(leaf.node_id)
-    run_state.set_meta(leaf.node_id, "error", failure)
+    run.mark("errored", leaf.node_id)
+    run.set_meta(leaf.node_id, "error", failure)
     return leaf.node_id, {
         "relevant": False,
         "reason": failure,
@@ -130,6 +132,8 @@ def _check_section_relevant(
     breadcrumb: str,
     client: Optional[ollama.Client] = None,
     client_url: str = "",
+    *,
+    run: RunState,
 ) -> tuple[bool, str]:
     """Lightweight LLM call: can this section contain a direct answer?"""
     descendants = _format_descendant_outline(node) or "(no subsections)"
@@ -149,13 +153,13 @@ def _check_section_relevant(
             reason = str(result.get("reason") or "").strip()
         
         if verdict:
-            run_state.mark_kept(node.node_id)
-            run_state.set_meta(node.node_id, "kept", reason)
+            run.mark("kept", node.node_id)
+            run.set_meta(node.node_id, "kept", reason)
 
         print(f"    [prune-check] {node.node_id}: {'KEEP' if verdict else 'PRUNE'} (raw={raw!r:.120})", file=sys.stderr)
         return verdict, reason
     except Exception as exc:
-        run_state.mark_kept(node.node_id)
+        run.mark("kept", node.node_id)
         print(f"    [prune-check] {node.node_id}: ERROR ({exc}) — keeping", file=sys.stderr)
         return True, f"Error checking section: {exc}"  # conservative: never prune on error
     finally:
@@ -218,6 +222,7 @@ def _prune_and_collect(
     nodes_by_id: dict,
     node_assignment: dict[str, tuple],
     node_meta: dict[str, dict],
+    run: RunState,
 ) -> list["PageNode"]:
     """
     BFS top-down pruning. At each level, check all internal nodes in parallel;
@@ -242,6 +247,7 @@ def _prune_and_collect(
                     node, query,
                     _make_breadcrumb(node.node_id, parent_map, nodes_by_id),
                     *node_assignment.get(node.node_id, default_instance),
+                    run=run,
                 ): node
                 for node in sections
             }
@@ -262,20 +268,20 @@ def _prune_and_collect(
                     # Pruned: count all leaf descendants toward "done" so the
                     # progress counter reaches total. They won't be evaluated again.
                     _prune_reason = f"Pruned because ancestor section '{node.title}' was pruned."
-                    run_state.set_meta(node.node_id, "pruned", reason or _prune_reason)
+                    run.set_meta(node.node_id, "pruned", reason or _prune_reason)
                     for leaf in _collect_leaves([node]):
-                        run_state.leaf_done()
-                        run_state.mark_pruned(leaf.node_id)
-                        run_state.set_meta(leaf.node_id, "pruned", _prune_reason)
+                        run.leaf_done()
+                        run.mark("pruned", leaf.node_id)
+                        run.set_meta(leaf.node_id, "pruned", _prune_reason)
                         node_meta[leaf.node_id] = {
                             "relevant": False,
                             "reason": _prune_reason,
                             "status": "pruned"
                         }
                     for descendant in _collect_all_nodes([node]):
-                        run_state.mark_pruned(descendant.node_id)
+                        run.mark("pruned", descendant.node_id)
                         if descendant.node_id != node.node_id:
-                            run_state.set_meta(descendant.node_id, "pruned", _prune_reason)
+                            run.set_meta(descendant.node_id, "pruned", _prune_reason)
                             node_meta[descendant.node_id] = {
                                 "relevant": False,
                                 "reason": _prune_reason,
@@ -287,19 +293,29 @@ def _prune_and_collect(
     return candidate_leaves
 
 
-def retrieve(doc_name: str, query: str) -> list[PageNode]:
-    """Return relevant leaf nodes for a query against one document's index."""
-    nodes_result, _ = retrieve_with_metadata(doc_name, query)
+def retrieve(doc_name: str, query: str, run: Optional[RunState] = None) -> list[PageNode]:
+    """Relevant leaf nodes for a query against one document's index.
+
+    Without a run, progress goes nowhere — which is what a CLI wants.
+    """
+    nodes_result, _ = retrieve_with_metadata(doc_name, query, run)
     return nodes_result
 
 
-def retrieve_with_metadata(doc_name: str, query: str) -> tuple[list[PageNode], dict[str, dict]]:
-    """
-    Two-phase retrieval with top-down pruning.
+def retrieve_with_metadata(
+    doc_name: str, query: str, run: Optional[RunState] = None,
+) -> tuple[list[PageNode], dict[str, dict]]:
+    """Two-phase retrieval with top-down pruning.
+
     Phase 1: BFS section checks — prune branches whose sections are irrelevant.
-    Phase 2: Full leaf evaluation (reason + quote) on survivors only.
+    Phase 2: full leaf evaluation (reason + quote) on the survivors only.
+
+    Records into `run` as it goes, so a client can watch. Without one, the
+    verdicts are still returned; only the live view is skipped.
+
     Returns (selected_leaves_in_doc_order, {node_id: {reason, quote}}).
     """
+    run = run or RunState()
     index_path = INDEX_DIR / f"{doc_name}.json"
     if not index_path.exists():
         raise FileNotFoundError(f"Index not found: {index_path}. Run build first.")
@@ -337,7 +353,8 @@ def retrieve_with_metadata(doc_name: str, query: str) -> tuple[list[PageNode], d
 
     # Phase 1 — top-down pruning
     top = nodes[0].children if (len(nodes) == 1 and nodes[0].children) else nodes
-    surviving = _prune_and_collect(top, query, parent_map, nodes_by_id, node_assignment, node_meta)
+    surviving = _prune_and_collect(top, query, parent_map, nodes_by_id,
+                                   node_assignment, node_meta, run)
     print(
         f"  [prune] {doc_name}: {len(surviving)}/{len(leaves)} leaves after pruning",
         file=sys.stderr,
@@ -355,13 +372,14 @@ def retrieve_with_metadata(doc_name: str, query: str) -> tuple[list[PageNode], d
                     _make_breadcrumb(leaf.node_id, parent_map, nodes_by_id),
                     parent_map[leaf.node_id].summary if leaf.node_id in parent_map else "",
                     *node_assignment.get(leaf.node_id, instances[0]),
+                    run=run,
                 ): leaf
                 for leaf in surviving
             }
             for future in as_completed(futures):
                 node_id, meta = future.result()
                 node_meta[node_id] = meta
-                run_state.leaf_done()
+                run.leaf_done()
 
     # Preserve original document order
     selected = [l for l in leaves if node_meta.get(l.node_id, {}).get("relevant")]

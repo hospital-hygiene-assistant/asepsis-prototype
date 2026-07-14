@@ -13,6 +13,7 @@ from retrieval_cases import RETRIEVAL_CASES
 
 from ..ollama_pool import ensure_explainer
 from ..retrieval import run_retrieval
+from ..runs import registry
 from ..scoring import eval_case
 from ..trees import read_tree
 
@@ -56,6 +57,9 @@ def explain_node(req: ExplainRequest):
 
 
 class RunRequest(BaseModel):
+    # The client's own id for this run, so it can poll /api/runs/{run_id} from
+    # the moment it sends this.
+    run_id: Optional[str] = None
     test_id: Optional[str] = None
     query: Optional[str] = None
     # Module selections — default to pipeline defaults when not supplied
@@ -85,10 +89,12 @@ def run_query(req: RunRequest):
     except Exception as exc:
         return JSONResponse({"error": f"Could not load index module '{index_mod_name}': {exc}"}, status_code=400)
 
-    results = run_retrieval(query, index_mod)
+    run = registry.create(req.run_id)
+    results = run_retrieval(query, index_mod, run)
 
     test_result = eval_case(test, results) if test else None
     return JSONResponse({
+        "run_id": run.id,
         "query": query,
         "results": results,
         "test_result": test_result,
