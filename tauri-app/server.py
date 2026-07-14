@@ -1,15 +1,11 @@
 """Asepsis Prototype — FastAPI backend. Serves the UI and wraps pageindex retrieval."""
 
-import atexit
 import json
 import os
 import secrets
-import shutil
-import subprocess
 import sys
 import threading
-import time
-import urllib.request
+from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Optional
 
@@ -30,140 +26,15 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 import uvicorn
 
-# ---------------------------------------------------------------------------
-# Ollama instance manager
-# ---------------------------------------------------------------------------
+from api.ollama_pool import (
+    BASE_PORT,
+    ensure_explainer,
+    ollama_bin,
+    set_ollama_instances,
+    shutdown_pool,
+    start_configured_instances,
+)
 
-BASE_PORT   = 11434
-_extra_procs: list[subprocess.Popen] = []   # processes we started on 11435+
-
-
-def _probe(url: str, timeout: float = 2.0) -> bool:
-    try:
-        urllib.request.urlopen(f"{url}/api/tags", timeout=timeout)
-        return True
-    except Exception:
-        return False
-
-
-def _wait_ready(url: str, timeout: float = 30.0) -> bool:
-    deadline = time.time() + timeout
-    while time.time() < deadline:
-        if _probe(url):
-            return True
-        time.sleep(0.5)
-    return False
-
-
-def _ollama_bin() -> Optional[str]:
-    return shutil.which("ollama")
-
-
-def set_ollama_instances(n: int) -> dict:
-    """Start/stop Ollama instances so exactly n are running. Returns status dict."""
-    global _extra_procs
-    n = max(1, n)
-
-    # Kill any extras we started beyond what's needed
-    while len(_extra_procs) > n - 1:
-        proc = _extra_procs.pop()
-        proc.terminate()
-        try:
-            proc.wait(timeout=4)
-        except subprocess.TimeoutExpired:
-            proc.kill()
-
-    # Start extra instances if needed
-    bin_path = _ollama_bin()
-    errors = []
-    while len(_extra_procs) < n - 1:
-        port = BASE_PORT + len(_extra_procs) + 1
-        url  = f"http://127.0.0.1:{port}"
-        if _probe(url):
-            # Already running externally — don't adopt it, just note it
-            _extra_procs.append(None)  # placeholder
-        elif bin_path:
-            env  = {**os.environ, "OLLAMA_HOST": f"127.0.0.1:{port}"}
-            proc = subprocess.Popen(
-                [bin_path, "serve"],
-                env=env,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-            )
-            _extra_procs.append(proc)
-            if not _wait_ready(url, timeout=20):
-                errors.append(f"Instance on port {port} did not start in time")
-        else:
-            errors.append("ollama not found in PATH — cannot start extra instances")
-            break
-
-    # Build the URL list and reconfigure pageindex
-    urls = [f"http://127.0.0.1:{BASE_PORT + i}" for i in range(n)]
-    # Only include instances that are actually responsive
-    live_urls = [u for u in urls if _probe(u)]
-    _pi.reconfigure_clients(live_urls if live_urls else [f"http://127.0.0.1:{BASE_PORT}"])
-
-    return {
-        "requested": n,
-        "live": len(live_urls),
-        "urls": live_urls,
-        "errors": errors,
-    }
-
-
-# ---------------------------------------------------------------------------
-# Dedicated explainer instance — isolated from the retrieval pool so on-demand
-# "why not selected" calls never steal a slot from an in-flight query.
-# ---------------------------------------------------------------------------
-
-EXPLAINER_PORT = BASE_PORT + 66          # 11500 — reserved for explanations only
-_explainer_procs: list[subprocess.Popen] = []
-_explainer_lock = threading.Lock()
-
-
-def ensure_explainer() -> Optional[str]:
-    """Return a URL for the explainer instance, lazily starting it on first use.
-
-    Falls back to the base instance only if no ollama binary is available to
-    spawn a dedicated one.
-    """
-    url = f"http://127.0.0.1:{EXPLAINER_PORT}"
-    with _explainer_lock:
-        if _probe(url):
-            return url
-        bin_path = _ollama_bin()
-        if not bin_path:
-            base = f"http://127.0.0.1:{BASE_PORT}"
-            return base if _probe(base) else None
-        env = {**os.environ, "OLLAMA_HOST": f"127.0.0.1:{EXPLAINER_PORT}"}
-        proc = subprocess.Popen(
-            [bin_path, "serve"], env=env,
-            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-        )
-        _explainer_procs.append(proc)
-        if _wait_ready(url, timeout=25):
-            return url
-        base = f"http://127.0.0.1:{BASE_PORT}"
-        return base if _probe(base) else None
-
-
-def _shutdown_explainer() -> None:
-    for proc in _explainer_procs:
-        try:
-            proc.terminate()
-            proc.wait(timeout=4)
-        except Exception:
-            try: proc.kill()
-            except Exception: pass
-
-
-atexit.register(_shutdown_explainer)
-
-
-# Initialise from env on startup
-_initial_n = int(os.environ.get("OLLAMA_INSTANCES", "1"))
-if _initial_n > 1:
-    set_ollama_instances(_initial_n)
 
 def _env_flag(name: str, default: bool) -> bool:
     raw = os.environ.get(name)
@@ -187,7 +58,19 @@ CORS_ORIGINS = [
     if o.strip()
 ]
 
-app = FastAPI(title="Asepsis Prototype")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Bring the Ollama pool up on startup and tear the extra instances down.
+
+    Importing this module must stay side-effect free so tests can load it
+    without spawning processes.
+    """
+    start_configured_instances()
+    yield
+    shutdown_pool()
+
+
+app = FastAPI(title="Asepsis Prototype", lifespan=lifespan)
 if CORS_ORIGINS:
     app.add_middleware(CORSMiddleware, allow_origins=CORS_ORIGINS,
                        allow_methods=["*"], allow_headers=["*"])
@@ -351,7 +234,7 @@ def get_config():
     return JSONResponse({
         "ollama_instances": len(_pi.OLLAMA_URLS),
         "ollama_urls": _pi.OLLAMA_URLS,
-        "ollama_bin_available": _ollama_bin() is not None,
+        "ollama_bin_available": ollama_bin() is not None,
         "retrieval_model": _pi.MODEL,
         "synthesis_model": getattr(_pi, "SYNTHESIS_MODEL", _pi.MODEL),
     })
