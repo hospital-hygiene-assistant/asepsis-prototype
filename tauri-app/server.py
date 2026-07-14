@@ -15,6 +15,7 @@ sys.path.insert(0, str(ROOT))
 import pageindex as _pi
 from pageindex import _node_from_dict
 from paths import ASSETS_DIR
+from retrieval_cases import RETRIEVAL_CASES
 from modules.registry import discover as _discover_modules, load as _load_module, defaults as _module_defaults
 
 import re
@@ -109,68 +110,6 @@ app.mount("/assets", StaticFiles(directory=ASSETS_DIR, check_dir=False), name="a
 
 
 
-# ---------------------------------------------------------------------------
-# Test definitions — mirrors tests/test_retrieval.py exactly
-# ---------------------------------------------------------------------------
-
-TEST_CASES = [
-    {
-        "id": "test_sodium_restriction",
-        "category": "SINGLE",
-        "description": "Sodium restriction",
-        "query": "What sodium intake level is recommended for hypertension and by how much does it reduce blood pressure?",
-        "expected": {"hypertension_guidelines": ["sodium-restriction"]},
-        "expected_any": {},
-    },
-    {
-        "id": "test_nmba_icu_two_leaves",
-        "category": "SINGLE",
-        "description": "NMBA in ARDS — two leaves",
-        "query": "When are neuromuscular blocking agents indicated in ARDS patients and how is the depth of blockade monitored?",
-        "expected": {"icu_sedation_guide": ["indications-in-ards", "monitoring-and-safety"]},
-        "expected_any": {},
-    },
-    {
-        "id": "test_hypertension_lifestyle_and_drugs",
-        "category": "MULTI",
-        "description": "Lifestyle + drug classes",
-        "query": "What lifestyle changes and which drug classes should be started for newly diagnosed hypertension?",
-        "expected": {"hypertension_guidelines": ["first-line-drug-classes"]},
-        "expected_any": {
-            "hypertension_guidelines": [
-                "sodium-restriction", "dash-diet",
-                "exercise-and-weight-management", "non-pharmacological-management-overview",
-            ],
-        },
-    },
-    {
-        "id": "test_sepsis_antibiotics_empiric_and_deescalation",
-        "category": "MULTI",
-        "description": "Sepsis antibiotics — empiric + de-escalation",
-        "query": "How should empiric antibiotics be chosen for sepsis by source of infection, and when should they be narrowed?",
-        "expected": {"antibiotic_stewardship": ["empiric-regimens-by-source", "de-escalation-and-duration"]},
-        "expected_any": {},
-    },
-    {
-        "id": "test_hypertension_ckd_cross_doc",
-        "category": "CROSS",
-        "description": "CKD antihypertensives + renal screening",
-        "query": "What antihypertensives are preferred for patients with CKD and what renal complications should be monitored?",
-        "expected": {
-            "hypertension_guidelines": ["hypertension-in-ckd"],
-            "diabetes_management": ["complication-screening"],
-        },
-        "expected_any": {},
-    },
-    {
-        "id": "test_septic_icu_patient",
-        "category": "CROSS",
-        "description": "Septic ICU patient — antibiotics + sedation",
-        "query": "A patient with septic shock is intubated in the ICU — what empiric antibiotics and sedation agents should be used?",
-        "expected": {"antibiotic_stewardship": ["empiric-regimens-by-source"]},
-        "expected_any": {"icu_sedation_guide": ["opioids", "propofol", "dexmedetomidine"]},
-    },
-]
 
 # ---------------------------------------------------------------------------
 # Routes
@@ -206,7 +145,7 @@ def root():
 
 @app.get("/api/tests")
 def get_tests():
-    return JSONResponse(TEST_CASES)
+    return JSONResponse(RETRIEVAL_CASES)
 
 
 @app.get("/api/status")
@@ -705,7 +644,7 @@ def run_query(req: RunRequest):
     query = req.query
 
     if req.test_id:
-        test = next((t for t in TEST_CASES if t["id"] == req.test_id), None)
+        test = next((t for t in RETRIEVAL_CASES if t["id"] == req.test_id), None)
         if test:
             query = test["query"]
 

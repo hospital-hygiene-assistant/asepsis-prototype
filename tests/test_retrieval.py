@@ -1,15 +1,9 @@
-"""
-End-to-end retrieval tests for the PageIndex pipeline.
-Requires Ollama running with the configured model. Slow (~2 min total).
+"""End-to-end retrieval quality against the real index.
 
-Each test defines:
-  expected  — {doc_name: set of nodeIds} that MUST appear in results
-  forbidden — {doc_name: set of nodeIds} that must NOT appear (optional)
+Needs Ollama running with the configured model, and a built index. Slow: every
+case walks every document. Skips rather than fails when the index is absent.
 
-Categories:
-  SINGLE    — narrow query relevant to one document, one specific leaf
-  MULTI     — query spanning multiple sections of the same document
-  CROSS     — composite query requiring nodes from two different documents
+The cases live in retrieval_cases.py, shared with /api/tests in the dev console.
 
 Run: pytest tests/test_retrieval.py -v
 """
@@ -19,166 +13,62 @@ from pathlib import Path
 
 import pytest
 
-sys.path.insert(0, str(Path(__file__).parent.parent))
-from pageindex import retrieve, INDEX_DIR
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+from pageindex import retrieve  # noqa: E402
+from paths import INDEX_DIR  # noqa: E402
+from retrieval_cases import RETRIEVAL_CASES  # noqa: E402
 
-
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
 
 def _retrieved_ids(doc_name: str, query: str) -> set[str]:
     try:
-        nodes = retrieve(doc_name, query)
+        return {node.node_id for node in retrieve(doc_name, query)}
     except FileNotFoundError:
-        pytest.skip(f"Index for '{doc_name}' not built — run pageindex.py first")
-    return {n.node_id for n in nodes}
+        pytest.skip(f"Index for '{doc_name}' not built — run 'pipeline.py index' first")
 
 
 def _all_retrieved(query: str) -> dict[str, set[str]]:
-    result: dict[str, set[str]] = {}
+    found = {}
     for idx in sorted(INDEX_DIR.glob("*.json")):
         ids = _retrieved_ids(idx.stem, query)
         if ids:
-            result[idx.stem] = ids
-    return result
+            found[idx.stem] = ids
+    return found
 
 
-def _assert_retrieved(retrieved: dict[str, set[str]], expected: dict[str, set[str]]):
+def _describe(retrieved: dict[str, set[str]]) -> str:
+    return "\n".join(f"  [{doc}] {sorted(ids)}" for doc, ids in retrieved.items()) or "  (nothing)"
+
+
+@pytest.mark.parametrize("case", RETRIEVAL_CASES, ids=lambda c: c["id"])
+def test_retrieval_case(case):
+    retrieved = _all_retrieved(case["query"])
+
     missing = {
-        doc: ids - retrieved.get(doc, set())
-        for doc, ids in expected.items()
-        if ids - retrieved.get(doc, set())
+        doc: set(ids) - retrieved.get(doc, set())
+        for doc, ids in case["expected"].items()
+        if set(ids) - retrieved.get(doc, set())
     }
     assert not missing, (
-        "Expected nodes NOT retrieved:\n"
-        + "\n".join(f"  [{d}] {ids}" for d, ids in missing.items())
-        + "\n\nActual:\n"
-        + "\n".join(f"  [{d}] {ids}" for d, ids in retrieved.items())
+        f"{case['category']} | {case['description']}\n"
+        f"Expected nodes NOT retrieved:\n"
+        + "\n".join(f"  [{doc}] {sorted(ids)}" for doc, ids in missing.items())
+        + f"\nActually retrieved:\n{_describe(retrieved)}"
     )
 
+    for doc, ids in case["expected_any"].items():
+        got = retrieved.get(doc, set())
+        assert got & set(ids), (
+            f"{case['category']} | {case['description']}\n"
+            f"Expected at least one of {sorted(ids)} from [{doc}], got: {sorted(got)}"
+        )
 
-def _assert_not_retrieved(retrieved: dict[str, set[str]], forbidden: dict[str, set[str]]):
     spurious = {
-        doc: ids & retrieved.get(doc, set())
-        for doc, ids in forbidden.items()
-        if ids & retrieved.get(doc, set())
+        doc: set(ids) & retrieved.get(doc, set())
+        for doc, ids in case["forbidden"].items()
+        if set(ids) & retrieved.get(doc, set())
     }
     assert not spurious, (
-        "Forbidden nodes WERE retrieved:\n"
-        + "\n".join(f"  [{d}] {ids}" for d, ids in spurious.items())
+        f"{case['category']} | {case['description']}\n"
+        f"Forbidden nodes WERE retrieved:\n"
+        + "\n".join(f"  [{doc}] {sorted(ids)}" for doc, ids in spurious.items())
     )
-
-
-# ---------------------------------------------------------------------------
-# SINGLE-DOCUMENT
-# ---------------------------------------------------------------------------
-
-class TestSingleDocument:
-
-    def test_sodium_restriction(self):
-        """
-        SINGLE | hypertension_guidelines
-        A specific sodium/diet query should return sodium-restriction and NOT drug nodes.
-        """
-        q = "What sodium intake level is recommended for hypertension and by how much does it reduce blood pressure?"
-        retrieved = _all_retrieved(q)
-        _assert_retrieved(retrieved, {
-            "hypertension_guidelines": {"sodium-restriction"},
-        })
-        _assert_not_retrieved(retrieved, {
-            "hypertension_guidelines": {"first-line-drug-classes", "fourth-line-agents"},
-        })
-
-    def test_nmba_icu_two_leaves(self):
-        """
-        SINGLE | icu_sedation_guide
-        Neuromuscular blockade question spanning two leaves in the same section.
-        Both indications and monitoring must be retrieved.
-        """
-        q = "When are neuromuscular blocking agents indicated in ARDS patients and how is the depth of blockade monitored?"
-        retrieved = _all_retrieved(q)
-        _assert_retrieved(retrieved, {
-            "icu_sedation_guide": {"indications-in-ards", "monitoring-and-safety"},
-        })
-        _assert_not_retrieved(retrieved, {
-            "icu_sedation_guide": {"propofol", "dexmedetomidine", "benzodiazepines"},
-        })
-
-
-# ---------------------------------------------------------------------------
-# MULTI-SECTION SAME DOCUMENT
-# ---------------------------------------------------------------------------
-
-class TestMultiSectionSameDocument:
-
-    def test_hypertension_lifestyle_and_drugs(self):
-        """
-        MULTI | hypertension_guidelines
-        Asking about both lifestyle and drugs requires nodes from two different
-        top-level sections of the same document.
-        """
-        q = "What lifestyle changes and which drug classes should be started for newly diagnosed hypertension?"
-        retrieved = _all_retrieved(q)
-        _assert_retrieved(retrieved, {
-            "hypertension_guidelines": {"first-line-drug-classes"},
-        })
-        # At least one lifestyle leaf must also be present
-        lifestyle_ids = {"sodium-restriction", "dash-diet", "exercise-and-weight-management",
-                         "non-pharmacological-management-overview"}
-        got = retrieved.get("hypertension_guidelines", set())
-        assert got & lifestyle_ids, (
-            f"Expected at least one lifestyle node, got: {got}"
-        )
-
-    def test_sepsis_antibiotics_empiric_and_deescalation(self):
-        """
-        MULTI | antibiotic_stewardship
-        Sepsis antibiotic management spans two sibling leaves in the same section.
-        """
-        q = "How should empiric antibiotics be chosen for sepsis by source of infection, and when should they be narrowed?"
-        retrieved = _all_retrieved(q)
-        _assert_retrieved(retrieved, {
-            "antibiotic_stewardship": {
-                "empiric-regimens-by-source",
-                "de-escalation-and-duration",
-            },
-        })
-
-
-# ---------------------------------------------------------------------------
-# CROSS-DOCUMENT
-# ---------------------------------------------------------------------------
-
-class TestCrossDocument:
-
-    def test_hypertension_ckd_cross_doc(self):
-        """
-        CROSS | hypertension_guidelines + diabetes_management
-        CKD-specific antihypertensives are in hypertension doc;
-        renal complication screening details are in diabetes doc.
-        """
-        q = "What antihypertensives are preferred for patients with CKD and what renal complications should be monitored?"
-        retrieved = _all_retrieved(q)
-        _assert_retrieved(retrieved, {
-            "hypertension_guidelines": {"hypertension-in-ckd"},
-            "diabetes_management": {"complication-screening"},
-        })
-
-    def test_septic_icu_patient(self):
-        """
-        CROSS | antibiotic_stewardship + icu_sedation_guide
-        A septic intubated patient requires empiric antibiotics (stewardship doc)
-        and sedation management (ICU doc). Both must be retrieved.
-        """
-        q = "A patient with septic shock is intubated in the ICU — what empiric antibiotics and sedation agents should be used?"
-        retrieved = _all_retrieved(q)
-        _assert_retrieved(retrieved, {
-            "antibiotic_stewardship": {"empiric-regimens-by-source"},
-        })
-        # At least one sedative agent leaf required from ICU doc
-        sedative_ids = {"opioids", "propofol", "dexmedetomidine"}
-        got = retrieved.get("icu_sedation_guide", set())
-        assert got & sedative_ids, (
-            f"Expected at least one sedative node from icu_sedation_guide, got: {got}"
-        )
