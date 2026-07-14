@@ -147,11 +147,17 @@ def massage(doc: IngestedDoc, stem: str, asset_url_base: str) -> str:
             heading = f"{'#' * level} {_caption_heading(a.caption)}"
             body = " ".join(x for x in (a.caption.strip(), a.description.strip())
                             if x)
-            image_url = f"{asset_url_base}/{Path(a.image).name}"
             pending_assets.append((len(out_lines), a))
-            out_lines += [heading, "",
-                          f"![{a.type} {a.number}]({image_url})", "",
-                          body, ""]
+            
+            if a.type == "table" and getattr(a, "table_markdown", ""):
+                out_lines += [heading, "",
+                              a.table_markdown, "",
+                              body, ""]
+            else:
+                image_url = f"{asset_url_base}/{Path(a.image).name}"
+                out_lines += [heading, "",
+                              f"![{a.type} {a.number}]({image_url})", "",
+                              body, ""]
             continue
         out_lines.append(line)
 

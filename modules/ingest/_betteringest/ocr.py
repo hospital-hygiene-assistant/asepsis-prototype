@@ -32,6 +32,8 @@ class Block:
     text: str    # recognised text (empty for blocks we didn't recognise)
     page: int
     bbox: tuple[float, float, float, float]   # rendered-image pixels
+    table_markdown: str = ""
+    custom_name: str | None = None
 
 
 @dataclass(frozen=True)
@@ -83,6 +85,7 @@ def run_ocr(
     config: OcrConfig = OcrConfig(),
     *,
     cache_dir: Path | None = _DEFAULT_CACHE_DIR,
+    progress_cb=None,
 ) -> list[Block]:
     """Layout-detect every page; recognise title blocks.  Cached by (pdf, config)."""
     if cache_dir is not None:
@@ -102,6 +105,11 @@ def run_ocr(
     blocks: list[Block] = []
     t0 = time.time()
     for page_idx in range(len(doc)):
+        if progress_cb:
+            try:
+                progress_cb(page_idx, len(doc))
+            except Exception:
+                pass
         img = doc[page_idx].render(scale=config.ocr_scale).to_pil()
         boxes = list(layout.predict(np.array(img)))[0]["boxes"]
         for b in boxes:

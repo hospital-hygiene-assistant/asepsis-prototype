@@ -157,7 +157,7 @@ BACKENDS = {
 
 
 def caption_assets(bi, doc, backend: str = "ollama", model: str | None = None,
-                   cache_dir: str | Path = ".betteringest_out") -> None:
+                   cache_dir: str | Path = ".betteringest_out", progress_cb=None) -> None:
     """Fill `doc.assets[*].description` via the chosen backend, write-through
     cached by (model, image sha).  `bi` is the BetterIngest instance (its
     describe_assets carries the prompt).  Mutates `doc` in place."""
@@ -185,7 +185,7 @@ def caption_assets(bi, doc, backend: str = "ollama", model: str | None = None,
         return
 
     chat = BACKENDS[backend](model)          # may raise CaptioningUnavailable
-    bi.describe_assets(doc, chat=chat)
+    bi.describe_assets(doc, chat=chat, progress_cb=progress_cb)
 
     with _cache_lock:
         cache = _cache_load(cache_file)      # re-read: parallel writers

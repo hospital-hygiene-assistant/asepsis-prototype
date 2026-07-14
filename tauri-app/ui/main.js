@@ -670,6 +670,12 @@ function initLibraryAdd() {
       const pct = p.total ? Math.round((p.done / p.total) * 100) : 0;
       fill.style.width = `${p.phase === 'index' || p.state === 'done' ? 100 : pct}%`;
       msg.textContent = p.message || p.phase || '';
+      if (p.state === 'awaiting_review') {
+        clearInterval(poll);
+        runBtn.disabled = false;
+        openLayoutReviewModal(p.review_docs);
+        return;
+      }
       if (p.state !== 'done' && p.state !== 'error') return;
 
       clearInterval(poll);
@@ -1825,6 +1831,12 @@ async function runIngest() {
     const pct = p.total ? Math.round((p.done / p.total) * 100) : 0;
     fill.style.width = `${p.phase === 'index' || p.state === 'done' ? 100 : pct}%`;
     msg.textContent = p.message || p.phase || '';
+    if (p.state === 'awaiting_review') {
+      clearInterval(poll);
+      runBtn.disabled = false;
+      openLayoutReviewModal(p.review_docs);
+      return;
+    }
     if (p.state !== 'done' && p.state !== 'error') return;
 
     clearInterval(poll);
@@ -1977,6 +1989,713 @@ function makeDraggable(elx) {
     document.onmouseup = null;
     document.onmousemove = null;
   }
+}
+
+/* ── Interactive Layout Review Modal controller ── */
+
+let lrmHistory = [];
+
+function pushLrmHistory() {
+  const doc = lrmState.docs[lrmState.docIdx];
+  if (!doc) return;
+  if (lrmHistory.length >= 50) {
+    lrmHistory.shift();
+  }
+  lrmHistory.push({
+    docIdx: lrmState.docIdx,
+    pageIdx: lrmState.pageIdx,
+    blocks: JSON.parse(JSON.stringify(doc.all_blocks))
+  });
+}
+
+function undoLrmAction() {
+  if (lrmHistory.length === 0) {
+    toast('Nothing to undo', 'warn');
+    return;
+  }
+  const state = lrmHistory.pop();
+  lrmState.docIdx = state.docIdx;
+  lrmState.pageIdx = state.pageIdx;
+  
+  const select = document.getElementById('lrm-doc-select');
+  if (select) select.value = state.docIdx;
+  
+  const doc = lrmState.docs[state.docIdx];
+  if (doc) {
+    doc.all_blocks = state.blocks;
+    toast('Undo successful', 'info');
+    renderLrmSidebar();
+    drawLrmOverlays();
+  }
+}
+
+window.addEventListener('keydown', (e) => {
+  const modal = document.getElementById('layout-review-modal');
+  if (!modal || modal.hidden) return;
+  if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+    e.preventDefault();
+    undoLrmAction();
+  }
+});
+
+let lrmState = {
+  docs: [],
+  docIdx: 0,
+  pageIdx: 0,
+  isDrawing: false,
+  startX: 0,
+  startY: 0,
+  dragSelector: null,
+  dragMode: null,
+  activeBlock: null,
+  activeHandle: null
+};
+
+function openLayoutReviewModal(reviewDocs) {
+  const modal = document.getElementById('layout-review-modal');
+  modal.hidden = false;
+  
+  lrmState.docs = reviewDocs;
+  lrmState.docIdx = 0;
+  lrmState.pageIdx = 0;
+  lrmHistory = []; // Reset history stack on modal open
+  
+  // Initialize unified blocks list
+  reviewDocs.forEach(doc => {
+    if (!doc.all_blocks) {
+      doc.all_blocks = [];
+      (doc.detected_assets || []).forEach(a => {
+        doc.all_blocks.push({
+          id: 'asset_' + Math.random().toString(36).substr(2, 9),
+          type: a.type,
+          page: a.page,
+          bbox: [...a.bbox],
+          name: a.name || null,
+          ignored: !!a.ignored
+        });
+      });
+      (doc.non_assets || []).forEach(n => {
+        doc.all_blocks.push({
+          id: 'text_' + Math.random().toString(36).substr(2, 9),
+          type: 'text',
+          label: n.label || 'text',
+          page: n.page,
+          bbox: [...n.bbox],
+          text: n.text || '',
+          level: n.level || null,
+          scanned: !!n.scanned,
+          ignored: !!n.ignored
+        });
+      });
+      doc.original_blocks = JSON.parse(JSON.stringify(doc.all_blocks));
+    }
+  });
+  
+  const select = document.getElementById('lrm-doc-select');
+  select.innerHTML = '';
+  reviewDocs.forEach((doc, idx) => {
+    const opt = document.createElement('option');
+    opt.value = idx;
+    opt.textContent = doc.stem;
+    select.appendChild(opt);
+  });
+  
+  select.onchange = () => {
+    lrmState.docIdx = parseInt(select.value, 10);
+    lrmState.pageIdx = 0;
+    renderLrmSidebar();
+    renderLrmPage();
+  };
+  
+  // Wire up canvas overlay mouse events for drawing bounding boxes
+  const overlay = document.getElementById('lrm-canvas-overlay');
+  
+  overlay.onmousedown = (e) => {
+    if (e.button !== 0) return;
+    if (lrmState.dragMode) return;
+    
+    // Check if they clicked a resize handle of an asset or block
+    if (e.target.classList.contains('lrm-bbox-handle')) return;
+    
+    lrmState.isDrawing = true;
+    
+    const rect = overlay.getBoundingClientRect();
+    lrmState.startX = e.clientX - rect.left;
+    lrmState.startY = e.clientY - rect.top;
+    lrmState.startX_global = e.clientX;
+    lrmState.startY_global = e.clientY;
+    
+    lrmState.dragSelector = document.createElement('div');
+    lrmState.dragSelector.className = 'lrm-drag-selector';
+    lrmState.dragSelector.style.left = lrmState.startX + 'px';
+    lrmState.dragSelector.style.top = lrmState.startY + 'px';
+    overlay.appendChild(lrmState.dragSelector);
+  };
+  
+  overlay.onmousemove = (e) => {
+    if (!lrmState.isDrawing) return;
+    const rect = overlay.getBoundingClientRect();
+    const currentX = e.clientX - rect.left;
+    const currentY = e.clientY - rect.top;
+    
+    const x0 = Math.min(lrmState.startX, currentX);
+    const y0 = Math.min(lrmState.startY, currentY);
+    const w = Math.abs(lrmState.startX - currentX);
+    const h = Math.abs(lrmState.startY - currentY);
+    
+    lrmState.dragSelector.style.left = x0 + 'px';
+    lrmState.dragSelector.style.top = y0 + 'px';
+    lrmState.dragSelector.style.width = w + 'px';
+    lrmState.dragSelector.style.height = h + 'px';
+  };
+  
+  overlay.onmouseup = (e) => {
+    if (!lrmState.isDrawing) return;
+    lrmState.isDrawing = false;
+    
+    const rect = overlay.getBoundingClientRect();
+    const currentX = e.clientX - rect.left;
+    const currentY = e.clientY - rect.top;
+    
+    const x0_view = Math.min(lrmState.startX, currentX);
+    const y0_view = Math.min(lrmState.startY, currentY);
+    const w_view = Math.abs(lrmState.startX - currentX);
+    const h_view = Math.abs(lrmState.startY - currentY);
+    
+    if (lrmState.dragSelector) {
+      lrmState.dragSelector.remove();
+      lrmState.dragSelector = null;
+    }
+    
+    const dist = Math.hypot(e.clientX - lrmState.startX_global, e.clientY - lrmState.startY_global);
+    const isTap = dist < 4;
+    
+    if (isTap) {
+      const doc = lrmState.docs[lrmState.docIdx];
+      const page = doc.pages[lrmState.pageIdx];
+      const img = document.getElementById('lrm-page-img');
+      
+      const fx = page.width / img.clientWidth;
+      const fy = page.height / img.clientHeight;
+      
+      const clickX = x0_view * fx;
+      const clickY = y0_view * fy;
+      
+      const hitBlock = findBlockAt(doc, lrmState.pageIdx, clickX, clickY);
+      if (hitBlock) {
+        pushLrmHistory();
+        hitBlock.ignored = !hitBlock.ignored;
+        renderLrmSidebar();
+        drawLrmOverlays();
+      }
+    } else if (w_view > 10 && h_view > 10) {
+      const doc = lrmState.docs[lrmState.docIdx];
+      const page = doc.pages[lrmState.pageIdx];
+      const img = document.getElementById('lrm-page-img');
+      
+      const fx = page.width / img.clientWidth;
+      const fy = page.height / img.clientHeight;
+      
+      const x0 = x0_view * fx;
+      const y0 = y0_view * fy;
+      const x1 = (x0_view + w_view) * fx;
+      const y1 = (y0_view + h_view) * fy;
+      
+      pushLrmHistory();
+      doc.all_blocks.push({
+        id: 'drawn_' + Math.random().toString(36).substr(2, 9),
+        type: 'figure',
+        page: lrmState.pageIdx,
+        bbox: [x0, y0, x1, y1],
+        ignored: false
+      });
+      
+      renderLrmSidebar();
+      drawLrmOverlays();
+    }
+  };
+  
+  // Wire action buttons
+  document.getElementById('lrm-select-entire-page-btn').onclick = () => {
+    const doc = lrmState.docs[lrmState.docIdx];
+    const page = doc.pages[lrmState.pageIdx];
+    pushLrmHistory();
+    doc.all_blocks.push({
+      id: 'drawn_' + Math.random().toString(36).substr(2, 9),
+      type: 'figure',
+      page: lrmState.pageIdx,
+      bbox: [0, 0, page.width, page.height],
+      ignored: false
+    });
+    renderLrmSidebar();
+    drawLrmOverlays();
+  };
+  
+  document.getElementById('lrm-clear-page-btn').onclick = () => {
+    const doc = lrmState.docs[lrmState.docIdx];
+    pushLrmHistory();
+    doc.all_blocks = doc.all_blocks.filter(b => b.page !== lrmState.pageIdx);
+    renderLrmSidebar();
+    drawLrmOverlays();
+  };
+  
+  document.getElementById('lrm-reset-btn').onclick = () => {
+    const doc = lrmState.docs[lrmState.docIdx];
+    if (doc && doc.original_blocks) {
+      pushLrmHistory();
+      doc.all_blocks = JSON.parse(JSON.stringify(doc.original_blocks));
+      toast('Layout reset to original detected state.', 'info');
+      renderLrmSidebar();
+      drawLrmOverlays();
+    }
+  };
+  
+  document.getElementById('lrm-cancel-btn').onclick = async () => {
+    try {
+      await apiPost('/api/ingest/cancel');
+    } catch (e) {
+      console.error('cancel error:', e);
+    }
+    document.getElementById('layout-review-modal').hidden = true;
+    toast('Ingestion cancelled.', 'warn');
+  };
+
+  document.getElementById('lrm-confirm-btn').onclick = async () => {
+    const btn = document.getElementById('lrm-confirm-btn');
+    btn.disabled = true;
+    btn.textContent = 'Ingesting…';
+    try {
+      const payload = {
+        docs: lrmState.docs.map(doc => {
+          const confirmedAssets = doc.all_blocks
+            .filter(b => !b.ignored && (b.type === 'figure' || b.type === 'table'))
+            .map(b => ({
+              type: b.type,
+              page: b.page,
+              bbox: b.bbox,
+              name: b.name || null
+            }));
+            
+          const confirmedNonAssets = doc.all_blocks
+            .filter(b => !b.ignored && b.type === 'text')
+            .map(b => ({
+              label: b.label || 'text',
+              text: b.text || '',
+              page: b.page,
+              bbox: b.bbox,
+              level: b.level || null
+            }));
+            
+          return {
+            stem: doc.stem,
+            assets: confirmedAssets,
+            non_assets: confirmedNonAssets
+          };
+        })
+      };
+      await apiPost('/api/ingest/confirm', payload);
+      document.getElementById('layout-review-modal').hidden = true;
+      toast('Ingest layout confirmed!', 'ok');
+      pollIngestProgressAfterConfirm();
+    } catch (e) {
+      toast(`Error finalizing ingest: ${e.message}`, 'err');
+      btn.disabled = false;
+      btn.textContent = 'Confirm & Ingest ✅';
+    }
+  };
+  
+  renderLrmSidebar();
+  renderLrmPage();
+}
+
+function renderLrmSidebar() {
+  const doc = lrmState.docs[lrmState.docIdx];
+  const list = document.getElementById('lrm-page-list');
+  list.innerHTML = '';
+  
+  doc.pages.forEach((page, idx) => {
+    const thumb = document.createElement('div');
+    thumb.className = 'lrm-page-thumb';
+    if (idx === lrmState.pageIdx) thumb.classList.add('active');
+    
+    const hasAssets = doc.all_blocks.some(b => b.page === idx && (b.type === 'figure' || b.type === 'table'));
+    if (hasAssets) thumb.classList.add('has-assets');
+    
+    thumb.innerHTML = `
+      <span class="status-dot"></span>
+      <span>Page ${idx + 1}</span>
+    `;
+    thumb.onclick = () => {
+      lrmState.pageIdx = idx;
+      document.querySelectorAll('.lrm-page-thumb').forEach(t => t.classList.remove('active'));
+      thumb.classList.add('active');
+      renderLrmPage();
+    };
+    list.appendChild(thumb);
+  });
+}
+
+function renderLrmPage() {
+  const doc = lrmState.docs[lrmState.docIdx];
+  const img = document.getElementById('lrm-page-img');
+  img.style.opacity = '0.5';
+  
+  img.src = `/api/render_pdf_page?path=${encodeURIComponent(doc.pdf_path)}&page=${lrmState.pageIdx + 1}`;
+  img.onload = () => {
+    img.style.opacity = '1';
+    setTimeout(() => {
+      drawLrmOverlays();
+    }, 50);
+  };
+}
+
+function getAssetBreadcrumb(doc, pageIdx, bbox) {
+  const y = bbox[1];
+  const headings = doc.non_assets
+    .filter(h => h.label === 'paragraph_title' && h.text && h.text.trim())
+    .sort((a, b) => {
+      if (a.page !== b.page) return a.page - b.page;
+      return a.bbox[1] - b.bbox[1];
+    });
+  const stack = [];
+  for (const h of headings) {
+    if (h.page > pageIdx || (h.page === pageIdx && h.bbox[1] >= y)) {
+      break;
+    }
+    const level = h.level || 1;
+    while (stack.length && stack[stack.length - 1].level >= level) {
+      stack.pop();
+    }
+    stack.push({ level: level, text: h.text.trim() });
+  }
+  if (stack.length === 0) return '';
+  return stack.map(item => item.text).join(' / ');
+}
+
+function drawLrmOverlays() {
+  const doc = lrmState.docs[lrmState.docIdx];
+  const pageIdx = lrmState.pageIdx;
+  const page = doc.pages[pageIdx];
+  const overlay = document.getElementById('lrm-canvas-overlay');
+  const img = document.getElementById('lrm-page-img');
+  
+  overlay.innerHTML = '';
+  
+  const viewportW = img.clientWidth;
+  const viewportH = img.clientHeight;
+  const origW = page.width;
+  const origH = page.height;
+  
+  const fx = origW / viewportW;
+  const fy = origH / viewportH;
+  
+  const pageBlocks = doc.all_blocks.filter(b => b.page === pageIdx);
+  const rightList = document.getElementById('lrm-assets-list');
+  rightList.innerHTML = '';
+  let assetIdx = 0;
+  
+  pageBlocks.forEach(b => {
+    const [x0, y0, x1, y1] = b.bbox;
+    
+    const box = document.createElement('div');
+    if (b.type === 'text') {
+      box.className = 'lrm-text-box';
+    } else {
+      box.className = 'lrm-bbox';
+    }
+    if (b.ignored) box.classList.add('ignored');
+    
+    box.style.left = (x0 / fx) + 'px';
+    box.style.top = (y0 / fy) + 'px';
+    box.style.width = ((x1 - x0) / fx) + 'px';
+    box.style.height = ((y1 - y0) / fy) + 'px';
+    
+    const breadcrumb = getAssetBreadcrumb(doc, pageIdx, b.bbox);
+    const defaultName = breadcrumb ? `${breadcrumb} / ${b.type.charAt(0).toUpperCase() + b.type.slice(1)}` : `${b.type.toUpperCase()}`;
+    
+    const label = document.createElement('span');
+    if (b.type === 'text') {
+      label.className = 'lrm-text-box-tag';
+      if (b.ignored) {
+        label.classList.add('ignored');
+        label.textContent = 'Ignored';
+      } else {
+        label.classList.add(b.scanned ? 'scanned' : 'digital');
+        label.textContent = b.scanned ? 'Scanned' : 'Digital';
+      }
+    } else {
+      label.className = 'lrm-bbox-label';
+      label.textContent = (b.name || b.type) + (b.ignored ? ' (Ignored)' : '');
+      label.style.pointerEvents = 'auto';
+      label.style.cursor = 'pointer';
+      label.title = 'Click to toggle type (figure / table / text)';
+    }
+    
+    label.onclick = (e) => {
+      e.stopPropagation();
+      pushLrmHistory();
+      if (b.type === 'figure') b.type = 'table';
+      else if (b.type === 'table') b.type = 'text';
+      else b.type = 'figure';
+      renderLrmSidebar();
+      drawLrmOverlays();
+    };
+    box.appendChild(label);
+    
+    const delBtn = document.createElement('span');
+    delBtn.className = 'lrm-bbox-delete';
+    delBtn.textContent = '✕';
+    delBtn.onclick = (e) => {
+      e.stopPropagation();
+      removeLrmBlock(b);
+    };
+    box.appendChild(delBtn);
+    
+    box.onmousemove = (e) => {
+      if (lrmState.dragMode) return;
+      const rect = box.getBoundingClientRect();
+      const clickX = e.clientX - rect.left;
+      const clickY = e.clientY - rect.top;
+      const threshold = 10;
+      
+      let handleType = '';
+      if (clickY < threshold) handleType += 't';
+      else if (clickY > rect.height - threshold) handleType += 'b';
+      
+      if (clickX < threshold) handleType += 'l';
+      else if (clickX > rect.width - threshold) handleType += 'r';
+      
+      if (handleType === 't' || handleType === 'b') {
+        box.style.cursor = 'ns-resize';
+      } else if (handleType === 'l' || handleType === 'r') {
+        box.style.cursor = 'ew-resize';
+      } else if (handleType === 'tl' || handleType === 'br') {
+        box.style.cursor = 'nwse-resize';
+      } else if (handleType === 'tr' || handleType === 'bl') {
+        box.style.cursor = 'nesw-resize';
+      } else {
+        box.style.cursor = 'move';
+      }
+    };
+    
+    box.onmousedown = (e) => {
+      if (e.target.classList.contains('lrm-bbox-delete') || e.target.classList.contains('lrm-bbox-label') || e.target.classList.contains('lrm-text-box-tag')) return;
+      e.stopPropagation();
+      e.preventDefault();
+      
+      const rect = box.getBoundingClientRect();
+      const clickX = e.clientX - rect.left;
+      const clickY = e.clientY - rect.top;
+      const threshold = 10;
+      
+      let handleType = '';
+      if (clickY < threshold) handleType += 't';
+      else if (clickY > rect.height - threshold) handleType += 'b';
+      
+      if (clickX < threshold) handleType += 'l';
+      else if (clickX > rect.width - threshold) handleType += 'r';
+      
+      const dragMode = handleType ? 'resize' : 'move';
+      startBoxDrag(e, b, dragMode, handleType);
+    };
+    
+    overlay.appendChild(box);
+    
+    if (b.type === 'figure' || b.type === 'table') {
+      assetIdx++;
+      const item = document.createElement('div');
+      item.className = 'lrm-asset-item';
+      if (b.ignored) item.style.opacity = '0.5';
+      item.innerHTML = `
+        <div class="lrm-asset-details" style="width: 100%;">
+          <span class="lrm-asset-title" style="cursor: pointer;" title="Click to toggle type">${b.type.toUpperCase()} #${assetIdx} 🔄 ${b.ignored ? '<span style="color:var(--red); font-weight:bold;">[IGNORED]</span>' : ''}</span>
+          <input type="text" class="lrm-asset-rename-input" placeholder="${escHtml(defaultName)}" value="${escHtml(b.name || '')}" ${b.ignored ? 'disabled' : ''}>
+          <span class="lrm-asset-coords" style="display: block; margin-top: 4px;">BBox: [${Math.round(x0)}, ${Math.round(y0)}, ${Math.round(x1)}, ${Math.round(y1)}]</span>
+        </div>
+        <button class="lrm-asset-delete" title="Delete" style="margin-left: 8px;">✕</button>
+      `;
+      
+      const renameInput = item.querySelector('.lrm-asset-rename-input');
+      renameInput.oninput = () => {
+        b.name = renameInput.value.trim() || null;
+      };
+      
+      item.querySelector('.lrm-asset-title').onclick = (e) => {
+        e.stopPropagation();
+        pushLrmHistory();
+        if (b.type === 'figure') b.type = 'table';
+        else if (b.type === 'table') b.type = 'text';
+        renderLrmSidebar();
+        drawLrmOverlays();
+      };
+      
+      item.onclick = (e) => {
+        if (e.target === renameInput || e.target.closest('.lrm-asset-delete') || e.target.closest('.lrm-asset-title')) return;
+        pushLrmHistory();
+        b.ignored = !b.ignored;
+        drawLrmOverlays();
+      };
+      
+      item.querySelector('.lrm-asset-delete').onclick = (e) => {
+        e.stopPropagation();
+        removeLrmBlock(b);
+      };
+      rightList.appendChild(item);
+    }
+  });
+}
+
+function startBoxDrag(e, blockObj, dragMode, handleType = null) {
+  pushLrmHistory();
+  const startX = e.clientX;
+  const startY = e.clientY;
+  const initBbox = [...blockObj.bbox];
+  
+  const onMouseMove = (moveEvt) => {
+    const dx_client = moveEvt.clientX - startX;
+    const dy_client = moveEvt.clientY - startY;
+    
+    const img = document.getElementById('lrm-page-img');
+    const doc = lrmState.docs[lrmState.docIdx];
+    const page = doc.pages[lrmState.pageIdx];
+    const fx = page.width / img.clientWidth;
+    const fy = page.height / img.clientHeight;
+    
+    const dx = dx_client * fx;
+    const dy = dy_client * fy;
+    
+    let [x0, y0, x1, y1] = initBbox;
+    
+    if (dragMode === 'move') {
+      x0 += dx; x1 += dx;
+      y0 += dy; y1 += dy;
+    } else if (dragMode === 'resize') {
+      if (handleType.includes('t')) y0 += dy;
+      if (handleType.includes('b')) y1 += dy;
+      if (handleType.includes('l')) x0 += dx;
+      if (handleType.includes('r')) x1 += dx;
+      
+      if (x1 - x0 < 10) {
+        if (handleType.includes('l')) x0 = x1 - 10;
+        if (handleType.includes('r')) x1 = x0 + 10;
+      }
+      if (y1 - y0 < 10) {
+        if (handleType.includes('t')) y0 = y1 - 10;
+        if (handleType.includes('b')) y1 = y0 + 10;
+      }
+    }
+    
+    blockObj.bbox = [
+      Math.max(0, x0),
+      Math.max(0, y0),
+      Math.min(page.width, x1),
+      Math.min(page.height, y1)
+    ];
+    
+    drawLrmOverlays();
+  };
+  
+  const onMouseUp = (upEvt) => {
+    const dist = Math.hypot(upEvt.clientX - startX, upEvt.clientY - startY);
+    const isTap = dist < 4;
+    
+    window.removeEventListener('mousemove', onMouseMove);
+    window.removeEventListener('mouseup', onMouseUp);
+    
+    if (isTap) {
+      blockObj.ignored = !blockObj.ignored;
+    }
+    
+    renderLrmSidebar();
+    drawLrmOverlays();
+  };
+  
+  window.addEventListener('mousemove', onMouseMove);
+  window.addEventListener('mouseup', onMouseUp);
+}
+
+function removeLrmBlock(block) {
+  const doc = lrmState.docs[lrmState.docIdx];
+  pushLrmHistory();
+  doc.all_blocks = doc.all_blocks.filter(b => b !== block);
+  renderLrmSidebar();
+  drawLrmOverlays();
+}
+
+function findBlockAt(doc, pageIdx, x, y) {
+  const textBlocks = doc.all_blocks.filter(b => b.page === pageIdx && b.type === 'text');
+  textBlocks.sort((a, b) => {
+    const areaA = (a.bbox[2] - a.bbox[0]) * (a.bbox[3] - a.bbox[1]);
+    const areaB = (b.bbox[2] - b.bbox[0]) * (b.bbox[3] - b.bbox[1]);
+    return areaA - areaB;
+  });
+  
+  for (const b of textBlocks) {
+    const [x0, y0, x1, y1] = b.bbox;
+    if (x >= x0 && x <= x1 && y >= y0 && y <= y1) {
+      return b;
+    }
+  }
+  return null;
+}
+
+function pollIngestProgressAfterConfirm() {
+  const setupProg = document.getElementById('setup-progress');
+  const addProg = document.getElementById('add-progress');
+  
+  const progWrap = (setupProg.hidden === false || addProg.hidden === true) ? setupProg : addProg;
+  const prefix = progWrap.id === 'setup-progress' ? 'setup' : 'add';
+  
+  const fill = document.getElementById(`${prefix}-progress-fill`);
+  const msg = document.getElementById(`${prefix}-progress-msg`);
+  
+  const gOverlay = document.getElementById('global-ingest-overlay');
+  const gFill = document.getElementById('gio-progress-fill');
+  const gMsg = document.getElementById('gio-msg');
+  
+  progWrap.hidden = false;
+  if (msg) msg.textContent = "Resuming finalization...";
+  if (gOverlay) gOverlay.hidden = false;
+  
+  const poll = setInterval(async () => {
+    let p;
+    try { p = await apiGet('/api/ingest/progress'); } catch { return; }
+    const pct = p.total ? Math.round((p.done / p.total) * 100) : 0;
+    
+    const displayPct = (p.phase === 'index' || p.state === 'done') ? 100 : pct;
+    const displayMsg = p.message || p.phase || '';
+    
+    if (fill) fill.style.width = `${displayPct}%`;
+    if (msg) msg.textContent = displayMsg;
+    
+    if (gFill) gFill.style.width = `${displayPct}%`;
+    if (gMsg) gMsg.textContent = displayMsg;
+    
+    if (p.state !== 'done' && p.state !== 'error') return;
+    
+    clearInterval(poll);
+    if (gOverlay) gOverlay.hidden = true;
+    
+    if (p.state === 'error') {
+      toast(`Ingest failed: ${p.message}`, 'err', 8000);
+      return;
+    }
+    
+    toast(`Library updated successfully.`, 'ok');
+    
+    const addPopover = document.getElementById('add-popover');
+    if (addPopover) addPopover.hidden = true;
+    progWrap.hidden = true;
+    
+    _docsCache = null;
+    try {
+      const docs = await getDocs();
+      renderTreemap(docs);
+      updateLibraryCount(docs);
+      refreshSourceSection();
+      if (docs.length && !(p.warnings || []).length) setTimeout(closeSetupCard, 1000);
+    } catch (e) { console.error('refresh error:', e); }
+  }, 500);
 }
 
 /* ── Boot ──────────────────────────────────────────────────── */

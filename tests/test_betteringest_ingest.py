@@ -193,3 +193,74 @@ def test_save_asset_crops_unlabeled_assets(tmp_path):
         assert tab["caption"] == "Table (unlabeled)"
         assert tab["physical_section"] == "Section 1"
 
+
+def test_massage_outputs_table_markdown(tmp_path):
+    crop = tmp_path / "assets" / "table_1.png"
+    crop.parent.mkdir(parents=True, exist_ok=True)
+    crop.write_bytes(b"\x89PNG\r\n\x1a\nfake")
+
+    markdown = "# Doc\n![table 1](assets/table_1.png)\n"
+    assets = [Asset(
+        asset_id="table_1", type="table", number=1,
+        caption="Table 1", page=1, image=str(crop),
+        sections=["doc"], description="A desc",
+        bbox=[0.0, 0.0, 100.0, 100.0],
+        table_markdown="| A | B |\n|---|---|\n| 1 | 2 |"
+    )]
+    doc = IngestedDoc(
+        doc_name="t", title="Doc", pdf_path="/dummy.pdf",
+        md_path="", markdown=markdown, assets=assets,
+        tree=None, blocks=[], ladder_diag={}, ocr_scale=2.0
+    )
+    out = massage(doc, "t", "/assets/t")
+    # Verify the table image link is replaced by the markdown table
+    assert "| A | B |" in out
+    assert "![table 1]" not in out
+
+
+def test_describe_assets_table_prompt_routing(tmp_path):
+    from unittest.mock import MagicMock
+    from modules.ingest._betteringest.betteringest import BetterIngest
+
+    crop = tmp_path / "assets" / "table_1.png"
+    crop.parent.mkdir(parents=True, exist_ok=True)
+    crop.write_bytes(b"\x89PNG\r\n\x1a\nfake")
+
+    assets = [
+        Asset(
+            asset_id="table_1", type="table", number=1,
+            caption="Table 1", page=1, image=str(crop),
+            table_markdown="| H1 | H2 |\n|---|---|\n| V1 | V2 |"
+        )
+    ]
+    doc = IngestedDoc(
+        doc_name="t", title="Doc", pdf_path="/dummy.pdf",
+        md_path="", markdown="", assets=assets,
+        tree=None, blocks=[], ladder_diag={}, ocr_scale=2.0
+    )
+    
+    chat_mock = MagicMock(return_value="This table shows columns H1 and H2.")
+    bi = BetterIngest(out_dir=tmp_path, cache_dir=tmp_path)
+    bi.describe_assets(doc, chat=chat_mock)
+
+    # Verify we sent only a text-based prompt (no images list)
+    chat_mock.assert_called_once()
+    messages = chat_mock.call_args[0][0]
+    assert len(messages) == 1
+    assert "images" not in messages[0]
+    assert "| H1 | H2 |" in messages[0]["content"]
+
+
+def test_breadcrumb_naming(tmp_path):
+    from modules.ingest._betteringest.tree import Node
+    from modules.ingest._betteringest.betteringest import find_breadcrumb
+
+    tree = Node(title="Doc Root", children=[
+        Node(title="Chapter 1", children=[
+            Node(title="Section A", children=[])
+        ])
+    ])
+
+    breadcrumb = find_breadcrumb(tree, "section a")
+    assert breadcrumb == ["Doc Root", "Chapter 1", "Section A"]
+

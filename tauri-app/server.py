@@ -472,6 +472,116 @@ def post_ingest_source(req: IngestSourceRequest):
                          "pdfs": [p.name for p in pdfs]})
 
 
+_active_reviews = {}
+
+
+class ConfirmAsset(BaseModel):
+    type: str  # "figure" | "table"
+    page: int  # 0-based page index
+    bbox: list[float]  # [x0, y0, x1, y1]
+    name: Optional[str] = None
+
+
+class ConfirmDoc(BaseModel):
+    stem: str
+    assets: list[ConfirmAsset]
+    non_assets: Optional[list[dict]] = None
+
+
+class ConfirmRequest(BaseModel):
+    docs: list[ConfirmDoc]
+
+
+@app.post("/api/ingest/cancel")
+def cancel_ingest():
+    """Cancel the active layout review suspension and reset the state."""
+    with _ingest_lock:
+        _ingest_state.update({
+            "state": "error",
+            "phase": "cancelled",
+            "message": "Ingestion cancelled by user.",
+            "warnings": [],
+            "docs": []
+        })
+        _active_reviews.clear()
+    return {"ok": True}
+
+
+@app.post("/api/ingest/confirm")
+def confirm_ingest(req: ConfirmRequest):
+    """Resume and finalize ingestion with the user-confirmed layout assets."""
+    with _ingest_lock:
+        if _ingest_state["state"] != "awaiting_review":
+            return JSONResponse({"error": "No ingest review is pending"}, status_code=400)
+        _ingest_state.update({"state": "running", "phase": "finalizing", "message": "Finalizing layout adjustments…"})
+
+    def work():
+        try:
+            import modules.ingest.betteringest_pdf as bpdf
+            
+            docs_done = []
+            for doc_req in req.docs:
+                stem = doc_req.stem
+                if stem not in _active_reviews:
+                    continue
+                review_data = _active_reviews[stem]
+                
+                confirmed_assets_dicts = [
+                    {"type": a.type, "page": a.page, "bbox": a.bbox, "name": a.name}
+                    for a in doc_req.assets
+                ]
+                
+                non_assets_dicts = doc_req.non_assets if doc_req.non_assets is not None else review_data["non_assets"]
+                
+                res = bpdf.finalize_ingestion(
+                    pdf_path=review_data["pdf_path"],
+                    confirmed_assets=confirmed_assets_dicts,
+                    non_assets=non_assets_dicts,
+                    progress_cb=lambda msg: _set_ingest_state(phase="captioning", message=msg)
+                )
+                docs_done.append(res["stem"])
+                
+            _set_ingest_state(phase="index", message="Rebuilding index…")
+            index_name = _module_defaults()["index"]
+            index_mod = _load_module("index", index_name)
+            kb_dir = Path("knowledge_base")
+            if not kb_dir.is_absolute():
+                kb_dir = ROOT / kb_dir
+            for md in sorted(kb_dir.glob("*.md")):
+                index_mod.build_index(md.stem)
+                
+            _active_reviews.clear()
+            _set_ingest_state(state="done", phase="done", message="Ingest complete with custom layout modifications", docs=docs_done)
+        except Exception as exc:
+            _set_ingest_state(state="error", message=str(exc))
+
+    threading.Thread(target=work, daemon=True).start()
+    return JSONResponse({"started": True})
+
+
+@app.get("/api/render_pdf_page")
+def render_pdf_page(path: str, page: int, scale: float = 2.0):
+    """Render a specific page of an arbitrary local PDF file as a PNG (used by layout review canvas)."""
+    import io
+    pdf_path = Path(path).expanduser()
+    if not pdf_path.exists():
+        return JSONResponse({"error": f"PDF file not found: {pdf_path}"}, status_code=404)
+    try:
+        import pypdfium2 as pdfium
+    except ImportError as exc:
+        return JSONResponse({"error": f"Needs pypdfium2: {exc}"}, status_code=501)
+    try:
+        doc = pdfium.PdfDocument(str(pdf_path))
+        if not (1 <= page <= len(doc)):
+            return JSONResponse({"error": f"page {page} out of range"}, status_code=404)
+        img = doc[page - 1].render(scale=scale).to_pil().convert("RGB")
+        buf = io.BytesIO()
+        img.save(buf, format="PNG")
+        return Response(content=buf.getvalue(), media_type="image/png")
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
+
+
 class IngestRunRequest(BaseModel):
     ingest_module: str = "betteringest_pdf"
     index_module: Optional[str] = None
@@ -497,6 +607,47 @@ def run_ingest(req: IngestRunRequest):
     def work():
         try:
             ingest_mod = _load_module("ingest", ingest_name)
+            
+            if ingest_name == "betteringest_pdf":
+                _set_ingest_state(phase="ocr", message="Performing layout detection...")
+                src_path = source_dir or getattr(ingest_mod, "get_source_dir")()
+                if not src_path:
+                    raise FileNotFoundError("BetterIngest source folder not set.")
+                pdfs = sorted(Path(src_path).glob("*.pdf"))
+                if not pdfs:
+                    raise FileNotFoundError(f"No PDF files found in {src_path}/")
+                
+                review_results = bpdf.prepare_layout_review(
+                    [str(p) for p in pdfs],
+                    progress_cb=lambda page, total, stem: _set_ingest_state(
+                        phase="ocr",
+                        message=f"Layout detecting {stem}: page {page + 1}/{total}."
+                    )
+                )
+                
+                with _ingest_lock:
+                    _active_reviews.clear()
+                    for r in review_results:
+                        _active_reviews[r["stem"]] = r
+                    
+                    review_docs = [
+                        {
+                            "stem": r["stem"],
+                            "pdf_path": r["pdf_path"],
+                            "pages": r["pages"],
+                            "detected_assets": r["detected_assets"],
+                            "non_assets": r["non_assets"]
+                        }
+                        for r in review_results
+                    ]
+                    _ingest_state.update({
+                        "state": "awaiting_review",
+                        "phase": "review",
+                        "message": "Awaiting layout confirmation from user...",
+                        "review_docs": review_docs
+                    })
+                return
+
             kwargs = {}
             if getattr(ingest_mod, "MODULE_INFO", {}).get("source") == "pdf_folder":
                 kwargs = {"source_dir": source_dir, "progress":
@@ -531,8 +682,7 @@ class IngestAddRequest(BaseModel):
 @app.post("/api/ingest/add")
 def add_to_library(req: IngestAddRequest):
     """Additive ingest: bring a single PDF or a folder of PDFs into the
-    library on top of the existing corpus, then re-index. Existing documents
-    are untouched (same-named stems are refreshed)."""
+    library on top of the existing corpus, then re-index."""
     p = Path(req.path).expanduser()
     if p.is_file() and p.suffix.lower() == ".pdf":
         pdfs = [p]
@@ -565,6 +715,40 @@ def add_to_library(req: IngestAddRequest):
 
     def work():
         try:
+            if req.ingest_module == "betteringest_pdf":
+                _set_ingest_state(phase="ocr", message="Performing layout detection...")
+                import modules.ingest.betteringest_pdf as bpdf
+                review_results = bpdf.prepare_layout_review(
+                    [str(p) for p in pdfs],
+                    progress_cb=lambda page, total, stem: _set_ingest_state(
+                        phase="ocr",
+                        message=f"Layout detecting {stem}: page {page + 1}/{total}."
+                    )
+                )
+                
+                with _ingest_lock:
+                    _active_reviews.clear()
+                    for r in review_results:
+                        _active_reviews[r["stem"]] = r
+                    
+                    review_docs = [
+                        {
+                            "stem": r["stem"],
+                            "pdf_path": r["pdf_path"],
+                            "pages": r["pages"],
+                            "detected_assets": r["detected_assets"],
+                            "non_assets": r["non_assets"]
+                        }
+                        for r in review_results
+                    ]
+                    _ingest_state.update({
+                        "state": "awaiting_review",
+                        "phase": "review",
+                        "message": "Awaiting layout confirmation from user...",
+                        "review_docs": review_docs
+                    })
+                return
+
             result = ingest_mod.run_paths(
                 [str(x) for x in pdfs],
                 progress=lambda info: _set_ingest_state(**info)) or {}
@@ -574,19 +758,18 @@ def add_to_library(req: IngestAddRequest):
             kb_dir = getattr(ingest_mod, "KB_DIR", Path("knowledge_base"))
             if not Path(kb_dir).is_absolute():
                 kb_dir = ROOT / kb_dir
-            for md in sorted(Path(kb_dir).glob("*.md")):
-                index_mod.build_index(md.stem)
+            for stem in result.get("docs", []):
+                index_mod.build_index(stem)
 
             _set_ingest_state(state="done", phase="done",
-                              message=f"Added {len(result.get('docs', []))} document(s)",
+                              message="Additive Ingest complete",
                               warnings=result.get("warnings", []),
                               docs=result.get("docs", []))
         except Exception as exc:
             _set_ingest_state(state="error", message=str(exc))
 
     threading.Thread(target=work, daemon=True).start()
-    return JSONResponse({"started": True, "pdf_count": len(pdfs),
-                         "pdfs": [x.name for x in pdfs]})
+    return JSONResponse({"started": True, "pdf_count": len(pdfs), "pdfs": [x.name for x in pdfs]})
 
 
 @app.get("/api/ingest/progress")

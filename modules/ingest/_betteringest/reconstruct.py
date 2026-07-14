@@ -290,14 +290,36 @@ def build_content_tree(blocks: list[Block], doc_title: str = "", pdf_path=None,
     doc = pdfium.PdfDocument(str(pdf_path)) if pdf_path else None
     tp: dict[int, tuple] = {}
 
+    _fallback_recognizer = None
+    _page_imgs: dict[int, "PIL.Image.Image"] = {}
+
     def text_of(b: Block) -> str:
+        nonlocal _fallback_recognizer
         if doc is None:
             return ""
         if b.page not in tp:
             pg = doc[b.page]
             tp[b.page] = (pg.get_textpage(), pg.get_height())
         page_tp, ph = tp[b.page]
-        return block_text(b, page_tp, ph, ocr_scale)
+        
+        txt = block_text(b, page_tp, ph, ocr_scale)
+        if txt.strip():
+            return txt
+            
+        # Fallback: Scanned/garbled PDF page. Run PaddleOCR on block crop.
+        if _fallback_recognizer is None:
+            from modules.ingest._betteringest.ocr import _load_models
+            _, _fallback_recognizer = _load_models()
+            
+        if b.page not in _page_imgs:
+            _page_imgs[b.page] = doc[b.page].render(scale=ocr_scale).to_pil()
+            
+        img = _page_imgs[b.page]
+        x0, y0, x1, y1 = b.bbox
+        crop = img.crop((int(x0), int(y0), int(x1), int(y1)))
+        
+        from modules.ingest._betteringest.ocr import _recognise
+        return _recognise(_fallback_recognizer, crop)
 
     root = Node(title=doc_title)
     stack: list[tuple[int, Node]] = [(0, root)]
@@ -338,7 +360,7 @@ def _prune_empty(node: Node) -> None:
                      if c.kind == "content" or c.children or c.content.strip()]
 
 
-_ASSET_CONTENT = {"image", "chart", "table"}
+_ASSET_CONTENT = {"image", "chart", "table", "figure"}
 
 
 def save_asset_crops(blocks: list[Block], pdf_path, out_dir,
@@ -403,6 +425,15 @@ def save_asset_crops(blocks: list[Block], pdf_path, out_dir,
         x0 = min(b[0] for b in boxes); y0 = min(b[1] for b in boxes)
         x1 = max(b[2] for b in boxes); y1 = max(b[3] for b in boxes)
 
+        table_md = getattr(cap, "table_markdown", "")
+        cust_name = getattr(cap, "custom_name", None)
+        if best is not None:
+            cb_obj = content[best]
+            if not table_md:
+                table_md = getattr(cb_obj, "table_markdown", "")
+            if not cust_name:
+                cust_name = getattr(cb_obj, "custom_name", None)
+
         count[atype] += 1
         fname = f"{atype}_{count[atype]}.png"
         page_img(cap.page).crop((int(x0), int(y0), int(x1), int(y1))).save(out_dir / fname)
@@ -416,6 +447,8 @@ def save_asset_crops(blocks: list[Block], pdf_path, out_dir,
             # locate the asset in the source PDF without re-detecting it.
             "bbox": [x0, y0, x1, y1],
             "physical_section": physical_sections.get(id(cap), ""),
+            "table_markdown": table_md,
+            "custom_name": cust_name,
         })
 
     # Process remaining uncaptioned content blocks (image, chart, table)
@@ -424,6 +457,9 @@ def save_asset_crops(blocks: list[Block], pdf_path, out_dir,
             continue
         atype = "table" if cb.label == "table" else "figure"
         x0, y0, x1, y1 = cb.bbox
+
+        table_md = getattr(cb, "table_markdown", "")
+        cust_name = getattr(cb, "custom_name", None)
 
         count[atype] += 1
         fname = f"{atype}_{count[atype]}.png"
@@ -439,6 +475,8 @@ def save_asset_crops(blocks: list[Block], pdf_path, out_dir,
             "has_content": True,
             "bbox": [x0, y0, x1, y1],
             "physical_section": physical_sections.get(id(cb), ""),
+            "table_markdown": table_md,
+            "custom_name": cust_name,
         })
 
     return manifest

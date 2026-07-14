@@ -329,6 +329,66 @@
   </div>
 </div>
 
+<!-- ══ Global Ingest Overlay ══ -->
+<div id="global-ingest-overlay" class="global-ingest-overlay" hidden>
+  <div class="gio-card">
+    <div class="gio-spinner"></div>
+    <div class="gio-content">
+      <h3>Finalizing Ingestion</h3>
+      <p id="gio-msg">Processing confirmed layouts…</p>
+      <div class="gio-progress-bar">
+        <div id="gio-progress-fill" class="gio-progress-fill"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ Interactive Layout Review Modal ══ -->
+<div id="layout-review-modal" class="layout-review-modal" hidden>
+  <div class="lrm-backdrop"></div>
+  <div class="lrm-window">
+    <div class="lrm-header">
+      <div class="lrm-header-left">
+        <h2>Adjust PDF Layout Boundaries</h2>
+        <p class="lrm-header-sub">Verify detected figures/tables page-by-page. Click & drag on the page to draw a custom asset bounding box.</p>
+      </div>
+      <div class="lrm-header-actions">
+        <button id="lrm-select-entire-page-btn" class="lrm-btn secondary" title="Mark this entire page as a single figure/graphic asset">🖼️ Select Entire Page</button>
+        <button id="lrm-clear-page-btn" class="lrm-btn secondary" title="Remove all asset bounding boxes from this page">🧹 Clear Page</button>
+        <button id="lrm-reset-btn" class="lrm-btn secondary" title="Reset current document layout changes back to originally detected state">🔄 Reset Layout</button>
+        <button id="lrm-confirm-btn" class="lrm-btn primary" title="Confirm layouts and resume ingestion">Confirm & Ingest ✅</button>
+        <button id="lrm-cancel-btn" class="lrm-btn secondary" title="Cancel ingestion entirely" style="border-color: var(--red); color: var(--red);">✕ Cancel</button>
+      </div>
+    </div>
+    <div class="lrm-body">
+      <!-- Left sidebar: List of documents & page thumbnails -->
+      <div class="lrm-sidebar">
+        <div class="lrm-doc-selector-container">
+          <label>Document</label>
+          <select id="lrm-doc-select"></select>
+        </div>
+        <div class="lrm-pages-label">Pages</div>
+        <div id="lrm-page-list" class="lrm-page-list"></div>
+      </div>
+      
+      <!-- Center: interactive canvas workspace -->
+      <div class="lrm-workspace">
+        <div id="lrm-canvas-container" class="lrm-canvas-container">
+          <img id="lrm-page-img" alt="PDF Page render">
+          <div id="lrm-canvas-overlay" class="lrm-canvas-overlay"></div>
+        </div>
+      </div>
+      
+      <!-- Right sidebar: assets list & details -->
+      <div class="lrm-assets-panel">
+        <h3>Page Assets</h3>
+        <p class="lrm-panel-sub">Detected/drawn boundaries on this page:</p>
+        <div id="lrm-assets-list" class="lrm-assets-list"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- ══ Reader (document viewer) ══ -->
 <div id="doc-modal" class="doc-modal" hidden>
   <div class="doc-modal-backdrop"></div>
