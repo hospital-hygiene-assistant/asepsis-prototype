@@ -74,13 +74,18 @@ class TestUnevaluatedLeafIsNotRejected:
         assert result["reason"] == "off topic"
 
     def test_a_real_hit_still_retrieves(self):
+        # The quote is copied verbatim out of leaf().content on purpose: the
+        # design says a leaf earns "retrieved" by quoting its own text, so the
+        # fixture for a *good* verdict must not be one that fails that rule.
         with patch.object(
             pi_search, "_chat",
-            return_value='{"relevant": true, "reason": "states the target", "quote": "HbA1c <53"}',
+            return_value='{"relevant": true, "reason": "states the target", '
+                         '"quote": "HbA1c target is <53"}',
         ):
             _, result = pi_search._evaluate_leaf(leaf(), "q", "doc", "crumb", "parent", run=RunState())
         assert result["status"] == "retrieved"
-        assert result["quote"] == "HbA1c <53"
+        assert result["quote"] == "HbA1c target is <53"
+        assert result["quote"] in leaf().content
 
 
 class TestCountEvalErrors:
