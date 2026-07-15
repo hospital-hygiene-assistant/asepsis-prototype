@@ -7,7 +7,12 @@ becomes synthetic leaves, summaries are heuristic. The model is consulted only
 at query time, to prune sections and judge leaves.
 """
 
-from pageindex import build_index, retrieve, retrieve_with_metadata  # noqa: F401
+from pageindex import build_index, retrieve, retrieve_with_metadata
+
+# The registry loads this module and calls these off it, so the re-export is the
+# whole point. Naming them here states that, where a lint suppression only hid
+# the complaint — and pyflakes, which ignores suppressions, reported them anyway.
+__all__ = ["build_index", "retrieve", "retrieve_with_metadata", "MODULE_INFO"]
 
 MODULE_INFO = {
     "stage": "index",

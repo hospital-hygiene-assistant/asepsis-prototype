@@ -1,0 +1,19 @@
+# modules/ingest/_betteringest/ is vendored upstream code, adapted but not ours
+# to test — measuring it drags the number down (~24% over ~960 statements) while
+# saying nothing about the code we write. Exclude it so the figure tracks what we
+# are actually responsible for.
+[run]
+branch = True
+omit =
+    */_betteringest/*
+    */tests/*
+    */.venv/*
+    */__pycache__/*
+
+[report]
+show_missing = True
+skip_covered = True
+exclude_lines =
+    pragma: no cover
+    if __name__ == .__main__.:
+    raise NotImplementedError

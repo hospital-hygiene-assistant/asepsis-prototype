@@ -1,0 +1,45 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: "ci-${{ github.ref }}"
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            requirements-dev.txt
+
+      # requirements-ocr.txt (paddle, ~1GB) is deliberately absent: the OCR path
+      # imports it lazily, so everything here runs without it.
+      - run: pip install -r requirements-dev.txt
+
+      # F rules only — undefined names, broken imports, unused imports. The class
+      # of bug that has actually shipped here twice, both times with the whole
+      # suite green. Style rules are not selected on purpose.
+      - name: Lint
+        run: ruff check . --select F,E9
+
+      # No Ollama on the runner. Tests needing a live model skip themselves; they
+      # do not report a missing model as a retrieval-quality failure.
+      - name: Test
+        run: pytest -q --cov --cov-report=term
+
+      # Not gated yet: coverage is ~57% of our own code against a target of 80%.
+      # The number is printed so the gap stays visible; --cov-fail-under=80 goes
+      # in once the engine tests land, rather than pinning the bar to today.
