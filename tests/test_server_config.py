@@ -61,6 +61,17 @@ class TestEnvFlag:
         assert server_env().SERVE_UI is True
 
 
+class TestStaticMounts:
+    def test_an_uningested_asset_is_404_not_500(self, server_env):
+        """A fresh checkout has no crops directory — it appears on the first PDF
+        ingest. StaticFiles re-checks the directory on every request, so
+        check_dir=False only defers the failure: mounting over a missing one
+        turned every /assets request into a 500.
+        """
+        client = TestClient(server_env().app, raise_server_exceptions=False)
+        assert client.get("/assets/never-ingested.png").status_code == 404
+
+
 class TestHeadlessMode:
     def test_console_routes_are_absent_when_headless(self, server_env):
         module = server_env(ASEPSIS_SERVE_UI="0")

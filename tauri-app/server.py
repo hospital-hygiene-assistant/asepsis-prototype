@@ -64,13 +64,17 @@ for router in (status.router, documents.router, ingest.router,
                retrieval.router, chat.router, console.router):
     app.include_router(router)
 
-if SERVE_UI:
-    # check_dir=False so a missing ui/ degrades to 404 on the console routes
-    # rather than taking the API down at import.
-    app.mount("/static", StaticFiles(directory=console.UI_DIR, check_dir=False), name="static")
+if SERVE_UI and console.UI_DIR.is_dir():
+    # Mount only when it is there: check_dir=False skips the check at import but
+    # StaticFiles re-checks per request and raises, so a missing ui/ would 500
+    # rather than 404.
+    app.mount("/static", StaticFiles(directory=console.UI_DIR), name="static")
 
-# check_dir=False: the crops directory only appears on the first PDF ingest.
-app.mount("/assets", StaticFiles(directory=ASSETS_DIR, check_dir=False), name="assets")
+# The crops directory only appears on the first PDF ingest, and a mount over a
+# missing directory 500s every request (see above). Create it so an asset that
+# has not been ingested yet is an honest 404.
+ASSETS_DIR.mkdir(parents=True, exist_ok=True)
+app.mount("/assets", StaticFiles(directory=ASSETS_DIR), name="assets")
 
 
 if __name__ == "__main__":
