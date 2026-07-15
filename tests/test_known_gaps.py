@@ -21,6 +21,7 @@ from api import pdf
 from api.pdf import _normalized_bbox
 from pageindex import RunState
 from pageindex import search as pi_search
+from api.runs import RunRegistry
 from pageindex.nodes import PageNode, _node_to_dict
 
 LEAF = PageNode(
@@ -91,6 +92,58 @@ class TestC2HighlightFramesTheHeading:
             "regions": [[2, 50, 100, 500, 400]],   # body continues on page 2
         }
         assert _normalized_bbox("doc", pin)["page"] == 2
+
+
+class TestSectionPrunedWithoutAVerdict:
+    """Narrow, and found while covering the engine — not one of the reviewed
+    CRITICALs, recorded here because it is the same family.
+
+    The two common failures are handled correctly: a connection error and an
+    unparseable reply both fail open and keep the section. But a reply that *is*
+    valid JSON and is not an object — an array, a bare string — falls past the
+    `isinstance(result, dict)` guard to verdict=False and drops the entire branch
+    with reason='', which reads downstream exactly like a genuine "off topic".
+    """
+
+    @pytest.mark.xfail(strict=True, reason="a non-object JSON reply prunes the branch as if judged")
+    def test_a_reply_that_is_not_a_verdict_does_not_prune(self):
+        node = PageNode(node_id="isolation", title="Isolation", heading_level=1, line_idx=0,
+                        summary="s", children=[LEAF])
+        with patch.object(pi_search, "_chat", return_value='["not", "a", "verdict"]'):
+            verdict, _ = pi_search._check_section_relevant(node, "q", "crumb", run=RunState())
+        assert verdict is True, "nothing was judged, so nothing may be pruned"
+
+
+class TestM2ADroppedDocumentLeavesNoTrace:
+    """`run_retrieval` skips a document whose index has gone missing with a bare
+    `continue`. It never enters the results, so it is not counted by
+    count_eval_errors, not named in the summary, and not visible anywhere: the
+    question was answered from a corpus that quietly lost a document, and the
+    response looks identical to one where the whole library was read.
+    """
+
+    @pytest.mark.xfail(strict=True, reason="M2: a skipped document is not surfaced anywhere")
+    def test_a_document_that_could_not_be_read_is_reported(self, tmp_path, monkeypatch):
+        from api import retrieval as api_retrieval
+
+        monkeypatch.setattr(api_retrieval, "INDEX_DIR", tmp_path)
+        root = PageNode(node_id="root", title="Guideline", heading_level=1, line_idx=0,
+                        summary="s", children=[LEAF])
+        for stem in ("present", "vanished"):
+            (tmp_path / f"{stem}.json").write_text(
+                json.dumps([_node_to_dict(root)]), encoding="utf-8")
+
+        class OneDocVanishes:
+            def retrieve_with_metadata(self, doc_name, query, state):
+                if doc_name == "vanished":
+                    raise FileNotFoundError("index deleted mid-run")
+                return [], {}
+
+        run = RunRegistry().create("probe")
+        results = api_retrieval.run_retrieval("q", OneDocVanishes(), run)
+        # Neutral on the fix: name it in the results, count it as an error, or
+        # fold it into the partial-grounding caveat — but it must not vanish.
+        assert "vanished" in json.dumps(results), "the lost document leaves no trace"
 
 
 class TestC3RetrieveCannotSayItDidNotSearch:

@@ -37,6 +37,77 @@ def corpus(tmp_path, monkeypatch):
     return path
 
 
+class TestRenderedPageSize:
+    """The denominator of the whole provenance chain.
+
+    A pin's bbox is in render pixels at the document's ingest ocr_scale, and
+    _normalized_bbox divides by this to get the 0..1 fractions the client
+    overlays. Get it wrong and every highlight is misplaced by that ratio — with
+    no error anywhere, because the numbers stay perfectly plausible.
+    """
+
+    @pytest.fixture
+    def sized_pdf(self, tmp_path, monkeypatch):
+        path = tmp_path / "guide.pdf"
+        doc = pdfium.PdfDocument.new()
+        doc.new_page(200, 400)
+        doc.new_page(200, 400)
+        doc.save(str(path))
+        monkeypatch.setattr(
+            pdf, "load_sources",
+            lambda: {"guide": {"pdf": str(path), "ocr_scale": 2.0}},
+        )
+        pdf._page_size_cache.clear()
+        return path
+
+    def test_the_page_size_is_scaled_by_the_ingest_scale(self, sized_pdf):
+        # 200x400pt at ocr_scale 2.0 is what the pin's pixels were measured in.
+        assert pdf._rendered_page_size("guide", 1) == (400.0, 800.0)
+
+    def test_an_unknown_document_has_no_size(self, sized_pdf):
+        assert pdf._rendered_page_size("never-ingested", 1) is None
+
+    def test_a_page_outside_the_document_has_no_size(self, sized_pdf):
+        assert pdf._rendered_page_size("guide", 3) is None
+        assert pdf._rendered_page_size("guide", 0) is None
+
+    def test_a_deleted_source_pdf_has_no_size(self, sized_pdf):
+        sized_pdf.unlink()
+        assert pdf._rendered_page_size("guide", 1) is None
+
+    def test_the_size_is_cached(self, sized_pdf):
+        pdf._rendered_page_size("guide", 1)
+        assert len(pdf._page_size_cache) == 1
+
+    def test_reingesting_the_pdf_invalidates_the_cached_size(self, sized_pdf, monkeypatch):
+        """Keyed by mtime: a re-ingest that changes the page geometry must not
+        keep normalizing new pins against the old page."""
+        assert pdf._rendered_page_size("guide", 1) == (400.0, 800.0)
+        doc = pdfium.PdfDocument.new()
+        doc.new_page(100, 100)
+        doc.save(str(sized_pdf))
+        import os, time
+        os.utime(sized_pdf, (time.time() + 10, time.time() + 10))
+        assert pdf._rendered_page_size("guide", 1) == (200.0, 200.0)
+
+    def test_the_cache_is_bounded(self, tmp_path, monkeypatch):
+        """Needs more distinct pages than the cap: asking for two pages twice
+        would sit inside the cap whether eviction worked or not."""
+        path = tmp_path / "long.pdf"
+        doc = pdfium.PdfDocument.new()
+        for _ in range(6):
+            doc.new_page(200, 400)
+        doc.save(str(path))
+        monkeypatch.setattr(
+            pdf, "load_sources", lambda: {"long": {"pdf": str(path), "ocr_scale": 1.0}})
+        pdf._page_size_cache.clear()
+        monkeypatch.setattr(pdf, "_PAGE_SIZE_CACHE_MAX", 2)
+
+        for page in range(1, 7):
+            assert pdf._rendered_page_size("long", page) == (200.0, 400.0)
+        assert len(pdf._page_size_cache) <= 2, "six distinct pages must not all be retained"
+
+
 class TestPageRender:
     def test_renders_a_page_as_png(self, client, corpus):
         response = client.get("/api/document/guide/page/1")
