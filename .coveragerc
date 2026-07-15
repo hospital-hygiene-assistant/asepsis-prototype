@@ -1,11 +1,23 @@
-# modules/ingest/_betteringest/ is vendored upstream code, adapted but not ours
-# to test — measuring it drags the number down (~24% over ~960 statements) while
-# saying nothing about the code we write. Exclude it so the figure tracks what we
-# are actually responsible for.
+# What is measured is the code we write and CI can actually run.
+#
+# _betteringest/ is vendored upstream code, adapted but not ours to test: ~960
+# statements at ~24% that say nothing about what we write.
+#
+# betteringest_pdf.py and _captioning.py are ours, but they are the OCR path —
+# they need paddlepaddle + paddlex (requirements-ocr.txt, ~1GB), which CI does
+# not install and should not. Their deterministic half, the massager, IS tested
+# (modules/ingest/_massage.py is at 96% via tests/test_betteringest_ingest.py);
+# what is excluded here is the orchestration that cannot run without the engine.
+#
+# Nothing else is excluded. ollama_pool.py spawns subprocesses and is awkward,
+# but it is where the unbounded-instances finding (H6) lives, so it is tested
+# rather than hidden.
 [run]
 branch = True
 omit =
     */_betteringest/*
+    */modules/ingest/betteringest_pdf.py
+    */modules/ingest/_captioning.py
     */tests/*
     */.venv/*
     */__pycache__/*

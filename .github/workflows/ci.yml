@@ -37,9 +37,10 @@ jobs:
 
       # No Ollama on the runner. Tests needing a live model skip themselves; they
       # do not report a missing model as a retrieval-quality failure.
+      #
+      # Gated at 80%: what .coveragerc measures is the code we write and CI can
+      # run, so the bar is real rather than an average softened by vendored and
+      # OCR-only modules. xfail(strict) tests count as passing while the gaps
+      # they document are open, and turn into failures the day they are closed.
       - name: Test
-        run: pytest -q --cov --cov-report=term
-
-      # Not gated yet: coverage is ~57% of our own code against a target of 80%.
-      # The number is printed so the gap stays visible; --cov-fail-under=80 goes
-      # in once the engine tests land, rather than pinning the bar to today.
+        run: pytest -q --cov --cov-report=term --cov-fail-under=80

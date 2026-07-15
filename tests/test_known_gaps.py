@@ -146,6 +146,30 @@ class TestM2ADroppedDocumentLeavesNoTrace:
         assert "vanished" in json.dumps(results), "the lost document leaves no trace"
 
 
+class TestH6InstanceCountIsUnbounded:
+    """`ConfigRequest.ollama_instances` is a bare `int` with no Field bound
+    (tauri-app/api/routers/status.py), and set_ollama_instances only clamps the
+    lower end. One unauthenticated POST asking for 500 will try to fork ~499
+    `ollama serve` processes, each an independent runtime with its own memory.
+
+    Low risk on a laptop behind localhost; an unauthenticated resource-exhaustion
+    primitive the day this has a URL. The fix is one line: Field(ge=1, le=8).
+    """
+
+    @pytest.mark.xfail(strict=True, reason="H6: ollama_instances has no upper bound")
+    def test_an_absurd_instance_count_is_refused(self, monkeypatch):
+        import server
+        from api.routers import status as status_router
+        from fastapi.testclient import TestClient
+
+        # Never actually spawn: the point is that the request is not rejected
+        # before it ever reaches the spawner.
+        monkeypatch.setattr(status_router, "set_ollama_instances",
+                            lambda n: {"requested": n, "live": 1, "urls": [], "errors": []})
+        response = TestClient(server.app).post("/api/config", json={"ollama_instances": 500})
+        assert response.status_code == 422, "a request to fork 499 processes should not validate"
+
+
 class TestC3RetrieveCannotSayItDidNotSearch:
     """`retrieve()` returns `list[PageNode]`, and an empty list means two
     irreconcilable things: the library was searched and holds nothing relevant,
@@ -200,3 +224,39 @@ class TestC3RetrieveCannotSayItDidNotSearch:
         with patch.object(pi_search, "_chat",
                           return_value='{"relevant": false, "reason": "off topic"}'):
             assert pi_search.retrieve("hygiene", "unrelated", RunState()) == []
+
+    @pytest.mark.xfail(strict=True, reason="C3: pipeline.py swallows the failure even when raised")
+    def test_the_cli_does_not_swallow_a_retrieval_failure(self, tmp_path, monkeypatch, capsys):
+        """Fixing the engine is not enough, and this is the trap.
+
+        pipeline.py:98 catches every exception per document, prints a warning to
+        stdout, and carries on. So even once retrieve() refuses loudly, the CLI
+        will reduce that refusal to a warning nobody reads and still hand the
+        empty result to synthesis — which answers "No relevant passages found."
+        Whoever closes C3 has to close this caller too.
+        """
+        import pipeline
+
+        index_dir = tmp_path / "index"
+        index_dir.mkdir()
+        (index_dir / "hygiene.json").write_text("[]", encoding="utf-8")
+        monkeypatch.setattr(pipeline, "INDEX_DIR", index_dir)
+        monkeypatch.setattr(pipeline, "defaults", lambda: {
+            "ingest": "basic_markdown", "index": "pageindex_custom", "query": "ollama_synthesis"})
+
+        class Unavailable(Exception):
+            pass
+
+        class Engine:
+            def retrieve(self, stem, text):
+                raise Unavailable("the model could not be reached")
+
+        class Synthesis:
+            def synthesise(self, text, nodes_by_doc):
+                return "No relevant passages found."
+
+        monkeypatch.setattr(pipeline, "load",
+                            lambda stage, name: Engine() if stage == "index" else Synthesis())
+
+        with pytest.raises(Unavailable):
+            pipeline.query("Welche Maßnahmen bei MRSA?")
