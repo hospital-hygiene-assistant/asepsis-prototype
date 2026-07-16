@@ -9,7 +9,14 @@ import re
 from dataclasses import dataclass, field
 from typing import Optional
 
-from .pins import PIN_FENCE_OPEN, _parse_pin_yaml, _strip_pins
+from .pins import (
+    PIN_FENCE_OPEN,
+    PinValidationError,
+    ProvenancePin,
+    _strip_pins,
+    parse_pin,
+    pin_from_dict,
+)
 
 HEADING_RE = re.compile(r"^(#{1,6})\s+(.+)$")
 
@@ -28,7 +35,7 @@ class PageNode:
     content: Optional[str] = None
     synthetic: bool = False
     parent_title: Optional[str] = None  # set on synthetic leaves
-    pin: Optional[dict] = None          # provenance pin (page/bbox/asset) if ingested with one
+    pin: Optional[ProvenancePin] = None
 
     @property
     def is_leaf(self) -> bool:
@@ -60,14 +67,24 @@ def _clean_node_id(raw: str) -> str:
 
 
 
-def _parse_headings(text: str) -> list[tuple[int, int, str, str]]:
+@dataclass(frozen=True)
+class HeadingIdentity:
+    """The stable identity PageIndex assigns to one markdown heading."""
+
+    line_idx: int
+    level: int
+    title: str
+    node_id: str
+
+
+def heading_identities(text: str) -> list[HeadingIdentity]:
     """
     Return [(line_idx, level, title, node_id), ...] for every heading in text.
     Duplicate heading titles are deduplicated with a -2, -3, ... suffix.
     """
     lines = text.split("\n")
     seen: dict[str, int] = {}
-    headings: list[tuple[int, int, str, str]] = []
+    headings: list[HeadingIdentity] = []
 
     for i, line in enumerate(lines):
         m = HEADING_RE.match(line)
@@ -82,9 +99,17 @@ def _parse_headings(text: str) -> list[tuple[int, int, str, str]]:
         else:
             seen[base] = 1
             node_id = base
-        headings.append((i, level, title, node_id))
+        headings.append(HeadingIdentity(i, level, title, node_id))
 
     return headings
+
+
+def _parse_headings(text: str) -> list[tuple[int, int, str, str]]:
+    """Compatibility shape for internal callers; use heading_identities."""
+    return [
+        (heading.line_idx, heading.level, heading.title, heading.node_id)
+        for heading in heading_identities(text)
+    ]
 
 
 # ---------------------------------------------------------------------------
@@ -197,7 +222,9 @@ def _populate_content(nodes: list[PageNode], lines: list[str]) -> None:
 # Pin attachment
 # ---------------------------------------------------------------------------
 
-def _attach_pins(nodes: list[PageNode], lines: list[str]) -> None:
+def _attach_pins(
+    nodes: list[PageNode], lines: list[str], document: str | None = None
+) -> None:
     """Attach each heading's ```pin block (the massager places it immediately
     under the heading, before any other content or child heading) to its node.
     Runs before preamble promotion so synthetic overview leaves can inherit."""
@@ -211,12 +238,23 @@ def _attach_pins(nodes: list[PageNode], lines: list[str]) -> None:
                 while i < len(lines) and lines[i].strip() != "```":
                     body.append(lines[i])
                     i += 1
-                node.pin = _parse_pin_yaml("\n".join(body))
+                pin = parse_pin("\n".join(body))
+                if pin.node_id != node.node_id:
+                    raise PinValidationError(
+                        f"pin node identity {pin.node_id!r} does not match "
+                        f"heading identity {node.node_id!r}"
+                    )
+                if document is not None and pin.document != document:
+                    raise PinValidationError(
+                        f"pin document {pin.document!r} does not match "
+                        f"indexed document {document!r}"
+                    )
+                node.pin = pin
                 break
             if stripped and not stripped.startswith("```"):
                 break  # real content before any pin → this heading has none
             i += 1
-        _attach_pins(node.children, lines)
+        _attach_pins(node.children, lines, document)
 
 
 # ---------------------------------------------------------------------------
@@ -259,7 +297,7 @@ def _node_to_dict(node: PageNode) -> dict:
         "synthetic": node.synthetic,
         "parentTitle": node.parent_title,
         "content": node.content,
-        "pin": node.pin,
+        "pin": node.pin.to_dict() if node.pin is not None else None,
         "children": [_node_to_dict(c) for c in node.children],
     }
 
@@ -276,7 +314,7 @@ def _node_from_dict(d: dict) -> PageNode:
         content=d.get("content"),
         synthetic=d.get("synthetic", False),
         parent_title=d.get("parentTitle"),
-        pin=d.get("pin"),
+        pin=pin_from_dict(d["pin"]) if d.get("pin") is not None else None,
     )
 
 
@@ -316,6 +354,17 @@ def _collect_leaves(nodes: list[PageNode]) -> list[PageNode]:
         else:
             leaves.extend(_collect_leaves(node.children))
     return leaves
+
+
+def parse_document(text: str, document: str | None = None) -> list[PageNode]:
+    """Build the complete deterministic PageIndex tree from markdown."""
+    lines = text.split("\n")
+    nodes = _build_tree(_parse_headings(text))
+    _attach_pins(nodes, lines, document)
+    _promote_preambles(nodes, lines)
+    _populate_content(nodes, lines)
+    _populate_summaries(nodes)
+    return nodes
 
 
 def _find_nodes_by_ids(nodes: list[PageNode], ids: set[str]) -> list[PageNode]:

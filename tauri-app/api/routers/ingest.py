@@ -7,8 +7,9 @@ from typing import Optional
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
+import pageindex
 
-from modules.registry import load as _load_module, defaults as _module_defaults
+from modules.registry import load as _load_module
 from paths import KB_DIR
 
 router = APIRouter()
@@ -24,6 +25,11 @@ _ingest_state: dict = {"state": "idle", "phase": "", "doc": "", "done": 0,
 def _set_ingest_state(**kw) -> None:
     with _ingest_lock:
         _ingest_state.update(kw)
+
+
+def _rebuild_index() -> None:
+    documents = [path.stem for path in sorted(KB_DIR.glob("*.md"))]
+    pageindex.build_generation(documents)
 
 
 @router.get("/api/ingest/source")
@@ -74,7 +80,6 @@ def post_ingest_source(req: IngestSourceRequest):
 
 class IngestRunRequest(BaseModel):
     ingest_module: str = "betteringest_pdf"
-    index_module: Optional[str] = None
     source_dir: Optional[str] = None
 
 
@@ -91,7 +96,6 @@ def run_ingest(req: IngestRunRequest):
                               "warnings": [], "docs": []})
 
     ingest_name = req.ingest_module
-    index_name = req.index_module or _module_defaults()["index"]
     source_dir = req.source_dir
 
     def work():
@@ -104,9 +108,7 @@ def run_ingest(req: IngestRunRequest):
             result = ingest_mod.run(**kwargs) or {}
 
             _set_ingest_state(phase="index", message="Rebuilding index…")
-            index_mod = _load_module("index", index_name)
-            for md in sorted(KB_DIR.glob("*.md")):
-                index_mod.build_index(md.stem)
+            _rebuild_index()
 
             _set_ingest_state(state="done", phase="done",
                               message="Ingest + index complete",
@@ -122,7 +124,6 @@ def run_ingest(req: IngestRunRequest):
 class IngestAddRequest(BaseModel):
     path: str
     ingest_module: str = "betteringest_pdf"
-    index_module: Optional[str] = None
 
 
 @router.post("/api/ingest/add")
@@ -158,8 +159,6 @@ def add_to_library(req: IngestAddRequest):
                               "done": 0, "total": len(pdfs), "message": "Starting…",
                               "warnings": [], "docs": []})
 
-    index_name = req.index_module or _module_defaults()["index"]
-
     def work():
         try:
             result = ingest_mod.run_paths(
@@ -167,9 +166,7 @@ def add_to_library(req: IngestAddRequest):
                 progress=lambda info: _set_ingest_state(**info)) or {}
 
             _set_ingest_state(phase="index", message="Rebuilding index…")
-            index_mod = _load_module("index", index_name)
-            for md in sorted(KB_DIR.glob("*.md")):
-                index_mod.build_index(md.stem)
+            _rebuild_index()
 
             _set_ingest_state(state="done", phase="done",
                               message=f"Added {len(result.get('docs', []))} document(s)",

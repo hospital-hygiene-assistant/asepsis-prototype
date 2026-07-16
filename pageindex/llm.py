@@ -9,11 +9,16 @@ import ollama
 from .clients import round_robin_client
 from .settings import settings
 
-def _chat(prompt: str, client: Optional[ollama.Client] = None, url: str = "") -> str:
+def _chat(
+    prompt: str,
+    client: Optional[ollama.Client] = None,
+    url: str = "",
+    model: str | None = None,
+) -> str:
     if client is None:
         client, url = round_robin_client()
     response = client.chat(
-        model=settings.model,
+        model=model or settings.model,
         messages=[{"role": "user", "content": prompt}],
         options={"temperature": 0},
     )

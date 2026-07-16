@@ -11,7 +11,7 @@ import json
 import pytest
 
 from pageindex import build
-from pageindex.build import build_index
+from pageindex.build import build_generation, build_index
 from pageindex.nodes import _node_from_dict
 
 DOC = """\
@@ -22,13 +22,7 @@ Intro text before any subsection.
 ## Hand Hygiene
 
 ```pin
-id: hand-hygiene
-kind: section
-doc: hygiene
-page: 3
-bbox: [50.0, 80.0, 400.0, 110.0]
-regions: [[3, 50.0, 200.0, 500.0, 460.0]]
-scale: 2.0
+{"version":2,"document":"hygiene","nodeId":"hand-hygiene","spans":[{"page":3,"start":0,"end":54,"box":[50.0,200.0,500.0,460.0]}],"scale":2.0}
 ```
 
 Disinfect hands before and after every patient contact.
@@ -97,15 +91,20 @@ class TestBuildIndex:
         """The pin is the whole provenance chain's first link: without it a
         citation cannot point back into the source PDF at all.
 
-        The bbox is written by _massage._fmt_bbox as a JSON array, and
-        api/pdf._normalized_bbox requires a list — a bbox left as a bare string
-        would silently yield no highlight, so the parse to real numbers matters.
+        The source span is written by the real v2 serializer. Reloading it into
+        typed coordinates matters because a malformed span must never become a
+        guessed highlight.
         """
         pin = find(built, "hand-hygiene")["pin"]
         assert pin is not None
-        assert pin["page"] == 3
-        assert pin["bbox"] == [50.0, 80.0, 400.0, 110.0]
-        assert pin["regions"] == [[3, 50.0, 200.0, 500.0, 460.0]]
+        assert pin["version"] == 2
+        assert pin["nodeId"] == "hand-hygiene"
+        assert pin["spans"] == [{
+            "page": 3,
+            "start": 0,
+            "end": 54,
+            "box": [50.0, 200.0, 500.0, 460.0],
+        }]
 
     def test_the_pin_block_is_not_left_in_the_readable_content(self, built):
         # It is machine metadata; leaving it in would put fence noise in front of
@@ -123,3 +122,20 @@ class TestBuildIndex:
         nodes = [_node_from_dict(d) for d in built]
         assert nodes[0].node_id == "hygiene-guideline"
         assert nodes[0].children, "the hierarchy must survive the round trip"
+
+
+def test_build_generation_promotes_the_corpus_only_after_every_document_builds(
+    tmp_path, monkeypatch
+):
+    kb, index = tmp_path / "kb", tmp_path / "index"
+    kb.mkdir()
+    monkeypatch.setattr(build, "KB_DIR", kb)
+    monkeypatch.setattr(build, "INDEX_DIR", index)
+    (kb / "a.md").write_text("# A\n\nFirst passage.", encoding="utf-8")
+    (kb / "b.md").write_text("# B\n\nSecond passage.", encoding="utf-8")
+
+    snapshot = build_generation(["b", "a"])
+
+    pointer = json.loads((index / "current.json").read_text(encoding="utf-8"))
+    assert pointer["generation_id"] == snapshot.generation_id
+    assert [path.stem for path in snapshot.document_paths] == ["a", "b"]

@@ -89,6 +89,7 @@ const chatCopy = {
     grounded:              ['Grounded in document passages', 'check'],
     partially_grounded:    ['Partially grounded', 'file'],
     insufficient_evidence: ['No sufficient source', 'alert'],
+    search_incomplete:      ['Search incomplete', 'alert'],
     not_connected:         ['Document search not connected', 'info'],
   },
 };
@@ -206,12 +207,8 @@ async function sendChat(text) {
   try {
     const data = await apiPost('/api/chat', {
       query: text,
-      index_module: selectedModules().index_module,
       run_id: state.runId,
     });
-    // Feed the retrieval tab the identical run state (the two tabs talk).
-    state.currentResults = data.run;
-    renderResults(data.run);
     finalizeAnswerCard(pending, data);
   } catch (e) {
     pending.card.querySelector('.answer-body').innerHTML =
@@ -376,7 +373,10 @@ function finalizeAnswerCard(p, data) {
   const srcWrap = el('div', 'answer-sources');
   const rule = el('div', 'answer-sources-rule');
   rule.appendChild(el('p', 'sources-label', chatCopy.sourcesLabel));
-  rule.appendChild(el('p', 'sources-summary', data.grounding?.summary || ''));
+  const grounding = data.grounding || {};
+  const coverage = `${grounding.searched_documents ?? 0}/${grounding.total_documents ?? 0} documents searched; ` +
+    `${grounding.incomplete_checks ?? 0} incomplete check(s).`;
+  rule.appendChild(el('p', 'sources-summary', coverage));
   if (!sources.length) {
     const none = el('p', 'sources-none');
     none.innerHTML = `${ICONS.info} ${escHtml(chatCopy.noSources)}`;
@@ -408,13 +408,15 @@ function finalizeAnswerCard(p, data) {
 }
 
 function buildSourceCard(s, answerId) {
+  const number = s.number;
+  const documentName = s.document;
+  const exactPage = s.visual?.status === 'exact' ? s.visual.pages?.[0]?.page : null;
   const card = el('article', 'source-card');
-  card.id = `src-${answerId}-${s.n}`;
+  card.id = `src-${answerId}-${number}`;
 
   const eyebrow = el('p', 'source-eyebrow');
-  eyebrow.innerHTML = `[${s.n}] ${escHtml(prettyDoc(s.doc))}` +
-    (s.page ? ` <span class="source-page-pill">p. ${escHtml(String(s.page))}</span>` : '') +
-    (s.synthetic ? ` <span class="source-page-pill">overview</span>` : '');
+  eyebrow.innerHTML = `[${number}] ${escHtml(prettyDoc(documentName))}` +
+    (exactPage ? ` <span class="source-page-pill">p. ${escHtml(String(exactPage))}</span>` : '');
   card.appendChild(eyebrow);
 
   const title = el('h3', 'source-title');
@@ -427,35 +429,6 @@ function buildSourceCard(s, answerId) {
     title.textContent = s.title;
   }
   card.appendChild(title);
-
-  // Visual citation: asset crop, or the source-PDF page with the bbox highlighted
-  const pin = s.pin || null;
-  if (s.image) {
-    const btn = el('button', 'source-preview asset');
-    btn.type = 'button';
-    btn.innerHTML = `<img loading="lazy" src="${escHtml(s.image)}" alt="${escHtml(s.title)}">` +
-      `<span class="preview-hint">${ICONS.zoom} Figure from the original document — click to open the source page</span>`;
-    btn.addEventListener('click', () => pin?.page ? openSourceView(s.doc, pin) : null);
-    card.appendChild(btn);
-  } else if (s.page && s.has_source_pdf) {
-    const params = new URLSearchParams();
-    if (Array.isArray(pin?.bbox)) params.set('bbox', pin.bbox.join(','));
-    if (Array.isArray(pin?.regions)) params.set('regions', JSON.stringify(pin.regions));
-    const btn = el('button', 'source-preview');
-    btn.type = 'button';
-    btn.innerHTML = `<img loading="lazy" src="/api/document/${encodeURIComponent(s.doc)}/page/${s.page}?${params}" alt="page ${s.page}">` +
-      `<span class="preview-hint">${ICONS.zoom} Original page ${s.page}, passage highlighted — click for fullscreen</span>`;
-    // Aim the cropped preview strip at the highlighted bbox, not the page top.
-    const img = btn.querySelector('img');
-    img.addEventListener('load', () => {
-      if (Array.isArray(pin?.bbox) && img.naturalHeight > 0) {
-        const centerY = ((pin.bbox[1] + pin.bbox[3]) / 2) / img.naturalHeight * 100;
-        img.style.objectPosition = `center ${Math.max(0, Math.min(100, centerY))}%`;
-      }
-    });
-    btn.addEventListener('click', () => openSourceView(s.doc, pin));
-    card.appendChild(btn);
-  }
 
   // Excerpt with the deciding quote highlighted
   if ((s.excerpt || '').trim()) {
@@ -483,11 +456,14 @@ function buildSourceCard(s, answerId) {
   }
 
   const actions = el('div', 'source-actions');
-  if (pin?.page && s.has_source_pdf) {
+  if (exactPage && s.has_source_pdf) {
     const b = el('button', 'source-action');
     b.type = 'button';
     b.innerHTML = `${ICONS.zoom} Open source page`;
-    b.addEventListener('click', () => openSourceView(s.doc, pin));
+    b.addEventListener('click', () => window.open(
+      `/api/document/${encodeURIComponent(documentName)}/pdf#page=${exactPage}`,
+      '_blank',
+    ));
     actions.appendChild(b);
   } else {
     // No provenance pin or the source PDF is unavailable — keep the button,
@@ -497,9 +473,8 @@ function buildSourceCard(s, answerId) {
     b.innerHTML = `${ICONS.alert} Open source page`;
     b.title = 'No source PDF is available for this passage';
     b.addEventListener('click', () => toast(
-      `No source PDF was found for “${prettyDoc(s.doc)}”. The original may have been ` +
-      `markdown-only (no page provenance), the PDF may have been moved — or the ` +
-      `reference could be a hallucination. Verify against the cited text.`,
+      `No exact source-PDF location is available for “${prettyDoc(documentName)}”. ` +
+      `Verify against the cited text.`,
       'warn', 8000));
     actions.appendChild(b);
   }
@@ -507,15 +482,9 @@ function buildSourceCard(s, answerId) {
   read.type = 'button';
   read.innerHTML = `${ICONS.book} Read in document`;
   read.title = 'Open the annotated reader at this section';
-  read.addEventListener('click', () => openDocViewer(s.doc, s.title));
+  read.addEventListener('click', () => openDocViewer(documentName, s.title));
   actions.appendChild(read);
 
-  const mapBtn = el('button', 'source-action');
-  mapBtn.type = 'button';
-  mapBtn.innerHTML = `${ICONS.map} Show in retrieval map`;
-  mapBtn.title = 'Switch to the Retrieval tab, focused on this passage';
-  mapBtn.addEventListener('click', () => openInRetrieval(s.doc, s.node_id));
-  actions.appendChild(mapBtn);
   card.appendChild(actions);
 
   return card;
@@ -540,7 +509,7 @@ function evidenceGroups() {
       label: `Answer ${i + 1}`,
       query: m.query,
       status: m.data.grounding.status,
-      summary: m.data.grounding.summary,
+      summary: `${m.data.grounding.searched_documents}/${m.data.grounding.total_documents} documents searched`,
       sources: m.data.grounding.sources,
     }));
 }
@@ -580,13 +549,14 @@ function updateEvidenceLibrary() {
       const btn = el('button', 'ev-source');
       btn.type = 'button';
       btn.dataset.answer = g.answerId;
-      btn.dataset.n = s.n;
-      const eyebrow = `<p class="ev-source-eyebrow"><span>[${s.n}] ${escHtml(prettyDoc(s.doc))}</span>` +
-        (s.page ? `<span class="ev-page">p. ${escHtml(String(s.page))}</span>` : '') + `</p>`;
+      btn.dataset.n = s.number;
+      const page = s.visual?.status === 'exact' ? s.visual.pages?.[0]?.page : null;
+      const eyebrow = `<p class="ev-source-eyebrow"><span>[${s.number}] ${escHtml(prettyDoc(s.document))}</span>` +
+        (page ? `<span class="ev-page">p. ${escHtml(String(page))}</span>` : '') + `</p>`;
       btn.innerHTML = eyebrow +
         `<p class="ev-source-title">${escHtml(s.title)}</p>` +
         (s.quote ? `<p class="ev-source-quote">“${escHtml(s.quote)}”</p>` : '');
-      btn.addEventListener('click', () => focusSourceCard(g.answerId, s.n));
+      btn.addEventListener('click', () => focusSourceCard(g.answerId, s.number));
       list.appendChild(btn);
     }
     group.appendChild(list);
@@ -688,8 +658,6 @@ async function openChatConfig() {
   fact('Engine', `${cfg.ollama_instances} local Ollama instance${cfg.ollama_instances > 1 ? 's' : ''} — ` +
     cfg.ollama_urls.map(u => `<code>${escHtml(u)}</code>`).join(', ') +
     (cfg.any_busy ? ' · <b>busy</b>' : ' · idle'));
-  fact('Pipeline', ['ingest', 'index', 'query']
-    .map(s => `${s}: <code>${escHtml(cfg.pipeline?.[s] || '—')}</code>`).join(' · '));
   body.appendChild(facts);
 
   const promptsLabel = el('p', 'ccm-section-label', 'Prompts');

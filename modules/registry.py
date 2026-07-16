@@ -1,16 +1,14 @@
-"""
-Module registry — discovers available implementations for each pipeline stage
-by scanning modules/<stage>/*.py and reading their MODULE_INFO dicts.
+"""Discover the real ingest adapters.
 
-Dropping a new .py file (with MODULE_INFO) into modules/ingest/, modules/index/,
-or modules/query/ is enough to register it — no other changes needed.
+Indexing, retrieval, and answering each have one implementation and are called
+directly. Only ingest has earned an adapter seam through multiple producers.
 """
 import importlib
 import sys
 from pathlib import Path
 from typing import Any
 
-STAGES = ["ingest", "index", "query"]
+STAGES = ["ingest"]
 _BASE  = Path(__file__).parent
 
 
@@ -19,8 +17,6 @@ def discover() -> dict[str, dict[str, dict]]:
     Returns:
         {
           "ingest": {"basic_markdown": MODULE_INFO, ...},
-          "index":  {"pageindex_custom": MODULE_INFO, ...},
-          "query":  {"ollama_synthesis": MODULE_INFO, ...},
         }
     """
     # Ensure the project root is on sys.path so module files can import from it
@@ -61,6 +57,4 @@ def defaults() -> dict[str, str]:
     """Returns the default module name for each stage."""
     return {
         "ingest": "basic_markdown",
-        "index":  "pageindex_custom",
-        "query":  "ollama_synthesis",
     }

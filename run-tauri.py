@@ -19,10 +19,11 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from paths import DOCS_DIR, INDEX_DIR, KB_DIR, ROOT  # noqa: E402
+from pageindex.generations import IndexGenerationStore  # noqa: E402
 
 TAURI_DIR = ROOT / "tauri-app"
-# Both stages go through pipeline.py so the launcher and the server resolve
-# modules the same way, rather than the launcher calling implementations directly.
+# Both stages go through pipeline.py so the launcher uses the same ingest adapter
+# and immutable generation publisher as other local entry points.
 PIPELINE  = ROOT / "pipeline.py"
 PORT      = 8765
 URL       = f"http://127.0.0.1:{PORT}"
@@ -54,7 +55,13 @@ def _run_pipeline_if_needed():
         subprocess.check_call([sys.executable, str(PIPELINE), "ingest"], cwd=ROOT)
 
     # Index: run if any doc is missing from the index
-    idx_files = set(p.stem for p in INDEX_DIR.glob("*.json")) if INDEX_DIR.exists() else set()
+    try:
+        idx_files = {
+            path.stem
+            for path in IndexGenerationStore(INDEX_DIR).snapshot().document_paths
+        }
+    except (OSError, ValueError, KeyError):
+        idx_files = set()
     if not idx_files >= doc_stems:
         print("  Building index…")
         subprocess.check_call([sys.executable, str(PIPELINE), "index"], cwd=ROOT)

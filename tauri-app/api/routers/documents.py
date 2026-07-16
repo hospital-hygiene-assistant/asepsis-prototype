@@ -7,6 +7,7 @@ from typing import Optional
 from fastapi import APIRouter
 from fastapi.responses import FileResponse, JSONResponse, Response
 
+from pageindex.generations import IndexGenerationStore
 from paths import INDEX_DIR, KB_DIR
 
 from ..pdf import cache_png, cached_png
@@ -19,13 +20,14 @@ router = APIRouter()
 @router.get("/api/documents")
 def get_documents():
     docs = []
-    for idx in sorted(INDEX_DIR.glob("*.json")):
-        tree = read_tree(idx)
-        docs.append({
-            "name": idx.stem,
-            "leaf_count": leaf_count(tree),
-            "tree": tree,
-        })
+    with IndexGenerationStore(INDEX_DIR).pin_current() as snapshot:
+        for idx in snapshot.document_paths:
+            tree = read_tree(idx)
+            docs.append({
+                "name": idx.stem,
+                "leaf_count": leaf_count(tree),
+                "tree": tree,
+            })
     return JSONResponse(docs)
 
 

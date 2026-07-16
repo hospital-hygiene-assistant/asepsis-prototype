@@ -17,6 +17,7 @@ from unittest.mock import patch
 
 from pageindex import RunState
 from pageindex import search as pi_search
+from pageindex.settings import settings
 from pageindex.nodes import (
     PageNode,
     _build_nodes_by_id,
@@ -192,6 +193,26 @@ class TestRetrieveWithMetadata:
         with pytest.raises(FileNotFoundError, match="Index not found"):
             pi_search.retrieve_with_metadata("never-built", "q", RunState())
 
+    def test_an_explicit_generation_path_is_the_document_read(self, tmp_path):
+        index_path = tmp_path / "generation" / "doc.json"
+        index_path.parent.mkdir()
+        index_path.write_text(
+            json.dumps([_node_to_dict(leaf("pinned", "Pinned passage."))]),
+            encoding="utf-8",
+        )
+        with patch.object(
+            pi_search,
+            "_chat",
+            return_value=(
+                '{"relevant": true, "reason": "exact", '
+                '"quote": "Pinned passage."}'
+            ),
+        ):
+            nodes, _ = pi_search.retrieve_with_metadata_from_path(
+                "doc", "q", RunState(), index_path
+            )
+        assert [node.node_id for node in nodes] == ["pinned"]
+
     def test_an_empty_index_returns_nothing_without_calling_the_model(self, index_dir):
         # A childless node is itself a leaf, so "no leaves" means an empty tree.
         (index_dir / "doc.json").write_text("[]", encoding="utf-8")
@@ -217,8 +238,11 @@ class TestRetrieveWithMetadata:
             children=[leaf("first", "A."), leaf("second", "B."), leaf("third", "C.")],
         )
         self._write(index_dir, root)
-        with patch.object(pi_search, "_chat",
-                          return_value='{"relevant": true, "reason": "r", "quote": "A."}'):
+        def exact_verdict(prompt, *_args):
+            quote = next(value for value in ("A.", "B.", "C.") if value in prompt)
+            return json.dumps({"relevant": True, "reason": "r", "quote": quote})
+
+        with patch.object(pi_search, "_chat", side_effect=exact_verdict):
             nodes, _ = pi_search.retrieve_with_metadata("doc", "q", RunState())
         assert [n.node_id for n in nodes] == ["first", "second", "third"]
 
@@ -230,12 +254,29 @@ class TestRetrieveWithMetadata:
         self._write(index_dir, root)
 
         def verdict(prompt, *_a):
-            return KEEP.replace("covers it", "r") if "Wanted" in prompt else PRUNE
+            if "Wanted" in prompt:
+                return '{"relevant": true, "reason": "r", "quote": "Yes."}'
+            return PRUNE
 
         with patch.object(pi_search, "_chat", side_effect=verdict):
             nodes, meta = pi_search.retrieve_with_metadata("doc", "q", RunState())
         assert [n.node_id for n in nodes] == ["wanted"]
         assert meta["unwanted"]["relevant"] is False
+
+    def test_a_leaf_with_a_fabricated_quote_is_not_retrieved(self, index_dir):
+        self._write(index_dir, leaf("isolation", "Use a single room."))
+        with patch.object(
+            pi_search,
+            "_chat",
+            return_value=(
+                '{"relevant": true, "reason": "claims isolation", '
+                '"quote": "Use a negative-pressure room."}'
+            ),
+        ):
+            nodes, meta = pi_search.retrieve_with_metadata("doc", "q", RunState())
+
+        assert nodes == []
+        assert meta["isolation"]["status"] == "error"
 
     def test_progress_counts_every_leaf_exactly_once(self, index_dir):
         root = PageNode(
@@ -248,3 +289,55 @@ class TestRetrieveWithMetadata:
         with patch.object(pi_search, "_chat", return_value=PRUNE):
             pi_search.retrieve_with_metadata("doc", "q", run)
         assert run.progress() == {"total": 5, "done": 5}
+
+    def test_a_non_object_section_reply_fails_open_and_is_recorded(self, index_dir):
+        root = PageNode(
+            node_id="root",
+            title="Guideline",
+            heading_level=1,
+            line_idx=0,
+            summary="s",
+            children=[section("isolation", [leaf("mrsa", "Single room.")])],
+        )
+        self._write(index_dir, root)
+
+        replies = iter(
+            [
+                '["not", "a", "verdict"]',
+                '{"relevant": true, "reason": "states isolation", '
+                '"quote": "Single room."}',
+            ]
+        )
+        with patch.object(pi_search, "_chat", side_effect=lambda *_a: next(replies)):
+            nodes, meta = pi_search.retrieve_with_metadata("doc", "q", RunState())
+
+        assert [node.node_id for node in nodes] == ["mrsa"]
+        assert meta["isolation"]["status"] == "error"
+
+    def test_one_retrieval_run_uses_one_model_snapshot(self, index_dir, monkeypatch):
+        root = PageNode(
+            node_id="root",
+            title="Guideline",
+            heading_level=1,
+            line_idx=0,
+            summary="s",
+            children=[section("isolation", [leaf("mrsa", "Single room.")])],
+        )
+        self._write(index_dir, root)
+        monkeypatch.setattr(settings, "model", "model-a")
+        used_models = []
+
+        def reply(prompt, *_args):
+            used_models.append(_args[-1])
+            settings.model = "model-b"
+            if "Single room." in prompt:
+                return (
+                    '{"relevant": true, "reason": "exact", '
+                    '"quote": "Single room."}'
+                )
+            return KEEP
+
+        with patch.object(pi_search, "_chat", side_effect=reply):
+            pi_search.retrieve_with_metadata("doc", "q", RunState())
+
+        assert used_models == ["model-a", "model-a"]

@@ -30,6 +30,7 @@ from .nodes import (
     _node_from_dict,
 )
 from .prompts import EXPLAIN_PROMPT, LEAF_EVAL_PROMPT, SECTION_CHECK_PROMPT
+from .settings import settings
 
 # ---------------------------------------------------------------------------
 # Breadcrumb helpers
@@ -47,6 +48,7 @@ def _evaluate_leaf(
     parent_summary: str,
     client: Optional[ollama.Client] = None,
     client_url: str = "",
+    model: str | None = None,
     *,
     run: RunState,
 ) -> tuple[str, dict]:
@@ -59,9 +61,10 @@ def _evaluate_leaf(
         .replace("PARENT_SUMMARY_PLACEHOLDER", parent_summary or "top-level section")
         .replace("CONTENT_PLACEHOLDER", leaf.content or "(no content)")
     )
+    failure_code = "evaluation_error"
     acquire(client_url)
     try:
-        raw = _chat(prompt, client, client_url)
+        raw = _chat(prompt, client, client_url, model)
         result = _parse_json_response(raw)
         
         if isinstance(result, dict):
@@ -70,14 +73,21 @@ def _evaluate_leaf(
             quote = str(result.get("quote") or "").strip()
             
             if relevant:
-                run.mark("retrieved", leaf.node_id)
-                run.set_meta(leaf.node_id, "retrieved", reason, quote)
-                return leaf.node_id, {
-                    "relevant": True,
-                    "reason": reason,
-                    "quote": quote,
-                    "status": "retrieved"
-                }
+                if not quote or quote not in (leaf.content or ""):
+                    failure = (
+                        "the model returned a relevant verdict without a "
+                        "non-empty exact quote"
+                    )
+                    failure_code = "invalid_quote"
+                else:
+                    run.mark("retrieved", leaf.node_id)
+                    run.set_meta(leaf.node_id, "retrieved", reason, quote)
+                    return leaf.node_id, {
+                        "relevant": True,
+                        "reason": reason,
+                        "quote": quote,
+                        "status": "retrieved"
+                    }
             else:
                 run.mark("rejected", leaf.node_id)
                 run.set_meta(leaf.node_id, "rejected", reason)
@@ -87,7 +97,8 @@ def _evaluate_leaf(
                     "quote": "",
                     "status": "rejected"
                 }
-        failure = "the model returned no usable verdict"
+        else:
+            failure = "the model returned no usable verdict"
     except Exception as exc:
         print(f"    [warn] leaf eval failed for {leaf.node_id}: {exc}", file=sys.stderr)
         failure = str(exc)
@@ -106,13 +117,18 @@ def _evaluate_leaf(
         "relevant": False,
         "reason": failure,
         "quote": "",
-        "status": "error"
+        "status": "error",
+        "code": failure_code,
     }
 
 
 # ---------------------------------------------------------------------------
 # Public API
 # ---------------------------------------------------------------------------
+
+
+class RetrievalUnavailable(RuntimeError):
+    """The lossy single-document interface cannot represent this search."""
 
 def _format_descendant_outline(node: "PageNode", depth: int = 0) -> str:
     """Indented bullet list of all descendant headings — gives the LLM full visibility."""
@@ -132,6 +148,7 @@ def _check_section_relevant(
     breadcrumb: str,
     client: Optional[ollama.Client] = None,
     client_url: str = "",
+    model: str | None = None,
     *,
     run: RunState,
 ) -> tuple[bool, str]:
@@ -145,12 +162,12 @@ def _check_section_relevant(
     )
     acquire(client_url)
     try:
-        raw = _chat(prompt, client, client_url)
+        raw = _chat(prompt, client, client_url, model)
         result = _parse_json_response(raw)
-        verdict = isinstance(result, dict) and bool(result.get("relevant"))
-        reason = ""
-        if isinstance(result, dict):
-            reason = str(result.get("reason") or "").strip()
+        if not isinstance(result, dict):
+            raise ValueError("the model returned no usable section verdict")
+        verdict = bool(result.get("relevant"))
+        reason = str(result.get("reason") or "").strip()
         
         if verdict:
             run.mark("kept", node.node_id)
@@ -160,6 +177,7 @@ def _check_section_relevant(
         return verdict, reason
     except Exception as exc:
         run.mark("kept", node.node_id)
+        run.set_meta(node.node_id, "error", str(exc))
         print(f"    [prune-check] {node.node_id}: ERROR ({exc}) — keeping", file=sys.stderr)
         return True, f"Error checking section: {exc}"  # conservative: never prune on error
     finally:
@@ -223,6 +241,7 @@ def _prune_and_collect(
     node_assignment: dict[str, tuple],
     node_meta: dict[str, dict],
     run: RunState,
+    model: str | None = None,
 ) -> list["PageNode"]:
     """
     BFS top-down pruning. At each level, check all internal nodes in parallel;
@@ -230,6 +249,7 @@ def _prune_and_collect(
     Returns the list of leaf candidates that passed pruning.
     """
     default_instance = pool()[0]
+    model = model or settings.model
     candidate_leaves: list["PageNode"] = []
     frontier = list(nodes)
 
@@ -247,6 +267,7 @@ def _prune_and_collect(
                     node, query,
                     _make_breadcrumb(node.node_id, parent_map, nodes_by_id),
                     *node_assignment.get(node.node_id, default_instance),
+                    model,
                     run=run,
                 ): node
                 for node in sections
@@ -255,11 +276,14 @@ def _prune_and_collect(
             for future in as_completed(futures):
                 node = futures[future]
                 verdict, reason = future.result()
-                
+                recorded = run.events()["meta"].get(node.node_id, {})
+                status = "error" if recorded.get("status") == "error" else (
+                    "kept" if verdict else "pruned"
+                )
                 node_meta[node.node_id] = {
                     "relevant": verdict,
                     "reason": reason,
-                    "status": "kept" if verdict else "pruned"
+                    "status": status,
                 }
 
                 if verdict:
@@ -298,12 +322,31 @@ def retrieve(doc_name: str, query: str, run: Optional[RunState] = None) -> list[
 
     Without a run, progress goes nowhere — which is what a CLI wants.
     """
-    nodes_result, _ = retrieve_with_metadata(doc_name, query, run)
+    nodes_result, metadata = retrieve_with_metadata(doc_name, query, run)
+    errors = [
+        item for item in metadata.values() if item.get("status") == "error"
+    ]
+    if errors:
+        raise RetrievalUnavailable(
+            f"retrieval was incomplete for {doc_name}: {len(errors)} error(s)"
+        )
     return nodes_result
 
 
 def retrieve_with_metadata(
     doc_name: str, query: str, run: Optional[RunState] = None,
+) -> tuple[list[PageNode], dict[str, dict]]:
+    return retrieve_with_metadata_from_path(
+        doc_name, query, run, INDEX_DIR / f"{doc_name}.json"
+    )
+
+
+def retrieve_with_metadata_from_path(
+    doc_name: str,
+    query: str,
+    run: Optional[RunState],
+    index_path,
+    model: str | None = None,
 ) -> tuple[list[PageNode], dict[str, dict]]:
     """Two-phase retrieval with top-down pruning.
 
@@ -316,7 +359,7 @@ def retrieve_with_metadata(
     Returns (selected_leaves_in_doc_order, {node_id: {reason, quote}}).
     """
     run = run or RunState()
-    index_path = INDEX_DIR / f"{doc_name}.json"
+    retrieval_model = model or settings.model
     if not index_path.exists():
         raise FileNotFoundError(f"Index not found: {index_path}. Run build first.")
 
@@ -354,7 +397,7 @@ def retrieve_with_metadata(
     # Phase 1 — top-down pruning
     top = nodes[0].children if (len(nodes) == 1 and nodes[0].children) else nodes
     surviving = _prune_and_collect(top, query, parent_map, nodes_by_id,
-                                   node_assignment, node_meta, run)
+                                   node_assignment, node_meta, run, retrieval_model)
     print(
         f"  [prune] {doc_name}: {len(surviving)}/{len(leaves)} leaves after pruning",
         file=sys.stderr,
@@ -372,6 +415,7 @@ def retrieve_with_metadata(
                     _make_breadcrumb(leaf.node_id, parent_map, nodes_by_id),
                     parent_map[leaf.node_id].summary if leaf.node_id in parent_map else "",
                     *node_assignment.get(leaf.node_id, instances[0]),
+                    retrieval_model,
                     run=run,
                 ): leaf
                 for leaf in surviving

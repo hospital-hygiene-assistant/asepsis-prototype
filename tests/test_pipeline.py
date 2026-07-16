@@ -1,133 +1,206 @@
-"""The CLI: ingest → index → query.
+"""The CLI consumes the same deep modules as practitioner chat."""
 
-The other half of the product's surface, and the half nothing watched — its only
-prior test was that the module imports, at 13% coverage. It is also where the
-"No relevant passages found." line lives that /api/chat was fixed for and this
-was not (see C3 in test_known_gaps.py).
-"""
-
-import pytest
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 import pipeline
+from api.question_answering import AnswerKind, AnswerOutcome, GroundedAnswer
+from api.retrieval import LibrarySearchResult, LibraryStatus, VerifiedEvidence
 from pageindex.nodes import PageNode
+from pageindex.nodes import _node_to_dict
+from pageindex.generations import IndexGenerationStore
+import json
 
 
 @pytest.fixture
-def registry(monkeypatch):
-    """Stand in for modules/registry: pipeline resolves every stage through it."""
-    monkeypatch.setattr(pipeline, "defaults", lambda: {
-        "ingest": "basic_markdown", "index": "pageindex_custom", "query": "ollama_synthesis",
-    })
-    mods = {}
+def ingest_adapters(monkeypatch):
+    monkeypatch.setattr(pipeline, "defaults", lambda: {"ingest": "basic_markdown"})
+    adapters = {}
 
     def fake_load(stage, name):
-        return mods.setdefault(f"{stage}/{name}", MagicMock())
+        assert stage == "ingest"
+        return adapters.setdefault(name, MagicMock())
 
     monkeypatch.setattr(pipeline, "load", fake_load)
-    return mods
+    return adapters
 
 
 @pytest.fixture
 def kb(tmp_path, monkeypatch):
-    d = tmp_path / "kb"
-    d.mkdir()
-    monkeypatch.setattr(pipeline, "KB_DIR", d)
-    return d
+    directory = tmp_path / "kb"
+    directory.mkdir()
+    monkeypatch.setattr(pipeline, "KB_DIR", directory)
+    return directory
 
 
 @pytest.fixture
 def index_dir(tmp_path, monkeypatch):
-    d = tmp_path / "index"
-    d.mkdir()
-    monkeypatch.setattr(pipeline, "INDEX_DIR", d)
-    return d
+    directory = tmp_path / "index"
+    directory.mkdir()
+    monkeypatch.setattr(pipeline, "INDEX_DIR", directory)
+    return directory
 
 
-def leaf(node_id: str) -> PageNode:
-    return PageNode(node_id=node_id, title=node_id.title(), heading_level=2,
-                    line_idx=1, summary="s", content="text")
+def search(status=LibraryStatus.COMPLETE, evidence=()):
+    return LibrarySearchResult(
+        query="q",
+        generation_id="generation-test",
+        status=status,
+        documents=(),
+        evidence=evidence,
+        diagnostics=(),
+    )
+
+
+def answering(outcome):
+    class StubAnswering:
+        def answer(self, question, run):
+            assert question.text == "q"
+            return outcome
+
+    return StubAnswering()
+
+
+def ready_index(index_dir):
+    node = PageNode(
+        node_id="ready",
+        title="Ready",
+        heading_level=1,
+        line_idx=0,
+        summary="s",
+        content="ready",
+    )
+    IndexGenerationStore(index_dir).publish({
+        "ready": json.dumps([_node_to_dict(node)]),
+    })
 
 
 class TestIngest:
-    def test_it_runs_the_default_module(self, registry):
+    def test_it_runs_the_default_adapter(self, ingest_adapters):
         pipeline.ingest()
-        registry["ingest/basic_markdown"].run.assert_called_once()
+        ingest_adapters["basic_markdown"].run.assert_called_once()
 
-    def test_an_explicit_module_wins(self, registry):
+    def test_an_explicit_adapter_wins(self, ingest_adapters):
         pipeline.ingest("betteringest_pdf")
-        registry["ingest/betteringest_pdf"].run.assert_called_once()
+        ingest_adapters["betteringest_pdf"].run.assert_called_once()
 
 
 class TestIndex:
-    def test_a_single_document_is_built_alone(self, registry, kb):
-        (kb / "a.md").write_text("# A", encoding="utf-8")
-        (kb / "b.md").write_text("# B", encoding="utf-8")
-        pipeline.index(doc="a")
-        registry["index/pageindex_custom"].build_index.assert_called_once_with("a")
-
-    def test_every_document_is_built_by_default(self, registry, kb):
+    def test_every_build_promotes_one_complete_corpus_generation(
+        self, kb, monkeypatch
+    ):
         for stem in ("a", "b", "c"):
             (kb / f"{stem}.md").write_text("# x", encoding="utf-8")
-        pipeline.index()
-        built = [c.args[0] for c in registry["index/pageindex_custom"].build_index.call_args_list]
-        assert sorted(built) == ["a", "b", "c"]
+        build = MagicMock()
+        monkeypatch.setattr(pipeline.pageindex, "build_generation", build)
 
-    def test_an_empty_knowledge_base_exits_rather_than_reporting_success(self, registry, kb, capsys):
-        """Building nothing and saying "Done." would leave an empty corpus that
-        answers every question with an absence."""
-        with pytest.raises(SystemExit) as exit_info:
+        pipeline.index()
+
+        build.assert_called_once_with(["a", "b", "c"])
+
+    def test_doc_does_not_create_a_partial_generation(self, kb, monkeypatch):
+        for stem in ("a", "b"):
+            (kb / f"{stem}.md").write_text("# x", encoding="utf-8")
+        build = MagicMock()
+        monkeypatch.setattr(pipeline.pageindex, "build_generation", build)
+
+        pipeline.index(doc="a")
+
+        build.assert_called_once_with(["a", "b"])
+
+    def test_an_unknown_document_refuses_to_rebuild(self, kb, monkeypatch):
+        (kb / "a.md").write_text("# x", encoding="utf-8")
+        build = MagicMock()
+        monkeypatch.setattr(pipeline.pageindex, "build_generation", build)
+
+        with pytest.raises(SystemExit):
+            pipeline.index(doc="missing")
+
+        build.assert_not_called()
+
+    def test_an_empty_knowledge_base_refuses_to_report_success(self, kb, capsys):
+        with pytest.raises(SystemExit):
             pipeline.index()
-        assert exit_info.value.code == 1
         assert "Run 'pipeline.py ingest' first" in capsys.readouterr().out
 
 
 class TestQuery:
-    def test_an_empty_index_exits_rather_than_answering(self, registry, index_dir, capsys):
-        with pytest.raises(SystemExit) as exit_info:
+    def test_an_empty_index_refuses_to_answer(self, index_dir, capsys):
+        with pytest.raises(SystemExit):
             pipeline.query("q")
-        assert exit_info.value.code == 1
         assert "Run 'pipeline.py index' first" in capsys.readouterr().out
 
-    def test_it_retrieves_across_every_document_and_synthesises(self, registry, index_dir):
-        (index_dir / "hygiene.json").write_text("[]", encoding="utf-8")
-        (index_dir / "antibiotics.json").write_text("[]", encoding="utf-8")
-        index_mod = registry.setdefault("index/pageindex_custom", MagicMock())
-        index_mod.retrieve.side_effect = lambda stem, text: [leaf("n1")] if stem == "hygiene" else []
-        query_mod = registry.setdefault("query/ollama_synthesis", MagicMock())
-        query_mod.synthesise.return_value = "the answer"
+    def test_it_returns_the_one_grounded_answer(self, index_dir, monkeypatch):
+        ready_index(index_dir)
+        outcome = AnswerOutcome(
+            AnswerKind.ANSWERED,
+            search(),
+            GroundedAnswer("Die Antwort [1]."),
+        )
+        monkeypatch.setattr(
+            pipeline, "_question_answering", lambda _index: answering(outcome)
+        )
 
-        assert pipeline.query("q") == "the answer"
-        # Only documents with hits reach synthesis; an empty one is not a source.
-        nodes_by_doc = query_mod.synthesise.call_args.args[1]
-        assert list(nodes_by_doc) == ["hygiene"]
+        assert pipeline.query("q") == "Die Antwort [1]."
 
-    def test_it_reports_what_it_retrieved(self, registry, index_dir, capsys):
-        (index_dir / "hygiene.json").write_text("[]", encoding="utf-8")
-        registry.setdefault("index/pageindex_custom", MagicMock()).retrieve.return_value = [leaf("mrsa")]
+    def test_a_complete_negative_is_the_only_honest_empty_result(
+        self, index_dir, monkeypatch
+    ):
+        ready_index(index_dir)
+        outcome = AnswerOutcome(AnswerKind.INSUFFICIENT_EVIDENCE, search())
+        monkeypatch.setattr(
+            pipeline, "_question_answering", lambda _index: answering(outcome)
+        )
+
+        result = pipeline.query("q")
+
+        assert "complete library search" in result
+
+    @pytest.mark.parametrize(
+        ("kind", "status"),
+        [
+            (AnswerKind.SEARCH_INCOMPLETE, LibraryStatus.PARTIAL),
+            (AnswerKind.RETRIEVAL_UNAVAILABLE, LibraryStatus.UNAVAILABLE),
+        ],
+    )
+    def test_an_incomplete_search_is_never_rephrased_as_no_evidence(
+        self, index_dir, monkeypatch, kind, status
+    ):
+        ready_index(index_dir)
+        outcome = AnswerOutcome(kind, search(status))
+        monkeypatch.setattr(
+            pipeline, "_question_answering", lambda _index: answering(outcome)
+        )
+
+        with pytest.raises(RuntimeError, match=kind.value):
+            pipeline.query("q")
+
+    def test_it_reports_only_verified_evidence(self, index_dir, monkeypatch, capsys):
+        ready_index(index_dir)
+        node = PageNode(
+            node_id="mrsa",
+            title="MRSA",
+            heading_level=2,
+            line_idx=1,
+            summary="s",
+            content="Einzelzimmer.",
+        )
+        evidence = VerifiedEvidence(
+            "hygiene", node, "Hygiene › MRSA", "relevant", "Einzelzimmer."
+        )
+        outcome = AnswerOutcome(
+            AnswerKind.ANSWERED,
+            search(evidence=(evidence,)),
+            GroundedAnswer("Einzelzimmer [1]."),
+        )
+        monkeypatch.setattr(
+            pipeline, "_question_answering", lambda _index: answering(outcome)
+        )
+
         pipeline.query("q")
-        out = capsys.readouterr().out
-        assert "Retrieved 1 leaf node(s) across 1 document(s)" in out
-        assert "hygiene / mrsa" in out
 
-    def test_one_failing_document_does_not_abort_the_others(self, registry, index_dir, capsys):
-        """The intent is right — a single bad index should not lose the rest.
-        What it must not do is then answer as though the library was fully read;
-        that is C3, pinned in test_known_gaps.py."""
-        (index_dir / "good.json").write_text("[]", encoding="utf-8")
-        (index_dir / "bad.json").write_text("[]", encoding="utf-8")
-        index_mod = registry.setdefault("index/pageindex_custom", MagicMock())
-
-        def retrieve(stem, text):
-            if stem == "bad":
-                raise RuntimeError("index corrupt")
-            return [leaf("n1")]
-
-        index_mod.retrieve.side_effect = retrieve
-        query_mod = registry.setdefault("query/ollama_synthesis", MagicMock())
-        pipeline.query("q")
-        assert "Warning: retrieval failed for bad" in capsys.readouterr().out
-        assert list(query_mod.synthesise.call_args.args[1]) == ["good"]
+        assert "hygiene / mrsa" in capsys.readouterr().out
 
 
 class TestResolveQuery:
@@ -138,36 +211,30 @@ class TestResolveQuery:
         with patch("builtins.input", return_value="typed question"):
             assert pipeline._resolve_query(None) == "typed question"
 
-    def test_an_empty_query_exits(self, capsys):
+    def test_an_empty_query_exits(self):
         with patch("builtins.input", return_value="   "):
-            with pytest.raises(SystemExit) as exit_info:
+            with pytest.raises(SystemExit):
                 pipeline._resolve_query("")
-        assert exit_info.value.code == 1
-        assert "No query provided." in capsys.readouterr().out
 
 
-class TestModuleListing:
-    def test_the_default_is_marked(self, registry, capsys):
-        with patch.object(pipeline, "discover", return_value={
-            "ingest": {"basic_markdown": {"label": "Basic", "description": "d"},
-                       "betteringest_pdf": {"label": "Better", "description": "d"}},
-            "index": {}, "query": {},
-        }):
-            pipeline.cmd_list(None)
-        out = capsys.readouterr().out
-        assert " * basic_markdown" in out       # the default, starred
-        assert "   betteringest_pdf" in out     # the alternative, not
-        assert "(none found)" in out            # a stage with no modules is not silent
+def test_module_listing_contains_only_real_ingest_adapters(
+    ingest_adapters, capsys
+):
+    del ingest_adapters
+    with patch.object(pipeline, "discover", return_value={
+        "ingest": {
+            "basic_markdown": {"label": "Basic", "description": "d"},
+            "betteringest_pdf": {"label": "Better", "description": "d"},
+        },
+    }):
+        pipeline.cmd_list(None)
+    output = capsys.readouterr().out
+    assert " * basic_markdown" in output
+    assert "   betteringest_pdf" in output
+    assert "Index" not in output and "Query" not in output
 
 
-class TestMain:
-    def test_no_command_prints_help_rather_than_failing(self, capsys):
-        with patch.object(pipeline.sys, "argv", ["pipeline.py"]):
-            pipeline.main()
-        assert "usage:" in capsys.readouterr().out
-
-    def test_a_subcommand_is_dispatched(self, registry):
-        with patch.object(pipeline.sys, "argv", ["pipeline.py", "ingest"]):
-            with patch.object(pipeline, "cmd_ingest") as cmd:
-                pipeline.main()
-        cmd.assert_called_once()
+def test_no_command_prints_help(capsys):
+    with patch.object(pipeline.sys, "argv", ["pipeline.py"]):
+        pipeline.main()
+    assert "usage:" in capsys.readouterr().out

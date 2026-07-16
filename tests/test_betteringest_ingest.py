@@ -71,8 +71,8 @@ def test_pin_ids_join_with_pageindex_node_ids(tmp_path):
     pinned = [n for n in all_nodes if n.pin]
     assert pinned, "massaged markdown must carry pins"
     for n in pinned:
-        assert n.pin["id"] == n.node_id            # the join key
-        assert n.pin["doc"] == "demo"
+        assert n.pin.node_id == n.node_id            # the join key
+        assert n.pin.document == "demo"
 
 
 def test_asset_becomes_extra_leaf_with_caption_content(tmp_path):
@@ -93,21 +93,22 @@ def test_asset_becomes_extra_leaf_with_caption_content(tmp_path):
                 return hit
         return None
 
-    asset = find(nodes, lambda n: (n.pin or {}).get("kind") == "asset")
+    asset = find(nodes, lambda n: n.pin is not None and n.pin.asset is not None)
     assert asset is not None and asset.is_leaf
-    # Caption + description feed the RAG decision — never the pin YAML or the
+    # Caption + description feed the RAG decision — never the pin metadata or the
     # raw image link.
     assert "Dosing chart" in asset.content
     assert "```" not in asset.content and "![" not in asset.content
-    assert asset.pin["image"] == "/assets/demo/figure_1.png"
-    assert asset.pin["page"] == 2 and asset.pin["bbox"]
+    assert asset.pin.asset.image == "/assets/demo/figure_1.png"
+    assert asset.pin.spans[0].page == 2
+    assert asset.pin.spans[0].box
     # The asset leaf hangs under its citing section (extra leaf convention).
     treatment = find(nodes, lambda n: n.node_id == "treatment")
     assert asset in list(treatment.children) or any(
         asset in c.children for c in treatment.children)
 
 
-def test_section_pin_carries_page_bbox_regions(tmp_path):
+def test_section_pin_carries_exact_body_source_spans(tmp_path):
     out = massage(_fake_doc(tmp_path), "demo", "/assets/demo")
     lines = out.split("\n")
     nodes = pi._build_tree(pi._parse_headings(out))
@@ -123,10 +124,11 @@ def test_section_pin_carries_page_bbox_regions(tmp_path):
         return None
 
     treatment = find(nodes, "treatment")
-    assert treatment.pin["page"] == 2               # 1-based page
-    assert treatment.pin["bbox"] == [50.0, 100.0, 300.0, 130.0]
-    assert treatment.pin["regions"] == [[2, 50.0, 140.0, 500.0, 300.0]]
-    assert treatment.pin["scale"] == 2.0
+    assert treatment.pin.scale == 2.0
+    assert treatment.pin.spans[0].page == 2          # 1-based page
+    assert treatment.pin.spans[0].start == 0
+    assert treatment.pin.spans[0].end == len("First line therapy.")
+    assert treatment.pin.spans[0].box.to_list() == [50.0, 140.0, 500.0, 300.0]
 
 
 def test_plain_markdown_docs_are_unaffected():
@@ -189,4 +191,3 @@ def test_save_asset_crops_unlabeled_assets(tmp_path):
         assert fig["physical_section"] == "Section 1"
         assert tab["caption"] == "Table (unlabeled)"
         assert tab["physical_section"] == "Section 1"
-

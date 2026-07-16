@@ -206,7 +206,7 @@ function closeAllPopovers() {
 /* ── Settings: pipeline modules · corpus source · engine ────── */
 
 function initSettings(modulesData, config) {
-  const stageMap = { ingest: 'sel-ingest', index: 'sel-index', query: 'sel-query' };
+  const stageMap = { ingest: 'sel-ingest' };
   for (const [stage, { default: def, modules }] of Object.entries(modulesData.stages || {})) {
     const sel = document.getElementById(stageMap[stage]);
     if (!sel) continue;
@@ -275,8 +275,6 @@ function updateModuleDesc(stage, name) {
 function selectedModules() {
   return {
     ingest_module: document.getElementById('sel-ingest')?.value || null,
-    index_module:  document.getElementById('sel-index')?.value  || null,
-    query_module:  document.getElementById('sel-query')?.value  || null,
   };
 }
 
@@ -1832,7 +1830,6 @@ async function runIngest() {
       src.pdfs.map(p => `<div class="file">${escHtml(p)}</div>`).join('');
     await apiPost('/api/ingest/run', {
       ingest_module: moduleName,
-      index_module: document.getElementById('sel-index')?.value || null,
     });
   } catch (e) {
     warnEl.innerHTML = `<div class="warn">✗ ${escHtml(e.message)}</div>`;

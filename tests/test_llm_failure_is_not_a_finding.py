@@ -21,8 +21,9 @@ from pageindex import RunState
 from pageindex import search as pi_search
 from pageindex.nodes import PageNode
 import server
-from api.retrieval import count_eval_errors
 from api.routers import chat as chat_router
+from api.question_answering import AnswerKind, AnswerOutcome
+from api.retrieval import LibrarySearchResult, LibraryStatus
 
 
 @pytest.fixture
@@ -88,29 +89,35 @@ class TestUnevaluatedLeafIsNotRejected:
         assert result["quote"] in leaf().content
 
 
-class TestCountEvalErrors:
-    def test_counts_across_documents(self):
-        results = {
-            "doc_a": {"node_meta": {"n1": {"status": "error"}, "n2": {"status": "rejected"}}},
-            "doc_b": {"node_meta": {"n3": {"status": "error"}, "n4": {"status": "retrieved"}}},
-        }
-        assert count_eval_errors(results) == 2
-
-    def test_zero_when_everything_was_evaluated(self):
-        results = {"doc_a": {"node_meta": {"n1": {"status": "retrieved"}, "n2": {"status": "rejected"}}}}
-        assert count_eval_errors(results) == 0
-
-    @pytest.mark.parametrize("results", [{}, {"doc": {}}, {"doc": {"node_meta": None}}])
-    def test_tolerates_missing_metadata(self, results):
-        assert count_eval_errors(results) == 0
-
-
 class TestChatEndpointRefusesToFakeAFinding:
+    @staticmethod
+    def _answering(outcome):
+        class StubAnswering:
+            def answer(self, question, run):
+                return outcome
+
+        return lambda run: StubAnswering()
+
+    @staticmethod
+    def _search(status):
+        return LibrarySearchResult(
+            query="What PPE for MRSA?",
+            generation_id="generation-test",
+            status=status,
+            documents=(),
+            evidence=(),
+            diagnostics=(),
+        )
+
     def test_total_failure_is_503_not_insufficient_evidence(self, client, monkeypatch):
         """The exact observed bug."""
-        monkeypatch.setattr(chat_router, "run_retrieval", lambda *a, **k: {
-            "doc": {"nodes": [], "tree": [], "retrieved_ids": [], "node_meta": {"n1": {"status": "error"}, "n2": {"status": "error"}}},
-        })
+        outcome = AnswerOutcome(
+            AnswerKind.RETRIEVAL_UNAVAILABLE,
+            self._search(LibraryStatus.UNAVAILABLE),
+        )
+        monkeypatch.setattr(
+            chat_router, "_question_answering", self._answering(outcome)
+        )
         response = client.post("/api/chat", json={"query": "What PPE for MRSA?"})
 
         assert response.status_code == 503
@@ -118,18 +125,26 @@ class TestChatEndpointRefusesToFakeAFinding:
         assert "judged relevant" not in body, "must not state a finding about the documents"
         assert "insufficient_evidence" not in body
 
-    def test_the_error_says_it_is_not_a_finding(self, client, monkeypatch):
-        monkeypatch.setattr(chat_router, "run_retrieval", lambda *a, **k: {
-            "doc": {"nodes": [], "tree": [], "retrieved_ids": [], "node_meta": {"n1": {"status": "error"}}},
-        })
+    def test_the_error_is_a_machine_readable_technical_outcome(self, client, monkeypatch):
+        outcome = AnswerOutcome(
+            AnswerKind.RETRIEVAL_UNAVAILABLE,
+            self._search(LibraryStatus.UNAVAILABLE),
+        )
+        monkeypatch.setattr(
+            chat_router, "_question_answering", self._answering(outcome)
+        )
         response = client.post("/api/chat", json={"query": "q"})
-        assert "not a finding" in response.json()["error"]
+        assert response.json()["error"]["kind"] == "retrieval_unavailable"
 
     def test_genuine_empty_result_still_reports_insufficient_evidence(self, client, monkeypatch):
         """A real "nothing matched" must survive — every leaf was checked."""
-        monkeypatch.setattr(chat_router, "run_retrieval", lambda *a, **k: {
-            "doc": {"nodes": [], "tree": [], "retrieved_ids": [], "node_meta": {"n1": {"status": "rejected"}, "n2": {"status": "rejected"}}},
-        })
+        outcome = AnswerOutcome(
+            AnswerKind.INSUFFICIENT_EVIDENCE,
+            self._search(LibraryStatus.COMPLETE),
+        )
+        monkeypatch.setattr(
+            chat_router, "_question_answering", self._answering(outcome)
+        )
         response = client.post("/api/chat", json={"query": "unrelated question"})
         assert response.status_code == 200
         assert response.json()["grounding"]["status"] == "insufficient_evidence"

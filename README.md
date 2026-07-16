@@ -53,7 +53,7 @@ the same moment is described from two angles:
 - [Reference](#reference)
   - [Keyboard shortcuts](#keyboard-shortcuts)
   - [HTTP API](#http-api)
-  - [Pipeline modules](#pipeline-modules)
+  - [Ingest adapters](#ingest-adapters)
   - [Ollama instances](#ollama-instances)
   - [Verdict color scheme](#verdict-color-scheme)
   - [Project layout](#project-layout)
@@ -90,7 +90,7 @@ backend owns the document index, the LLM calls, and all run state.
 | Server | FastAPI + Uvicorn, port `8765` | `tauri-app/server.py` |
 | Index + retrieval | Deterministic heading parser + LLM retrieval | `pageindex/` |
 | LLM runtime | Ollama, model `gemma3:4b` | pool on `11434+`, explainer on `11500` |
-| Pipeline modules | ingest / index / query strategies | `modules/` |
+| Ingest adapters | alternate source-to-markdown producers | `modules/ingest/` |
 
 Retrieval is **two-phase**: a cheap top-down **section-pruning** pass (BFS over the
 heading tree) followed by a focused **per-leaf evaluation** of every surviving leaf.
@@ -118,10 +118,10 @@ Both phases run in parallel across the configured Ollama instances.
 
 🖥️ **Frontend**
 - On load the UI fires five calls in parallel (`/api/tests`, `/api/modules`, `/api/config`, `/api/status`, `/api/documents`) and renders:
-  - **Sidebar:** pipeline module dropdowns (Ingest / Index / Query), an Ollama-instance stepper with live activity dots, and the test-case list grouped into *Single document*, *Multi-section*, *Cross-document*.
+  - **Sidebar:** the ingest-adapter dropdown, an Ollama-instance stepper with live activity dots, and the test-case list grouped into *Single document*, *Multi-section*, *Cross-document*.
   - **Main area:** a **treemap of the whole corpus** — every document is a box subdivided into its sections and leaves. All boxes start neutral ("pending").
   - **Chat launcher:** a collapsed *“💬 Ask a question ⌘K”* pill at the bottom-right.
-- **Actions available:** browse documents, pick a test, open the chat, change the pipeline modules, or change the instance count.
+- **Actions available:** browse documents, pick a test, open the chat, change the ingest adapter, or change the instance count.
 
 ⚙️ **Backend**
 - Serves the cached index trees (`/api/documents`) and the static test definitions (`/api/tests`). No LLM activity; instances report **idle** via `/api/status`.
@@ -147,10 +147,10 @@ Both phases run in parallel across the configured Ollama instances.
   - **Open the chat** with `⌘K` / `Ctrl+K`, the `/` key, or by clicking the pill. It expands and focuses instantly.
   - The input **auto-grows** as you type, up to ~10 lines, then scrolls. `Esc` (or the ⌄ button) collapses it back to the pill to maximize the visualization area.
   - **Submit** with `Enter` (or the send button). `Shift+Enter` inserts a newline.
-- Optionally first change the **pipeline modules** or the **Ollama instance count** (the stepper POSTs to the backend and the activity dots reflect the new pool).
+- Optionally first change the **ingest adapter** or the **Ollama instance count** (the stepper POSTs to the backend and the activity dots reflect the new pool).
 
 ⚙️ **Backend**
-- The frontend `POST`s to `/api/run` with `{query | test_id, ingest/index/query module}`.
+- The frontend `POST`s to `/api/run` with `{query | test_id}`; retrieval always uses the one PageIndex implementation.
 - The server counts total leaves across all documents and calls `start_run(total)` to reset the live counters, then begins retrieval per document.
 
 ---
@@ -244,23 +244,24 @@ Both phases run in parallel across the configured Ollama instances.
 | `GET` | `/` | The UI (asset URLs versioned by mtime) |
 | `GET` | `/api/tests` | Built-in test cases |
 | `GET` | `/api/config` · `POST` `/api/config` | Read / set the Ollama instance count |
-| `GET` | `/api/modules` | Available pipeline modules per stage |
+| `GET` | `/api/modules` | Available ingest adapters |
 | `GET` | `/api/documents` | All indexed document trees |
 | `GET` | `/api/document/{stem}/full` | Raw markdown for the document viewer |
-| `GET` | `/api/status` | Live run state: instance activity, progress, verdict sets + `meta` |
+| `GET` | `/api/status` | Ollama instance activity |
+| `GET` | `/api/runs/{run_id}` | Progress and verdict state for one retrieval run |
 | `POST` | `/api/run` | Run retrieval for a query/test |
-| `POST` | `/api/chat` | Chatbot: same retrieval, then a cited structured answer + sources (also returns the full run payload) |
+| `POST` | `/api/chat` | Versioned grounded answer, search-coverage facts, and verified sources |
 | `POST` | `/api/explain` | On-demand grounded "why not selected" (dedicated instance) |
 
-### Pipeline modules
+### Ingest adapters
 
-Discovered automatically from `modules/<stage>/*.py` (each exports a `MODULE_INFO` dict).
+The two real ingest alternatives are discovered from `modules/ingest/*.py`.
+Indexing, whole-library retrieval, and question answering each have one direct
+implementation; they are not configurable plugin stages.
 
-| Stage | Default module | Role |
-|-------|----------------|------|
-| Ingest | `basic_markdown` | Copy `docs/*.md` into `knowledge_base/` |
-| Index | `pageindex_custom` | Deterministic heading-tree index (delegates to `pageindex/`) |
-| Query | `ollama_synthesis` | LLM retrieval + synthesis over the index |
+| Default adapter | Role |
+|-----------------|------|
+| `basic_markdown` | Copy `docs/*.md` into `knowledge_base/` |
 
 ### Ollama instances
 
@@ -294,10 +295,10 @@ astepsis/
 │   ├── prompts.py · pins.py  #   retrieval prompts; provenance blocks from PDF ingest
 │   └── settings.py · clients.py · run_state.py
 ├── retrieval_cases.py        # Retrieval quality cases — shared by the suite and the console
-├── pipeline.py               # CLI: ingest → index → query, per-stage module selection
+├── pipeline.py               # CLI: ingest → immutable index generation → grounded query
 ├── run-tauri.py              # One-command launcher (pipeline + server + window)
 ├── run_tauri.command         # Double-clickable macOS launcher (installs deps, starts Ollama)
-├── modules/                  # ingest / index / query strategy modules + registry
+├── modules/                  # real ingest adapters and their registry
 ├── tauri-app/
 │   ├── server.py             # Entrypoint: assembles the app
 │   ├── api/                  # One router per concern, plus what no single route owns

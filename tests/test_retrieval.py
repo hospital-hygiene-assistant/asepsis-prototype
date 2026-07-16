@@ -12,8 +12,10 @@ import urllib.request
 
 import pytest
 
-from pageindex import OLLAMA_URLS, retrieve
-from paths import INDEX_DIR
+import pageindex
+from pageindex import OLLAMA_URLS
+from api.retrieval import LibraryStatus, WholeLibraryRetrieval
+from api.runs import RunRegistry
 from retrieval_cases import RETRIEVAL_CASES
 
 
@@ -21,12 +23,7 @@ from retrieval_cases import RETRIEVAL_CASES
 def _model_must_be_reachable():
     """Skip when the model is down, rather than blaming the retriever.
 
-    retrieve() returns [] whether it searched and found nothing or never ran, so
-    with Ollama stopped every case here failed as "Expected nodes NOT retrieved"
-    — a claim about retrieval quality, when in truth nothing was read. That is
-    the same conflation of a technical fault with a finding that /api/chat had to
-    be fixed for, and the suite should not repeat it. Drop this skip once the
-    engine itself distinguishes the two (see C3 in tests/test_known_gaps.py).
+    A model outage is setup failure, not a retrieval-quality finding.
     """
     probe = f"{OLLAMA_URLS[0].rstrip('/')}/api/tags"
     try:
@@ -38,20 +35,24 @@ def _model_must_be_reachable():
         )
 
 
-def _retrieved_ids(doc_name: str, query: str) -> set[str]:
-    try:
-        return {node.node_id for node in retrieve(doc_name, query)}
-    except FileNotFoundError:
-        pytest.skip(f"Index for '{doc_name}' not built — run 'pipeline.py index' first")
-
-
 def _all_retrieved(query: str) -> dict[str, set[str]]:
-    found = {}
-    for idx in sorted(INDEX_DIR.glob("*.json")):
-        ids = _retrieved_ids(idx.stem, query)
-        if ids:
-            found[idx.stem] = ids
-    return found
+    try:
+        result = WholeLibraryRetrieval(pageindex).search(
+            query, RunRegistry().create()
+        )
+    except (FileNotFoundError, ValueError, KeyError):
+        pytest.skip("Index generation unavailable — run 'pipeline.py index' first")
+    if result.status is LibraryStatus.UNAVAILABLE:
+        pytest.skip("Library search unavailable; no quality finding can be made")
+    assert result.status is LibraryStatus.COMPLETE, (
+        "Retrieval quality cannot be scored from a partial search: "
+        f"{result.diagnostics}"
+    )
+    return {
+        document.document: {item.node.node_id for item in document.evidence}
+        for document in result.documents
+        if document.evidence
+    }
 
 
 def _describe(retrieved: dict[str, set[str]]) -> str:
