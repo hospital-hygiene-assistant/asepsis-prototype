@@ -56,9 +56,11 @@ def test_one_question_snapshots_models_and_pool_once_for_every_document(tmp_path
     class Client:
         def __init__(self):
             self.models = []
+            self.thinking = []
 
-        def chat(self, *, model, messages, options):
+        def chat(self, *, model, messages, options, think):
             self.models.append(model)
+            self.thinking.append(think)
             return {"message": {"content": (
                 "SHORT_ANSWER: Antwort [1]\n"
                 "RECOMMENDED_ACTION: Handlung [1]\n"
@@ -90,6 +92,7 @@ def test_one_question_snapshots_models_and_pool_once_for_every_document(tmp_path
     assert [call[1] for call in engine.calls] == ["retrieval-a", "retrieval-a"]
     assert engine.calls[0][2] is engine.calls[1][2]
     assert client.models == ["synthesis-a"]
+    assert client.thinking == [False]
 
 
 def test_debug_retrieval_uses_the_same_frozen_runtime_seam(tmp_path):

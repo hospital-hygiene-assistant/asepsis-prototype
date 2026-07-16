@@ -16,6 +16,7 @@ ASEPSIS searches the complete local guideline library and may only present evide
 - **Library generation**: a full-SHA-256, manifest-backed snapshot atomically promoted as the current expected library. Searches and source links retain that identity so a later promotion cannot change their evidence.
 - **Search coverage**: the generation identity and complete, partial, or unavailable extent of one whole-library search. It is carried through successful answers and technical failures; it is never inferred from an empty result.
 - **Ingest adapter**: one of the real alternate producers of canonical markdown. Indexing, retrieval, and question answering each have one implementation and are not plugin stages.
+- **Local trust model**: the backend listens on loopback and trusts the person operating the machine. Folder paths, ingest controls, and model-pool controls are not suitable for a hosted deployment without authenticated access and safe upload orchestration.
 
 ## Current Architecture
 
@@ -23,3 +24,4 @@ ASEPSIS searches the complete local guideline library and may only present evide
 - The Whole-library retrieval module searches one library generation with one frozen retrieval model and Ollama pool snapshot.
 - The Question answering module is the single interface for verified evidence, structured synthesis, citations, and typed answer outcomes.
 - CLI and HTTP adapters share the same Question answering runtime assembly; neither reconstructs retrieval, synthesis, or provenance rules.
+- The current deployment is local-only. Authentication, safe uploads, bounded job orchestration, and deployment hardening belong to a separate hosted-deployment decision.

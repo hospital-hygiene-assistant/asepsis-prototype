@@ -3,10 +3,11 @@
 import pageindex as _pi
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from typing import Optional
 
 from modules.registry import discover as _discover_modules, defaults as _module_defaults
+from pageindex.settings import MAX_OLLAMA_INSTANCES, MIN_OLLAMA_INSTANCES
 from retrieval_cases import RETRIEVAL_CASES
 
 from ..ollama_pool import ollama_bin, set_ollama_instances
@@ -58,7 +59,9 @@ def get_config():
 
 
 class ConfigRequest(BaseModel):
-    ollama_instances: int
+    ollama_instances: int = Field(
+        ge=MIN_OLLAMA_INSTANCES, le=MAX_OLLAMA_INSTANCES
+    )
     retrieval_model: Optional[str] = None
     synthesis_model: Optional[str] = None
 

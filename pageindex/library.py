@@ -180,6 +180,16 @@ class ExpectedLibraryStore:
                             f"pin for {document_id!r} references undeclared "
                             f"source asset {node.pin.asset.asset_id!r}"
                         )
+                if not any(
+                    node.is_leaf
+                    and bool((node.content or "").strip())
+                    and (node.pin is None or node.pin.asset is None)
+                    for node in _walk_nodes(nodes)
+                ):
+                    raise ValueError(
+                        f"source PDF document {document_id!r} has no "
+                        "searchable body guidance"
+                    )
             if candidate.source is not None:
                 data = candidate.source.pdf_path.read_bytes()
                 actual = hashlib.sha256(data).hexdigest()

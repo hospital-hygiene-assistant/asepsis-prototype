@@ -20,6 +20,7 @@ def _chat(
     response = client.chat(
         model=model or settings.model,
         messages=[{"role": "user", "content": prompt}],
+        think=False,
         options={"temperature": 0},
     )
     return response["message"]["content"]

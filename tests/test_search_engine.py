@@ -194,6 +194,85 @@ class TestRetrieveWithMetadataFromPath:
                 "never-built", "q", RunState(), index_path
             )
 
+    def test_a_direct_descendant_heading_match_survives_a_false_model_prune(
+        self, index_path
+    ):
+        root = PageNode(
+            node_id="hypertension",
+            title="Hypertension",
+            heading_level=1,
+            line_idx=0,
+            summary="s",
+            children=[section(
+                "non-pharmacological-management",
+                [leaf(
+                    "sodium-restriction",
+                    "Limit sodium intake to less than 2,300 mg per day.",
+                )],
+            )],
+        )
+        self._write(index_path, root)
+
+        def model_verdict(prompt, *_args):
+            if "--- SECTION CONTENT ---" in prompt:
+                return json.dumps({
+                    "relevant": True,
+                    "reason": "direct answer",
+                    "quote": "Limit sodium intake to less than 2,300 mg per day.",
+                })
+            return PRUNE
+
+        with patch.object(pi_search, "_chat", side_effect=model_verdict):
+            nodes, _ = pi_search.retrieve_with_metadata_from_path(
+                "guideline",
+                "What sodium intake is recommended?",
+                RunState(),
+                index_path,
+            )
+
+        assert [node.node_id for node in nodes] == ["sodium-restriction"]
+
+    def test_a_leaf_can_answer_one_explicit_part_of_a_compound_query(
+        self, index_path
+    ):
+        quote = (
+            "Train-of-four stimulation is used to titrate neuromuscular "
+            "blockade."
+        )
+        root = PageNode(
+            node_id="neuromuscular-blockade",
+            title="Neuromuscular blockade",
+            heading_level=1,
+            line_idx=0,
+            summary="ARDS indications and monitoring",
+            children=[leaf("monitoring-and-safety", quote)],
+        )
+        self._write(index_path, root)
+
+        def model_verdict(prompt, *_args):
+            if "--- SECTION CONTENT ---" not in prompt:
+                return KEEP
+            if "answers at least one of them" not in prompt:
+                return json.dumps({"relevant": False})
+            return json.dumps({
+                "relevant": True,
+                "reason": "directly answers the monitoring part",
+                "quote": quote,
+            })
+
+        with patch.object(pi_search, "_chat", side_effect=model_verdict):
+            nodes, _ = pi_search.retrieve_with_metadata_from_path(
+                "guideline",
+                (
+                    "When are neuromuscular blocking agents indicated in ARDS "
+                    "and how is the depth of blockade monitored?"
+                ),
+                RunState(),
+                index_path,
+            )
+
+        assert [node.node_id for node in nodes] == ["monitoring-and-safety"]
+
     def test_an_explicit_generation_path_is_the_document_read(self, tmp_path):
         index_path = tmp_path / "generation" / "doc.json"
         index_path.parent.mkdir()

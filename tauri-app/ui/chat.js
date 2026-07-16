@@ -611,7 +611,7 @@ async function openChatConfig() {
 
   const avail = modelsRes.models && modelsRes.models.length > 0
     ? modelsRes.models
-    : [cfg.model, 'gemma3:4b', 'gemma4:e2b'];
+    : [cfg.model];
 
   const configuredRetrieval = cfg.retrieval_model || cfg.model;
   const configuredSynthesis = cfg.synthesis_model || cfg.model;

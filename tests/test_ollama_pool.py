@@ -67,10 +67,14 @@ class TestSetInstances:
         spawner.assert_not_called()
         assert result["requested"] == 1
 
-    def test_a_count_below_one_is_clamped(self, spawner, monkeypatch):
+    @pytest.mark.parametrize("count", [-5, 0, 9, 500])
+    def test_a_count_outside_the_safe_range_is_refused_before_spawning(
+        self, count, spawner, monkeypatch
+    ):
         monkeypatch.setattr(ollama_pool, "_probe", lambda url, timeout=2.0: True)
-        assert set_ollama_instances(0)["requested"] == 1
-        assert set_ollama_instances(-5)["requested"] == 1
+        with pytest.raises(ValueError, match="between 1 and 8"):
+            set_ollama_instances(count)
+        spawner.assert_not_called()
 
     def test_extra_instances_are_started_on_ports_above_the_base(self, spawner, monkeypatch):
         # Nothing is listening above the base port, so they have to be spawned.
@@ -184,6 +188,15 @@ class TestStartConfigured:
         with patch.object(ollama_pool, "set_ollama_instances") as spy:
             start_configured_instances()
         spy.assert_called_once_with(4)
+
+    def test_an_unsafe_environment_count_is_refused_before_pool_setup(
+        self, monkeypatch
+    ):
+        monkeypatch.setenv("OLLAMA_INSTANCES", "500")
+        with patch.object(ollama_pool, "set_ollama_instances") as spy:
+            with pytest.raises(ValueError, match="between 1 and 8"):
+                start_configured_instances()
+        spy.assert_not_called()
 
 
 class TestEnsureExplainer:

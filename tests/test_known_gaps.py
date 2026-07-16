@@ -10,7 +10,6 @@ ARCHITECTURE_REVIEW_2026-07-14.md for the full findings and the open questions
 that belong to Federico.
 """
 
-import pytest
 from unittest.mock import patch
 
 from pageindex import RunState
@@ -87,17 +86,9 @@ class TestM2UnavailableDocumentRemainsVisible:
         assert any(item.document == "vanished" for item in results.diagnostics)
 
 
-class TestH6InstanceCountIsUnbounded:
-    """`ConfigRequest.ollama_instances` is a bare `int` with no Field bound
-    (tauri-app/api/routers/status.py), and set_ollama_instances only clamps the
-    lower end. One unauthenticated POST asking for 500 will try to fork ~499
-    `ollama serve` processes, each an independent runtime with its own memory.
+class TestInstanceCountValidation:
+    """The HTTP interface refuses unsafe Ollama pool sizes before spawning."""
 
-    Low risk on a laptop behind localhost; an unauthenticated resource-exhaustion
-    primitive the day this has a URL. The fix is one line: Field(ge=1, le=8).
-    """
-
-    @pytest.mark.xfail(strict=True, reason="H6: ollama_instances has no upper bound")
     def test_an_absurd_instance_count_is_refused(self, monkeypatch):
         import server
         from api.routers import status as status_router
@@ -107,5 +98,7 @@ class TestH6InstanceCountIsUnbounded:
         # before it ever reaches the spawner.
         monkeypatch.setattr(status_router, "set_ollama_instances",
                             lambda n: {"requested": n, "live": 1, "urls": [], "errors": []})
-        response = TestClient(server.app).post("/api/config", json={"ollama_instances": 500})
-        assert response.status_code == 422, "a request to fork 499 processes should not validate"
+        response = TestClient(server.app).post(
+            "/api/config", json={"ollama_instances": 500}
+        )
+        assert response.status_code == 422

@@ -46,7 +46,10 @@ def discover() -> dict[str, dict[str, dict]]:
 
 
 def load(stage: str, name: str) -> Any:
-    """Import and return the module object for the given stage + name."""
+    """Return one ingest adapter explicitly exposed by discovery."""
+    exposed = discover()
+    if stage not in exposed or name not in exposed[stage]:
+        raise ValueError(f"unknown ingest adapter: {stage}/{name}")
     root = str(_BASE.parent)
     if root not in sys.path:
         sys.path.insert(0, root)

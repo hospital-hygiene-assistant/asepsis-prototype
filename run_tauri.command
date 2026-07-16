@@ -37,7 +37,8 @@ say "Checking Python dependencies…"
   || die "Dependency installation failed. Check your network connection and retry."
 
 # ── 3 · Ollama runtime + model ────────────────────────────────
-MODEL="gemma3:4b"
+MODEL=$(.venv/bin/python -c 'from pageindex.settings import DEFAULT_MODEL; print(DEFAULT_MODEL)') \
+  || die "Could not read the configured language model."
 if ! command -v ollama >/dev/null 2>&1; then
   die "Ollama is not installed. Download it from https://ollama.com/download, open it once, then double-click this file again."
 fi
@@ -51,8 +52,8 @@ if ! curl -s --max-time 2 http://127.0.0.1:11434/api/tags >/dev/null 2>&1; then
   curl -s --max-time 2 http://127.0.0.1:11434/api/tags >/dev/null 2>&1 \
     || warn "Ollama did not answer yet — the app will still open; retrieval starts working once it is up."
 fi
-if ! ollama list 2>/dev/null | grep -q "^${MODEL%%:*}"; then
-  say "Downloading the language model ($MODEL, ~3 GB — first launch only)…"
+if ! ollama list 2>/dev/null | awk 'NR > 1 {print $1}' | grep -Fxq "$MODEL"; then
+  say "Downloading the language model ($MODEL, ~7.2 GB — first launch only)…"
   ollama pull "$MODEL" || die "The model download failed. Retry when the connection is stable."
 fi
 

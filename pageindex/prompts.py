@@ -1,7 +1,7 @@
 """Prompts for the retrieval and explanation calls."""
 
 LEAF_EVAL_PROMPT = """\
-Decide if the section below directly answers the query. Read the full content carefully.
+Decide if the section below directly answers the query or an explicit part of it. Read the full content carefully.
 
 Query: QUERY_PLACEHOLDER
 
@@ -15,6 +15,7 @@ CONTENT_PLACEHOLDER
 
 Rules:
 - Answer YES only if the content directly and specifically addresses the query.
+- If the query asks multiple questions, answer YES when the content directly and specifically answers at least one of them; one section need not answer every part.
 - A section that is tangentially related or only mentions the topic in passing is NOT relevant.
 - If YES, the quote must be copied character-for-character from the content above.
 

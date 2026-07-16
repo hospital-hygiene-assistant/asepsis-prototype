@@ -10,6 +10,7 @@ checked" is not "irrelevant".
 """
 
 import json
+import re
 import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Optional
@@ -64,12 +65,12 @@ def _evaluate_leaf(
     try:
         raw = _chat(prompt, client, client_url, model)
         result = _parse_json_response(raw)
-        
+
         if isinstance(result, dict):
             relevant = bool(result.get("relevant"))
             reason = str(result.get("reason") or "").strip()
             quote = str(result.get("quote") or "").strip()
-            
+
             if relevant:
                 if not quote or quote not in (leaf.content or ""):
                     failure = (
@@ -137,6 +138,18 @@ def _format_descendant_outline(node: "PageNode", depth: int = 0) -> str:
     return "\n".join(l for l in lines if l)
 
 
+def _terms(text: str) -> set[str]:
+    return {
+        term for term in re.findall(r"\w+", text.casefold()) if len(term) >= 4
+    }
+
+
+def _heading_terms(node: "PageNode") -> set[str]:
+    titles = [node.title]
+    titles.extend(item.title for item in _collect_all_nodes(node.children))
+    return set().union(*(_terms(title) for title in titles))
+
+
 def _check_section_relevant(
     node: "PageNode",
     query: str,
@@ -148,6 +161,22 @@ def _check_section_relevant(
     run: RunState,
 ) -> tuple[bool, str]:
     """Lightweight LLM call: can this section contain a direct answer?"""
+    query_terms = _terms(query)
+    direct_matches = sorted(query_terms & _heading_terms(node))
+    if direct_matches:
+        reason = (
+            "Kept because the query directly matches descendant heading term(s): "
+            + ", ".join(direct_matches)
+        )
+        run.mark("kept", node.node_id)
+        run.set_meta(node.node_id, "kept", reason)
+        print(
+            f"    [prune-check] {node.node_id}: KEEP (heading match: "
+            f"{', '.join(direct_matches)})",
+            file=sys.stderr,
+        )
+        return True, reason
+
     descendants = _format_descendant_outline(node) or "(no subsections)"
     prompt = (
         SECTION_CHECK_PROMPT
@@ -163,7 +192,7 @@ def _check_section_relevant(
             raise ValueError("the model returned no usable section verdict")
         verdict = bool(result.get("relevant"))
         reason = str(result.get("reason") or "").strip()
-        
+
         if verdict:
             run.mark("kept", node.node_id)
             run.set_meta(node.node_id, "kept", reason)

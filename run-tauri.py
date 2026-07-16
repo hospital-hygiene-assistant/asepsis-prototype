@@ -23,6 +23,10 @@ from pageindex.library import (  # noqa: E402
     ExpectedLibraryNotBuilt,
     ExpectedLibraryStore,
 )
+from pageindex.settings import (  # noqa: E402
+    MAX_OLLAMA_INSTANCES,
+    MIN_OLLAMA_INSTANCES,
+)
 from paths import (  # noqa: E402
     DOCS_DIR,
     KB_DIR,
@@ -137,6 +141,7 @@ def main():
     import argparse
     parser = argparse.ArgumentParser(description="Launch the Asepsis Prototype")
     parser.add_argument("--ollama-instances", type=int, default=1,
+                        choices=range(MIN_OLLAMA_INSTANCES, MAX_OLLAMA_INSTANCES + 1),
                         help="Number of Ollama instances to use for parallel retrieval (default: 1)")
     args = parser.parse_args()
 

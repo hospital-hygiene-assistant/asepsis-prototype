@@ -61,6 +61,7 @@ def build_question_answering(
         response = synthesis_client.chat(
             model=synthesis_model,
             messages=[{"role": "user", "content": prompt}],
+            think=False,
             options={"temperature": 0},
         )
         return response["message"]["content"]

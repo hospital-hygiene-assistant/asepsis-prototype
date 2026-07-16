@@ -19,6 +19,7 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
 import pageindex as _pi
+from pageindex.settings import MAX_OLLAMA_INSTANCES, MIN_OLLAMA_INSTANCES
 
 
 BASE_PORT = 11434
@@ -52,7 +53,11 @@ def ollama_bin() -> Optional[str]:
 
 def set_ollama_instances(n: int) -> dict:
     """Start/stop Ollama instances so exactly n are running. Returns status dict."""
-    n = max(1, n)
+    if isinstance(n, bool) or not MIN_OLLAMA_INSTANCES <= n <= MAX_OLLAMA_INSTANCES:
+        raise ValueError(
+            f"ollama instance count must be between {MIN_OLLAMA_INSTANCES} "
+            f"and {MAX_OLLAMA_INSTANCES}"
+        )
 
     # Drop extras beyond what's needed. A None entry is an instance that was
     # already running when we found it, so there is nothing of ours to stop.
@@ -164,6 +169,11 @@ def shutdown_pool() -> None:
 def start_configured_instances() -> None:
     """Bring the pool up to $OLLAMA_INSTANCES. Called once at app startup."""
     n = int(os.environ.get("OLLAMA_INSTANCES", "1"))
+    if not MIN_OLLAMA_INSTANCES <= n <= MAX_OLLAMA_INSTANCES:
+        raise ValueError(
+            f"OLLAMA_INSTANCES must be between {MIN_OLLAMA_INSTANCES} "
+            f"and {MAX_OLLAMA_INSTANCES}"
+        )
     if n > 1:
         set_ollama_instances(n)
 

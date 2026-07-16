@@ -1,5 +1,9 @@
 """Deterministic examples emitted through the authoritative chat producer."""
 
+import argparse
+from pathlib import Path
+import sys
+
 from pageindex import PageNode
 from pageindex.pins import NormalizedRegion, VisualLocation
 
@@ -157,3 +161,53 @@ def fixture_payloads() -> dict[str, str]:
         ).model_dump_json(indent=2) + "\n"
         for filename, outcome in outcomes.items()
     }
+
+
+def _write(targets: list[Path]) -> None:
+    payloads = fixture_payloads()
+    for target in targets:
+        target.mkdir(parents=True, exist_ok=True)
+        for existing in target.iterdir():
+            if existing.is_file() and existing.name not in payloads:
+                existing.unlink()
+        for filename, payload in payloads.items():
+            (target / filename).write_text(payload, encoding="utf-8")
+
+
+def _mismatches(targets: list[Path]) -> list[str]:
+    payloads = fixture_payloads()
+    mismatches: list[str] = []
+    for target in targets:
+        actual_names = {
+            path.name for path in target.iterdir() if path.is_file()
+        } if target.is_dir() else set()
+        if actual_names != set(payloads):
+            mismatches.append(f"{target}: fixture file set differs")
+        for filename, payload in payloads.items():
+            path = target / filename
+            if not path.is_file() or path.read_text(encoding="utf-8") != payload:
+                mismatches.append(f"{path}: content differs")
+    return mismatches
+
+
+def main(argv: list[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(
+        description="Write or verify authoritative v2 chat fixtures."
+    )
+    action = parser.add_mutually_exclusive_group(required=True)
+    action.add_argument("--write", action="store_true")
+    action.add_argument("--check", action="store_true")
+    parser.add_argument("targets", nargs="+", type=Path)
+    args = parser.parse_args(argv)
+
+    if args.write:
+        _write(args.targets)
+        return 0
+    mismatches = _mismatches(args.targets)
+    for mismatch in mismatches:
+        print(mismatch, file=sys.stderr)
+    return 1 if mismatches else 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

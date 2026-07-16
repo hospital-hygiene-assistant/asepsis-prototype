@@ -228,6 +228,41 @@ def test_publish_rejects_an_asset_pin_without_an_immutable_source_asset(
         })
 
 
+def test_source_pdf_requires_searchable_body_guidance_before_promotion(tmp_path):
+    pdf = tmp_path / "guide.pdf"
+    pdf.write_bytes(b"%PDF-1.7\nsource\n")
+    asset = tmp_path / "figure.png"
+    asset.write_bytes(b"figure")
+    store = ExpectedLibraryStore(tmp_path / "library")
+    current = store.publish({
+        "stable": LibraryCandidate("# Stable\n\nSearchable body guidance.\n")
+    })
+    pin = ProvenancePin(
+        version=2,
+        document="image-only",
+        node_id="figure",
+        spans=(SourceSpan(1, 0, 7, PixelBox(10, 20, 100, 80)),),
+        scale=2.0,
+        asset=AssetProvenance("figure_1", "figure", "/assets/figure.png"),
+    )
+
+    with pytest.raises(ValueError, match="no searchable body guidance"):
+        store.publish({
+            "image-only": LibraryCandidate(
+                canonical_markdown=f"# Figure\n\n{emit_pin(pin)}\nCaption",
+                source=SourceCandidate(
+                    pdf,
+                    ocr_scale=2.0,
+                    assets=(SourceAssetCandidate(
+                        "figure_1", asset, "image/png"
+                    ),),
+                ),
+            )
+        })
+
+    assert store.open_current().generation_id == current.generation_id
+
+
 def test_open_generation_normalizes_a_missing_manifest(tmp_path):
     store = ExpectedLibraryStore(tmp_path / "library")
 

@@ -7,7 +7,8 @@ should not leave the machine by default, so the default backend is a local
 Ollama vision model.  Backends:
 
   ollama          (default) local vision model via the Ollama HTTP API.
-                  Model from $BETTERINGEST_CAPTION_MODEL, else gemma4:e2b
+                  Model from $BETTERINGEST_CAPTION_MODEL, else the pinned
+                  Gemma 4 E2B Q4_K_M instruction model.
                   (vision-capable and already used by asepsis retrieval).
                   The model must actually be pulled — a missing model is a
                   hard error, never a silent downgrade.
@@ -32,7 +33,11 @@ import sys
 import threading
 from pathlib import Path
 
-DEFAULT_OLLAMA_MODEL = os.environ.get("BETTERINGEST_CAPTION_MODEL", "gemma4:e2b")
+from pageindex.settings import DEFAULT_MODEL
+
+DEFAULT_OLLAMA_MODEL = os.environ.get(
+    "BETTERINGEST_CAPTION_MODEL", DEFAULT_MODEL
+)
 DEFAULT_OLLAMA_URL = os.environ.get("BETTERINGEST_CAPTION_URL",
                                     "http://127.0.0.1:11434")
 
@@ -98,7 +103,7 @@ def _ollama_chat_factory(model: str, url: str):
         resp = client.chat(model=model, messages=[{
             "role": "user", "content": "\n".join(text_parts),
             "images": images,
-        }], options={"temperature": 0})
+        }], think=False, options={"temperature": 0})
         return resp["message"]["content"]
 
     return chat

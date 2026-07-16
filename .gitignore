@@ -5,6 +5,7 @@ __pycache__/
 .venv/
 venv/
 .env
+.coverage*
 
 # Generated pipeline artifacts (rebuilt locally, not committed)
 /knowledge_base/

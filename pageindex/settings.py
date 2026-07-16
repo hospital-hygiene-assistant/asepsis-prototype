@@ -7,13 +7,17 @@ leaving every `from .settings import MODEL` holding the old value.
 
 from dataclasses import dataclass
 
+DEFAULT_MODEL = "gemma4:e2b-it-q4_K_M"
+MIN_OLLAMA_INSTANCES = 1
+MAX_OLLAMA_INSTANCES = 8
+
 
 @dataclass
 class Settings:
-    model: str = "gemma3:4b"
+    model: str = DEFAULT_MODEL
     """Model used to judge relevance during retrieval."""
 
-    synthesis_model: str = "gemma3:4b"
+    synthesis_model: str = DEFAULT_MODEL
     """Model used to compose the final answer."""
 
 
