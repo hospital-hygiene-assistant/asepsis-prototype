@@ -23,6 +23,17 @@ class ExpectedLibraryCorrupt(RuntimeError):
     """A published generation no longer matches its immutable manifest."""
 
 
+def _read_verified_object(path: Path, sha256: str, label: str) -> bytes:
+    """Read one published object and enforce its manifest digest."""
+    try:
+        data = path.read_bytes()
+    except OSError as exc:
+        raise ExpectedLibraryCorrupt(f"{label} is missing") from exc
+    if hashlib.sha256(data).hexdigest() != sha256:
+        raise ExpectedLibraryCorrupt(f"{label} digest mismatch")
+    return data
+
+
 def validate_library_segment(value: str, label: str = "identity") -> str:
     """Validate one portable decoded document or asset path segment."""
     if (
@@ -94,13 +105,7 @@ class SourceDocument:
 
     def read_pdf(self) -> bytes:
         """Read this immutable source, refusing missing or changed bytes."""
-        try:
-            data = self._pdf_path.read_bytes()
-        except OSError as exc:
-            raise ExpectedLibraryCorrupt("source PDF is missing") from exc
-        if hashlib.sha256(data).hexdigest() != self.sha256:
-            raise ExpectedLibraryCorrupt("source PDF digest mismatch")
-        return data
+        return _read_verified_object(self._pdf_path, self.sha256, "source PDF")
 
     def asset(self, asset_id: str) -> "SourceAsset":
         try:
@@ -120,13 +125,7 @@ class SourceAsset:
 
     def read_bytes(self) -> bytes:
         """Read this immutable source asset with digest verification."""
-        try:
-            data = self._path.read_bytes()
-        except OSError as exc:
-            raise ExpectedLibraryCorrupt("source asset is missing") from exc
-        if hashlib.sha256(data).hexdigest() != self.sha256:
-            raise ExpectedLibraryCorrupt("source asset digest mismatch")
-        return data
+        return _read_verified_object(self._path, self.sha256, "source asset")
 
 
 @dataclass(frozen=True)

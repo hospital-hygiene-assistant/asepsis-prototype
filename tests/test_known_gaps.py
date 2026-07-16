@@ -13,6 +13,7 @@ that belong to Federico.
 from unittest.mock import patch
 
 from pageindex import QuestionRun
+from pageindex.document_index import DocumentIndex
 from pageindex import search as pi_search
 from api.runs import RunRegistry
 from pageindex.library import ExpectedLibraryStore, LibraryCandidate
@@ -51,8 +52,11 @@ class TestSectionWithoutAVerdictFailsOpen:
     def test_a_reply_that_is_not_a_verdict_does_not_prune(self):
         node = PageNode(node_id="isolation", title="Isolation", heading_level=1, line_idx=0,
                         summary="s", children=[LEAF])
+        index = DocumentIndex.from_nodes((node,))
         with patch.object(pi_search, "_chat", return_value='["not", "a", "verdict"]'):
-            verdict, _ = pi_search._check_section_relevant(node, "q", "crumb", run=QuestionRun())
+            verdict, _ = pi_search._check_section_relevant(
+                node, "q", "crumb", index, run=QuestionRun()
+            )
         assert verdict is True, "nothing was judged, so nothing may be pruned"
 
 

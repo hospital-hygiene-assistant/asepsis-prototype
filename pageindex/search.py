@@ -20,13 +20,7 @@ from .question_run import QuestionRun
 from .document_index import DocumentIndex
 from .clients import acquire, pool, release
 from .llm import _chat, _parse_json_response
-from .nodes import (
-    PageNode,
-    _collect_leaves,
-    _build_nodes_by_id,
-    _build_parent_map,
-    _make_breadcrumb,
-)
+from .nodes import PageNode
 from .prompts import EXPLAIN_PROMPT, LEAF_EVAL_PROMPT, SECTION_CHECK_PROMPT
 from .settings import settings
 
@@ -143,9 +137,9 @@ def _terms(text: str) -> set[str]:
     }
 
 
-def _heading_terms(node: "PageNode") -> set[str]:
+def _heading_terms(node: "PageNode", index: DocumentIndex) -> set[str]:
     titles = [node.title]
-    titles.extend(item.title for item in _collect_all_nodes(node.children))
+    titles.extend(item.title for item in index.descendants(node.node_id))
     return set().union(*(_terms(title) for title in titles))
 
 
@@ -153,6 +147,7 @@ def _check_section_relevant(
     node: "PageNode",
     query: str,
     breadcrumb: str,
+    index: DocumentIndex,
     client: Optional[ollama.Client] = None,
     client_url: str = "",
     model: str | None = None,
@@ -161,7 +156,7 @@ def _check_section_relevant(
 ) -> tuple[bool, str]:
     """Lightweight LLM call: can this section contain a direct answer?"""
     query_terms = _terms(query)
-    direct_matches = sorted(query_terms & _heading_terms(node))
+    direct_matches = sorted(query_terms & _heading_terms(node, index))
     if direct_matches:
         reason = (
             "Kept because the query directly matches descendant heading term(s): "
@@ -208,10 +203,10 @@ def _check_section_relevant(
 
 
 def explain_nonselection(
-    node: "PageNode",
+    index: DocumentIndex,
+    node_id: str,
     query: str,
     doc_name: str,
-    breadcrumb: str,
     client: Optional[ollama.Client] = None,
     client_url: str = "",
 ) -> dict:
@@ -221,9 +216,11 @@ def explain_nonselection(
     For a section with no own content, concatenate descendant leaf text so the
     judgement is anchored to real content rather than the heading alone.
     """
+    node = index.node(node_id)
+    breadcrumb = index.breadcrumb(node_id)
     content = node.content
     if not content:
-        leaves = _collect_leaves([node])
+        leaves = index.leaves_under(node_id)
         content = "\n\n".join((l.title + "\n" + (l.content or "")) for l in leaves).strip()
     content = (content or "(no content)")[:4000]
 
@@ -248,19 +245,10 @@ def explain_nonselection(
     return {"topic": "", "addresses_query": False, "reason": ""}
 
 
-def _collect_all_nodes(nodes: list["PageNode"]) -> list["PageNode"]:
-    result: list["PageNode"] = []
-    for node in nodes:
-        result.append(node)
-        result.extend(_collect_all_nodes(node.children))
-    return result
-
-
 def _prune_and_collect(
     nodes: list["PageNode"],
     query: str,
-    parent_map: dict,
-    nodes_by_id: dict,
+    index: DocumentIndex,
     node_assignment: dict[str, tuple],
     node_meta: dict[str, dict],
     run: QuestionRun,
@@ -288,7 +276,8 @@ def _prune_and_collect(
                 workers.submit(
                     _check_section_relevant,
                     node, query,
-                    _make_breadcrumb(node.node_id, parent_map, nodes_by_id),
+                    index.breadcrumb(node.node_id),
+                    index,
                     *node_assignment.get(node.node_id, default_instance),
                     model,
                     run=run,
@@ -316,7 +305,7 @@ def _prune_and_collect(
                     # progress counter reaches total. They won't be evaluated again.
                     _prune_reason = f"Pruned because ancestor section '{node.title}' was pruned."
                     run.record(node.node_id, "pruned", reason or _prune_reason)
-                    for leaf in _collect_leaves([node]):
+                    for leaf in index.leaves_under(node.node_id):
                         run.leaf_complete()
                         run.mark("pruned", leaf.node_id)
                         run.record(leaf.node_id, "pruned", _prune_reason)
@@ -325,7 +314,9 @@ def _prune_and_collect(
                             "reason": _prune_reason,
                             "status": "pruned"
                         }
-                    for descendant in _collect_all_nodes([node]):
+                    for descendant in index.descendants(
+                        node.node_id, include_self=True
+                    ):
                         run.mark("pruned", descendant.node_id)
                         if descendant.node_id != node.node_id:
                             run.record(descendant.node_id, "pruned", _prune_reason)
@@ -361,15 +352,12 @@ def retrieve_with_metadata(
     run = run or QuestionRun()
     retrieval_model = model or settings.model
     nodes = list(index.nodes)
-    leaves = _collect_leaves(nodes)
+    leaves = list(index.leaves)
 
     if not leaves:
         return [], {}
     if run.progress()["total"] == 0:
         run.set_total(len(leaves))
-
-    parent_map  = _build_parent_map(nodes)
-    nodes_by_id = _build_nodes_by_id(nodes)
 
     # Assign every node (section + leaf) to an Ollama instance round-robin by
     # branch. Read the pool once: it can be swapped while a run is in flight,
@@ -379,10 +367,10 @@ def retrieve_with_metadata(
     node_assignment: dict[str, tuple[ollama.Client, str]] = {}
     for i, branch in enumerate(branch_roots):
         client, url = instances[i % len(instances)]
-        for node in _collect_all_nodes([branch]):
+        for node in index.descendants(branch.node_id, include_self=True):
             node_assignment[node.node_id] = (client, url)
     # Fallback for any node not covered (e.g., single-root flat doc)
-    for node in _collect_all_nodes(nodes):
+    for node in index.all_nodes:
         node_assignment.setdefault(node.node_id, instances[0])
 
     node_meta: dict[str, dict] = {}
@@ -395,8 +383,9 @@ def retrieve_with_metadata(
 
     # Phase 1 — top-down pruning
     top = nodes[0].children if (len(nodes) == 1 and nodes[0].children) else nodes
-    surviving = _prune_and_collect(top, query, parent_map, nodes_by_id,
-                                   node_assignment, node_meta, run, retrieval_model)
+    surviving = _prune_and_collect(
+        top, query, index, node_assignment, node_meta, run, retrieval_model
+    )
     print(
         f"  [prune] {doc_name}: {len(surviving)}/{len(leaves)} leaves after pruning",
         file=sys.stderr,
@@ -411,8 +400,8 @@ def retrieve_with_metadata(
                     leaf,
                     query,
                     doc_name,
-                    _make_breadcrumb(leaf.node_id, parent_map, nodes_by_id),
-                    parent_map[leaf.node_id].summary if leaf.node_id in parent_map else "",
+                    index.breadcrumb(leaf.node_id),
+                    index.parent_summary(leaf.node_id),
                     *node_assignment.get(leaf.node_id, instances[0]),
                     retrieval_model,
                     run=run,

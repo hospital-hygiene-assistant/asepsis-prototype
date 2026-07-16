@@ -233,6 +233,15 @@ def test_outcome_kinds_reject_contradictory_search_facts():
             factory(*arguments)
 
 
+def test_a_future_outcome_kind_must_be_handled_explicitly():
+    search = LibrarySearchResult(
+        "q", None, LibraryStatus.UNAVAILABLE, (), (), (),
+    )
+
+    with pytest.raises(AssertionError, match="unhandled answer kind"):
+        AnswerOutcome._create("future", search)  # type: ignore[arg-type]
+
+
 def test_an_outcome_rejects_a_citation_bound_to_different_evidence():
     evidence = VerifiedEvidence(
         "hygiene",

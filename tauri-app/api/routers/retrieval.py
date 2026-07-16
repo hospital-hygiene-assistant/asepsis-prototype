@@ -83,9 +83,10 @@ def explain_node(req: ExplainRequest):
     if not url:
         return JSONResponse({"error": "no Ollama instance available"}, status_code=503)
 
-    breadcrumb = document.index.breadcrumb(req.node_id)
     client = _pi.make_client(url)
-    result = _pi.explain_nonselection(node, req.query, req.stem, breadcrumb, client, url)
+    result = _pi.explain_nonselection(
+        document.index, node.node_id, req.query, req.stem, client, url
+    )
     result["node_id"] = req.node_id
     result["instance"] = url
     result["pin"] = _bind_pin_asset(

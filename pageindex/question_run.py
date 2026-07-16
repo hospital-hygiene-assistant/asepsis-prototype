@@ -97,14 +97,7 @@ class QuestionRun:
 
     def events(self) -> dict:
         with self._lock:
-            return {
-                "pruned": list(self._pruned),
-                "retrieved": list(self._retrieved),
-                "kept": list(self._kept),
-                "rejected": list(self._rejected),
-                "errored": list(self._errored),
-                "meta": {key: dict(value) for key, value in self._meta.items()},
-            }
+            return self._events_unlocked()
 
     def snapshot(self) -> dict:
         with self._lock:
@@ -113,17 +106,18 @@ class QuestionRun:
                 "phase": self._phase,
                 "detail": self._detail,
                 "progress": {"total": self._total, "done": self._done},
-                "live": {
-                    "pruned": list(self._pruned),
-                    "retrieved": list(self._retrieved),
-                    "kept": list(self._kept),
-                    "rejected": list(self._rejected),
-                    "errored": list(self._errored),
-                    "meta": {
-                        key: dict(value) for key, value in self._meta.items()
-                    },
-                },
+                "live": self._events_unlocked(),
             }
+
+    def _events_unlocked(self) -> dict:
+        return {
+            "pruned": list(self._pruned),
+            "retrieved": list(self._retrieved),
+            "kept": list(self._kept),
+            "rejected": list(self._rejected),
+            "errored": list(self._errored),
+            "meta": {key: dict(value) for key, value in self._meta.items()},
+        }
 
     def _set_phase(self, phase: str, detail: str) -> None:
         with self._lock:

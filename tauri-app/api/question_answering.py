@@ -170,13 +170,15 @@ class AnswerOutcome:
                 and self.answer is None
                 and not self.citations
             )
-        else:
+        elif self.kind is AnswerKind.SYNTHESIS_UNAVAILABLE:
             valid = (
                 coverage.status in (LibraryStatus.COMPLETE, LibraryStatus.PARTIAL)
                 and has_evidence
                 and self.answer is None
                 and has_all_citations
             )
+        else:
+            raise AssertionError(f"unhandled answer kind: {self.kind!r}")
         if not valid:
             raise ValueError(
                 f"{self.kind.value} outcome contradicts coverage, evidence, or answer"

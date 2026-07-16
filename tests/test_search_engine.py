@@ -19,11 +19,7 @@ from pageindex import QuestionRun
 from pageindex.document_index import DocumentIndex
 from pageindex import search as pi_search
 from pageindex.settings import settings
-from pageindex.nodes import (
-    PageNode,
-    _build_nodes_by_id,
-    _build_parent_map,
-)
+from pageindex.nodes import PageNode
 
 KEEP = '{"relevant": true, "reason": "covers it"}'
 PRUNE = '{"relevant": false, "reason": "off topic"}'
@@ -59,18 +55,24 @@ class TestSectionCheck:
     invisible downstream: the leaves under it are never evaluated at all.
     """
 
+    @staticmethod
+    def _index(node):
+        return DocumentIndex.from_nodes((node,))
+
     def test_a_keep_verdict_is_recorded(self):
         run = QuestionRun()
         with patch.object(pi_search, "_chat", return_value=KEEP):
             verdict, reason = pi_search._check_section_relevant(
-                section("isolation", [leaf("mrsa", "x")]), "q", "crumb", run=run)
+                (node := section("isolation", [leaf("mrsa", "x")])),
+                "q", "crumb", self._index(node), run=run)
         assert verdict is True and reason == "covers it"
         assert "isolation" in run.events()["kept"]
 
     def test_a_prune_verdict_is_honoured(self):
         with patch.object(pi_search, "_chat", return_value=PRUNE):
             verdict, reason = pi_search._check_section_relevant(
-                section("catering", [leaf("menus", "x")]), "q", "crumb", run=QuestionRun())
+                (node := section("catering", [leaf("menus", "x")])),
+                "q", "crumb", self._index(node), run=QuestionRun())
         assert verdict is False and reason == "off topic"
 
     def test_an_unreachable_model_keeps_the_section(self):
@@ -78,7 +80,8 @@ class TestSectionCheck:
         the model never actually judged, and nothing downstream could tell."""
         with patch.object(pi_search, "_chat", side_effect=RuntimeError("connection refused")):
             verdict, reason = pi_search._check_section_relevant(
-                section("isolation", [leaf("mrsa", "x")]), "q", "crumb", run=QuestionRun())
+                (node := section("isolation", [leaf("mrsa", "x")])),
+                "q", "crumb", self._index(node), run=QuestionRun())
         assert verdict is True
         assert "connection refused" in reason
 
@@ -88,7 +91,8 @@ class TestSectionCheck:
         # parser into returning None and silently invert this.
         with patch.object(pi_search, "_chat", return_value="I'm afraid I can't do that"):
             verdict, _ = pi_search._check_section_relevant(
-                section("isolation", [leaf("mrsa", "x")]), "q", "crumb", run=QuestionRun())
+                (node := section("isolation", [leaf("mrsa", "x")])),
+                "q", "crumb", self._index(node), run=QuestionRun())
         assert verdict is True
 
 
@@ -97,7 +101,9 @@ class TestExplainNonselection:
         node = leaf("mrsa", "Contact precautions apply.")
         with patch.object(pi_search, "_chat",
                           return_value='{"topic": "PPE", "addresses_query": false, "reason": "no"}') as chat:
-            out = pi_search.explain_nonselection(node, "q", "hygiene_doc", "crumb")
+            out = pi_search.explain_nonselection(
+                DocumentIndex.from_nodes((node,)), node.node_id, "q", "hygiene_doc"
+            )
         assert out == {"topic": "PPE", "addresses_query": False, "reason": "no"}
         assert "Contact precautions apply." in chat.call_args[0][0]
 
@@ -107,12 +113,17 @@ class TestExplainNonselection:
         node = section("isolation", [leaf("mrsa", "Single room required.")])
         with patch.object(pi_search, "_chat",
                           return_value='{"topic": "t", "addresses_query": false, "reason": "r"}') as chat:
-            pi_search.explain_nonselection(node, "q", "doc", "crumb")
+            pi_search.explain_nonselection(
+                DocumentIndex.from_nodes((node,)), node.node_id, "q", "doc"
+            )
         assert "Single room required." in chat.call_args[0][0]
 
     def test_a_failure_explains_nothing_rather_than_inventing(self):
         with patch.object(pi_search, "_chat", side_effect=RuntimeError("down")):
-            out = pi_search.explain_nonselection(leaf("mrsa", "x"), "q", "doc", "crumb")
+            node = leaf("mrsa", "x")
+            out = pi_search.explain_nonselection(
+                DocumentIndex.from_nodes((node,)), node.node_id, "q", "doc"
+            )
         assert out == {"topic": "", "addresses_query": False, "reason": ""}
 
 
@@ -130,12 +141,11 @@ class TestPruneAndCollect:
         ]
 
     def _run_prune(self, tree, chat_impl, run):
-        nodes_by_id = _build_nodes_by_id(tree)
-        parent_map = _build_parent_map(tree)
+        index = DocumentIndex.from_nodes(tree)
         node_meta: dict = {}
         with patch.object(pi_search, "_chat", side_effect=chat_impl):
             leaves = pi_search._prune_and_collect(
-                tree, "q", parent_map, nodes_by_id, {}, node_meta, run)
+                list(index.nodes), "q", index, {}, node_meta, run)
         return leaves, node_meta
 
     def test_a_kept_branch_yields_its_leaves_and_a_pruned_one_does_not(self, tree):
@@ -179,25 +189,9 @@ class TestPruneAndCollect:
         assert sorted(n.node_id for n in surviving) == ["menus", "mrsa", "vre"]
 
 
-class MutableDocumentIndex:
-    def __init__(self):
-        self.index = None
-
-    @property
-    def nodes(self):
-        return self.index.nodes
-
-
 class TestRetrieveWithMetadata:
-    @pytest.fixture
-    def index(self, tmp_path):
-        return MutableDocumentIndex()
-
-    def _write(self, index, root: PageNode):
-        index.index = DocumentIndex.from_nodes((root,))
-
     def test_a_direct_descendant_heading_match_survives_a_false_model_prune(
-        self, index
+        self,
     ):
         root = PageNode(
             node_id="hypertension",
@@ -213,7 +207,7 @@ class TestRetrieveWithMetadata:
                 )],
             )],
         )
-        self._write(index, root)
+        index = DocumentIndex.from_nodes((root,))
 
         def model_verdict(prompt, *_args):
             if "--- SECTION CONTENT ---" in prompt:
@@ -235,7 +229,7 @@ class TestRetrieveWithMetadata:
         assert [node.node_id for node in nodes] == ["sodium-restriction"]
 
     def test_a_leaf_can_answer_one_explicit_part_of_a_compound_query(
-        self, index
+        self,
     ):
         quote = (
             "Train-of-four stimulation is used to titrate neuromuscular "
@@ -249,7 +243,7 @@ class TestRetrieveWithMetadata:
             summary="ARDS indications and monitoring",
             children=[leaf("monitoring-and-safety", quote)],
         )
-        self._write(index, root)
+        index = DocumentIndex.from_nodes((root,))
 
         def model_verdict(prompt, *_args):
             if "--- SECTION CONTENT ---" not in prompt:
@@ -275,8 +269,8 @@ class TestRetrieveWithMetadata:
 
         assert [node.node_id for node in nodes] == ["monitoring-and-safety"]
 
-    def test_the_passed_document_index_is_the_document_read(self, index):
-        self._write(index, leaf("pinned", "Pinned passage."))
+    def test_the_passed_document_index_is_the_document_read(self):
+        index = DocumentIndex.from_nodes((leaf("pinned", "Pinned passage."),))
         with patch.object(
             pi_search,
             "_chat",
@@ -290,14 +284,14 @@ class TestRetrieveWithMetadata:
             )
         assert [node.node_id for node in nodes] == ["pinned"]
 
-    def test_an_empty_index_returns_nothing_without_calling_the_model(self, index):
+    def test_an_empty_index_returns_nothing_without_calling_the_model(self):
         with pytest.raises(ValueError, match="non-empty list"):
             DocumentIndex.from_serialized("[]")
 
-    def test_a_childless_root_is_itself_a_leaf_and_gets_evaluated(self, index):
+    def test_a_childless_root_is_itself_a_leaf_and_gets_evaluated(self):
         # Worth pinning: a single-section document is not an empty one, and its
         # own text must still be judged rather than skipped for having no children.
-        self._write(index, leaf("solo", "Disinfect hands."))
+        index = DocumentIndex.from_nodes((leaf("solo", "Disinfect hands."),))
         with patch.object(pi_search, "_chat",
                           return_value='{"relevant": true, "reason": "r", "quote": "Disinfect hands."}'):
             nodes, _ = pi_search.retrieve_with_metadata(
@@ -305,7 +299,7 @@ class TestRetrieveWithMetadata:
             )
         assert [n.node_id for n in nodes] == ["solo"]
 
-    def test_selected_leaves_keep_the_document_s_own_order(self, index):
+    def test_selected_leaves_keep_the_document_s_own_order(self):
         """Sources are numbered [1], [2]… in the answer. If retrieval returned
         them in completion order, the citation numbers would shuffle per run for
         the same question."""
@@ -313,7 +307,7 @@ class TestRetrieveWithMetadata:
             node_id="root", title="Guideline", heading_level=1, line_idx=0, summary="s",
             children=[leaf("first", "A."), leaf("second", "B."), leaf("third", "C.")],
         )
-        self._write(index, root)
+        index = DocumentIndex.from_nodes((root,))
         def exact_verdict(prompt, *_args):
             quote = next(value for value in ("A.", "B.", "C.") if value in prompt)
             return json.dumps({"relevant": True, "reason": "r", "quote": quote})
@@ -324,12 +318,12 @@ class TestRetrieveWithMetadata:
             )
         assert [n.node_id for n in nodes] == ["first", "second", "third"]
 
-    def test_a_rejected_leaf_is_left_out_of_the_result(self, index):
+    def test_a_rejected_leaf_is_left_out_of_the_result(self):
         root = PageNode(
             node_id="root", title="Guideline", heading_level=1, line_idx=0, summary="s",
             children=[leaf("wanted", "Yes."), leaf("unwanted", "No.")],
         )
-        self._write(index, root)
+        index = DocumentIndex.from_nodes((root,))
 
         def verdict(prompt, *_a):
             if "Wanted" in prompt:
@@ -343,8 +337,10 @@ class TestRetrieveWithMetadata:
         assert [n.node_id for n in nodes] == ["wanted"]
         assert meta["unwanted"]["relevant"] is False
 
-    def test_a_leaf_with_a_fabricated_quote_is_not_retrieved(self, index):
-        self._write(index, leaf("isolation", "Use a single room."))
+    def test_a_leaf_with_a_fabricated_quote_is_not_retrieved(self):
+        index = DocumentIndex.from_nodes((
+            leaf("isolation", "Use a single room."),
+        ))
         with patch.object(
             pi_search,
             "_chat",
@@ -360,12 +356,12 @@ class TestRetrieveWithMetadata:
         assert nodes == []
         assert meta["isolation"]["status"] == "error"
 
-    def test_progress_counts_every_leaf_exactly_once(self, index):
+    def test_progress_counts_every_leaf_exactly_once(self):
         root = PageNode(
             node_id="root", title="Guideline", heading_level=1, line_idx=0, summary="s",
             children=[leaf(f"n{i}", "text") for i in range(5)],
         )
-        self._write(index, root)
+        index = DocumentIndex.from_nodes((root,))
         run = QuestionRun()
         run.set_total(5)
         with patch.object(pi_search, "_chat", return_value=PRUNE):
@@ -374,7 +370,7 @@ class TestRetrieveWithMetadata:
             )
         assert run.progress() == {"total": 5, "done": 5}
 
-    def test_a_non_object_section_reply_fails_open_and_is_recorded(self, index):
+    def test_a_non_object_section_reply_fails_open_and_is_recorded(self):
         root = PageNode(
             node_id="root",
             title="Guideline",
@@ -383,7 +379,7 @@ class TestRetrieveWithMetadata:
             summary="s",
             children=[section("isolation", [leaf("mrsa", "Single room.")])],
         )
-        self._write(index, root)
+        index = DocumentIndex.from_nodes((root,))
 
         replies = iter(
             [
@@ -400,7 +396,7 @@ class TestRetrieveWithMetadata:
         assert [node.node_id for node in nodes] == ["mrsa"]
         assert meta["isolation"]["status"] == "error"
 
-    def test_one_retrieval_run_uses_one_model_snapshot(self, index, monkeypatch):
+    def test_one_retrieval_run_uses_one_model_snapshot(self, monkeypatch):
         root = PageNode(
             node_id="root",
             title="Guideline",
@@ -409,7 +405,7 @@ class TestRetrieveWithMetadata:
             summary="s",
             children=[section("isolation", [leaf("mrsa", "Single room.")])],
         )
-        self._write(index, root)
+        index = DocumentIndex.from_nodes((root,))
         monkeypatch.setattr(settings, "model", "model-a")
         used_models = []
 

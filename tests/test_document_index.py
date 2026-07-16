@@ -17,8 +17,16 @@ def test_document_index_owns_navigation_and_debug_projection():
     index = DocumentIndex.from_nodes((root,))
 
     assert index.leaf_count == 1
+    assert index.all_nodes == (root, leaf)
+    assert index.descendants("root") == (leaf,)
+    assert index.descendants("root", include_self=True) == (root, leaf)
+    assert index.leaves_under("root") == (leaf,)
+    assert index.parent_summary("leaf") == "Leaf"
+    assert index.parent_summary("root") == ""
     assert index.node("leaf").content == "Guidance"
     assert index.breadcrumb("leaf") == "Root > Leaf"
     assert index.debug_tree[0]["children"][0]["nodeId"] == "leaf"
     with pytest.raises(KeyError):
         index.node("missing")
+    with pytest.raises(KeyError):
+        index.descendants("missing")

@@ -202,11 +202,13 @@ def encode_outcome(outcome: AnswerOutcome, *, run_id: str) -> ChatResponseV3:
         rendered = SearchIncompleteOutcomeV3(coverage=coverage)
     elif outcome.kind is AnswerKind.RETRIEVAL_UNAVAILABLE:
         rendered = RetrievalUnavailableOutcomeV3(coverage=coverage)
-    else:
+    elif outcome.kind is AnswerKind.SYNTHESIS_UNAVAILABLE:
         rendered = SynthesisUnavailableOutcomeV3(
             coverage=coverage,
             citations=_citations(outcome),
         )
+    else:
+        raise AssertionError(f"unhandled answer kind: {outcome.kind!r}")
     return ChatResponseV3(
         run_id=run_id,
         query=outcome.search.query,

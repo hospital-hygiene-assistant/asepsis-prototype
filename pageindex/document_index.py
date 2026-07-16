@@ -32,6 +32,7 @@ class DocumentIndex:
             raise ValueError("document tree contains duplicate node identities")
         self._nodes_by_id = MappingProxyType(mutable_nodes_by_id)
         self._parent_map = MappingProxyType(_build_parent_map(list(self._nodes)))
+        self._all_nodes = tuple(self._walk(self._nodes))
         self._leaves = tuple(_collect_leaves(list(self._nodes)))
 
     @classmethod
@@ -49,6 +50,11 @@ class DocumentIndex:
     @property
     def leaves(self) -> tuple[PageNode, ...]:
         return self._leaves
+
+    @property
+    def all_nodes(self) -> tuple[PageNode, ...]:
+        """Every node in stable document order."""
+        return self._all_nodes
 
     @property
     def leaf_count(self) -> int:
@@ -73,10 +79,32 @@ class DocumentIndex:
             raise KeyError(node_id)
         return _make_breadcrumb(node_id, self._parent_map, self._nodes_by_id)
 
+    def descendants(
+        self, node_id: str, *, include_self: bool = False
+    ) -> tuple[PageNode, ...]:
+        """The subtree below one node in stable document order."""
+        node = self.node(node_id)
+        descendants = tuple(self._walk(node.children))
+        return (node, *descendants) if include_self else descendants
+
+    def leaves_under(self, node_id: str) -> tuple[PageNode, ...]:
+        """Leaf evidence contained by one node, including itself when a leaf."""
+        return tuple(
+            node
+            for node in self.descendants(node_id, include_self=True)
+            if node.is_leaf
+        )
+
+    def parent_summary(self, node_id: str) -> str:
+        """The immediate parent summary used to judge a leaf in context."""
+        self.node(node_id)
+        parent = self._parent_map.get(node_id)
+        return parent.summary if parent is not None else ""
+
     def node_order(self) -> dict[str, int]:
         return {
             node.node_id: position
-            for position, node in enumerate(self._walk(self._nodes))
+            for position, node in enumerate(self._all_nodes)
         }
 
     @classmethod
