@@ -1,0 +1,15 @@
+{
+  "contract_version": 3,
+  "run_id": "fixture-search_incomplete",
+  "query": "Welche Maßnahmen gelten?",
+  "outcome": {
+    "kind": "search_incomplete",
+    "coverage": {
+      "status": "partial",
+      "generation_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "searched_documents": 1,
+      "total_documents": 2,
+      "incomplete_checks": 1
+    }
+  }
+}

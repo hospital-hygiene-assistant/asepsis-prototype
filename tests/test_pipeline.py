@@ -97,13 +97,11 @@ def search(status=LibraryStatus.COMPLETE, evidence=()):
     )
 
 
-def answering(outcome):
-    class StubAnswering:
-        def answer(self, question, run):
-            assert question.text == "q"
-            return outcome
-
-    return StubAnswering()
+def answer_with(outcome):
+    def answer(question, run):
+        assert question.text == "q"
+        return outcome
+    return answer
 
 
 def citation(evidence: VerifiedEvidence) -> EvidenceCitation:
@@ -186,19 +184,18 @@ class TestQuery:
             "expected_library_unavailable",
             "technical",
         )
-        outcome = AnswerOutcome(
-            AnswerKind.RETRIEVAL_UNAVAILABLE,
+        outcome = AnswerOutcome.retrieval_unavailable(
             LibrarySearchResult(
                 "q", None, LibraryStatus.UNAVAILABLE, (), (), (diagnostic,)
             ),
         )
         calls = []
 
-        def build(run, **_options):
+        def answer(question, run):
             calls.append(run.id)
-            return answering(outcome)
+            return outcome
 
-        monkeypatch.setattr(pipeline, "build_question_answering", build)
+        monkeypatch.setattr(pipeline, "answer_question", answer)
         with pytest.raises(SystemExit):
             pipeline.query("q")
         assert calls == ["cli"]
@@ -217,16 +214,15 @@ class TestQuery:
         evidence = VerifiedEvidence(
             "ready", node, "Ready", "exact", "ready"
         )
-        outcome = AnswerOutcome(
-            AnswerKind.ANSWERED,
+        outcome = AnswerOutcome.answered(
             search(evidence=(evidence,)),
             GroundedAnswer("Die Antwort [1]."),
             (citation(evidence),),
         )
         monkeypatch.setattr(
             pipeline,
-            "build_question_answering",
-            lambda _run, **_options: answering(outcome),
+            "answer_question",
+            answer_with(outcome),
         )
 
         assert pipeline.query("q") == "Die Antwort [1]."
@@ -235,11 +231,11 @@ class TestQuery:
         self, library_dir, monkeypatch
     ):
         ready_library(library_dir)
-        outcome = AnswerOutcome(AnswerKind.INSUFFICIENT_EVIDENCE, search())
+        outcome = AnswerOutcome.insufficient_evidence(search())
         monkeypatch.setattr(
             pipeline,
-            "build_question_answering",
-            lambda _run, **_options: answering(outcome),
+            "answer_question",
+            answer_with(outcome),
         )
 
         assert pipeline.query("q") == "insufficient_evidence"
@@ -255,11 +251,15 @@ class TestQuery:
         self, library_dir, monkeypatch, kind, status
     ):
         ready_library(library_dir)
-        outcome = AnswerOutcome(kind, search(status))
+        outcome = (
+            AnswerOutcome.search_incomplete(search(status))
+            if kind is AnswerKind.SEARCH_INCOMPLETE
+            else AnswerOutcome.retrieval_unavailable(search(status))
+        )
         monkeypatch.setattr(
             pipeline,
-            "build_question_answering",
-            lambda _run, **_options: answering(outcome),
+            "answer_question",
+            answer_with(outcome),
         )
 
         with pytest.raises(RuntimeError, match=kind.value):
@@ -278,16 +278,15 @@ class TestQuery:
         evidence = VerifiedEvidence(
             "hygiene", node, "Hygiene › MRSA", "relevant", "Einzelzimmer."
         )
-        outcome = AnswerOutcome(
-            AnswerKind.ANSWERED,
+        outcome = AnswerOutcome.answered(
             search(evidence=(evidence,)),
             GroundedAnswer("Einzelzimmer [1]."),
             (citation(evidence),),
         )
         monkeypatch.setattr(
             pipeline,
-            "build_question_answering",
-            lambda _run, **_options: answering(outcome),
+            "answer_question",
+            answer_with(outcome),
         )
 
         pipeline.query("q")

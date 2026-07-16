@@ -5,7 +5,6 @@ the server knows that scale and the page size, so turning a pin into page
 fractions a client can overlay has to happen here.
 """
 
-import hashlib
 import threading
 from typing import Optional
 
@@ -25,9 +24,8 @@ def rendered_page_size(
     if pin_scale != source.ocr_scale or page < 1:
         return None
     try:
-        if hashlib.sha256(source.pdf_path.read_bytes()).hexdigest() != source.sha256:
-            return None
-    except OSError:
+        pdf_bytes = source.read_pdf()
+    except Exception:
         return None
     key = (source.sha256, page, pin_scale)
     with _page_size_lock:
@@ -36,7 +34,7 @@ def rendered_page_size(
         return hit
     try:
         import pypdfium2 as pdfium
-        document = pdfium.PdfDocument(str(source.pdf_path))
+        document = pdfium.PdfDocument(pdf_bytes)
         if page > len(document):
             return None
         width_pt, height_pt = document[page - 1].get_size()

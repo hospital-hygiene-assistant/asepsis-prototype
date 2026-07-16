@@ -13,17 +13,10 @@ def test_explain_reads_the_requested_expected_library_generation(
         "hygiene": LibraryCandidate("# PPE\n\nWear gloves.\n"),
     })
     store.publish({
-        "hygiene": LibraryCandidate("# PPE\n\nWear a gown.\n"),
+        "hygiene": LibraryCandidate("# Other\n\nWear a gown.\n"),
     })
-    opened = {}
-    read_tree = retrieval_router.read_tree
-
-    def capture_generation(index_path):
-        opened["index_path"] = index_path
-        return read_tree(index_path)
 
     monkeypatch.setattr(retrieval_router, "LIBRARY_DIR", library)
-    monkeypatch.setattr(retrieval_router, "read_tree", capture_generation)
     monkeypatch.setattr(retrieval_router, "ensure_explainer", lambda: None)
 
     response = retrieval_router.explain_node(retrieval_router.ExplainRequest(
@@ -34,7 +27,6 @@ def test_explain_reads_the_requested_expected_library_generation(
     ))
 
     assert response.status_code == 503
-    assert first.generation_id in str(opened["index_path"])
 
 
 def test_debug_results_carry_generation_scoped_reader_links(monkeypatch):

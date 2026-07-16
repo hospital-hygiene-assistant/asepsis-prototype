@@ -17,7 +17,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 
-from pageindex import RunState
+from pageindex import QuestionRun
 from pageindex import search as pi_search
 from pageindex.nodes import PageNode
 import server
@@ -48,26 +48,26 @@ def leaf(node_id="glycaemic-targets"):
 class TestUnevaluatedLeafIsNotRejected:
     def test_model_failure_yields_error_not_rejected(self):
         with patch.object(pi_search, "_chat", side_effect=RuntimeError("llama runner died")):
-            _, result = pi_search._evaluate_leaf(leaf(), "q", "doc", "crumb", "parent", run=RunState())
+            _, result = pi_search._evaluate_leaf(leaf(), "q", "doc", "crumb", "parent", run=QuestionRun())
         # "rejected" would assert the passage is clinically irrelevant.
         assert result["status"] == "error"
         assert result["relevant"] is False
 
     def test_failure_reason_is_carried_not_silently_dropped(self):
         with patch.object(pi_search, "_chat", side_effect=RuntimeError("llama runner died")):
-            _, result = pi_search._evaluate_leaf(leaf(), "q", "doc", "crumb", "parent", run=RunState())
+            _, result = pi_search._evaluate_leaf(leaf(), "q", "doc", "crumb", "parent", run=QuestionRun())
         assert "llama runner died" in result["reason"]
 
     def test_unparseable_verdict_is_also_an_error(self):
         # The model answered, but with nothing usable. Still not a judgement.
         with patch.object(pi_search, "_chat", return_value="I'm afraid I can't do that"):
             with patch.object(pi_search, "_parse_json_response", return_value=None):
-                _, result = pi_search._evaluate_leaf(leaf(), "q", "doc", "crumb", "parent", run=RunState())
+                _, result = pi_search._evaluate_leaf(leaf(), "q", "doc", "crumb", "parent", run=QuestionRun())
         assert result["status"] == "error"
 
     def test_errored_leaves_are_tracked_apart_from_rejected(self):
-        run = RunState()
-        run.start(1)
+        run = QuestionRun()
+        run.set_total(1)
         with patch.object(pi_search, "_chat", side_effect=RuntimeError("down")):
             pi_search._evaluate_leaf(leaf("n1"), "q", "doc", "crumb", "parent", run=run)
         events = run.events()
@@ -77,7 +77,7 @@ class TestUnevaluatedLeafIsNotRejected:
     def test_a_real_rejection_still_rejects(self):
         # The honest negative must survive: this is a genuine model verdict.
         with patch.object(pi_search, "_chat", return_value='{"relevant": false, "reason": "off topic"}'):
-            _, result = pi_search._evaluate_leaf(leaf(), "q", "doc", "crumb", "parent", run=RunState())
+            _, result = pi_search._evaluate_leaf(leaf(), "q", "doc", "crumb", "parent", run=QuestionRun())
         assert result["status"] == "rejected"
         assert result["reason"] == "off topic"
 
@@ -90,7 +90,7 @@ class TestUnevaluatedLeafIsNotRejected:
             return_value='{"relevant": true, "reason": "states the target", '
                          '"quote": "HbA1c target is <53"}',
         ):
-            _, result = pi_search._evaluate_leaf(leaf(), "q", "doc", "crumb", "parent", run=RunState())
+            _, result = pi_search._evaluate_leaf(leaf(), "q", "doc", "crumb", "parent", run=QuestionRun())
         assert result["status"] == "retrieved"
         assert result["quote"] == "HbA1c target is <53"
         assert result["quote"] in leaf().content
@@ -99,11 +99,7 @@ class TestUnevaluatedLeafIsNotRejected:
 class TestChatEndpointRefusesToFakeAFinding:
     @staticmethod
     def _answering(outcome):
-        class StubAnswering:
-            def answer(self, question, run):
-                return outcome
-
-        return lambda run: StubAnswering()
+        return lambda question, run: outcome
 
     @staticmethod
     def _search(status):
@@ -123,12 +119,11 @@ class TestChatEndpointRefusesToFakeAFinding:
 
     def test_total_failure_is_503_not_insufficient_evidence(self, client, monkeypatch):
         """The exact observed bug."""
-        outcome = AnswerOutcome(
-            AnswerKind.RETRIEVAL_UNAVAILABLE,
-            self._search(LibraryStatus.UNAVAILABLE),
+        outcome = AnswerOutcome.retrieval_unavailable(
+            self._search(LibraryStatus.UNAVAILABLE)
         )
         monkeypatch.setattr(
-            chat_router, "build_question_answering", self._answering(outcome)
+            chat_router, "answer_question", self._answering(outcome)
         )
         response = client.post("/api/chat", json={"query": "What PPE for MRSA?"})
 
@@ -138,17 +133,16 @@ class TestChatEndpointRefusesToFakeAFinding:
         assert "insufficient_evidence" not in body
 
     def test_the_error_is_a_machine_readable_technical_outcome(self, client, monkeypatch):
-        outcome = AnswerOutcome(
-            AnswerKind.RETRIEVAL_UNAVAILABLE,
-            self._search(LibraryStatus.UNAVAILABLE),
+        outcome = AnswerOutcome.retrieval_unavailable(
+            self._search(LibraryStatus.UNAVAILABLE)
         )
         monkeypatch.setattr(
-            chat_router, "build_question_answering", self._answering(outcome)
+            chat_router, "answer_question", self._answering(outcome)
         )
         response = client.post("/api/chat", json={"query": "q"})
         body = response.json()
-        assert body["error"]["kind"] == "retrieval_unavailable"
-        assert body["coverage"] == {
+        assert body["outcome"]["kind"] == "retrieval_unavailable"
+        assert body["outcome"]["coverage"] == {
             "status": "unavailable",
             "generation_id": None,
             "searched_documents": 0,
@@ -158,26 +152,24 @@ class TestChatEndpointRefusesToFakeAFinding:
 
     def test_genuine_empty_result_still_reports_insufficient_evidence(self, client, monkeypatch):
         """A real "nothing matched" must survive — every leaf was checked."""
-        outcome = AnswerOutcome(
-            AnswerKind.INSUFFICIENT_EVIDENCE,
-            self._search(LibraryStatus.COMPLETE),
+        outcome = AnswerOutcome.insufficient_evidence(
+            self._search(LibraryStatus.COMPLETE)
         )
         monkeypatch.setattr(
-            chat_router, "build_question_answering", self._answering(outcome)
+            chat_router, "answer_question", self._answering(outcome)
         )
         response = client.post("/api/chat", json={"query": "unrelated question"})
         assert response.status_code == 200
-        assert response.json()["grounding"]["status"] == "insufficient_evidence"
+        assert response.json()["outcome"]["kind"] == "insufficient_evidence"
 
     def test_a_wire_defect_after_search_is_not_relabeled_as_retrieval_unavailable(
         self, monkeypatch
     ):
-        outcome = AnswerOutcome(
-            AnswerKind.INSUFFICIENT_EVIDENCE,
-            self._search(LibraryStatus.COMPLETE),
+        outcome = AnswerOutcome.insufficient_evidence(
+            self._search(LibraryStatus.COMPLETE)
         )
         monkeypatch.setattr(
-            chat_router, "build_question_answering", self._answering(outcome)
+            chat_router, "answer_question", self._answering(outcome)
         )
         real_encode = chat_router.encode_outcome
 

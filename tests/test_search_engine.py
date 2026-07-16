@@ -15,14 +15,14 @@ import json
 import pytest
 from unittest.mock import patch
 
-from pageindex import RunState
+from pageindex import QuestionRun
+from pageindex.document_index import DocumentIndex
 from pageindex import search as pi_search
 from pageindex.settings import settings
 from pageindex.nodes import (
     PageNode,
     _build_nodes_by_id,
     _build_parent_map,
-    _node_to_dict,
 )
 
 KEEP = '{"relevant": true, "reason": "covers it"}'
@@ -60,7 +60,7 @@ class TestSectionCheck:
     """
 
     def test_a_keep_verdict_is_recorded(self):
-        run = RunState()
+        run = QuestionRun()
         with patch.object(pi_search, "_chat", return_value=KEEP):
             verdict, reason = pi_search._check_section_relevant(
                 section("isolation", [leaf("mrsa", "x")]), "q", "crumb", run=run)
@@ -70,7 +70,7 @@ class TestSectionCheck:
     def test_a_prune_verdict_is_honoured(self):
         with patch.object(pi_search, "_chat", return_value=PRUNE):
             verdict, reason = pi_search._check_section_relevant(
-                section("catering", [leaf("menus", "x")]), "q", "crumb", run=RunState())
+                section("catering", [leaf("menus", "x")]), "q", "crumb", run=QuestionRun())
         assert verdict is False and reason == "off topic"
 
     def test_an_unreachable_model_keeps_the_section(self):
@@ -78,7 +78,7 @@ class TestSectionCheck:
         the model never actually judged, and nothing downstream could tell."""
         with patch.object(pi_search, "_chat", side_effect=RuntimeError("connection refused")):
             verdict, reason = pi_search._check_section_relevant(
-                section("isolation", [leaf("mrsa", "x")]), "q", "crumb", run=RunState())
+                section("isolation", [leaf("mrsa", "x")]), "q", "crumb", run=QuestionRun())
         assert verdict is True
         assert "connection refused" in reason
 
@@ -88,7 +88,7 @@ class TestSectionCheck:
         # parser into returning None and silently invert this.
         with patch.object(pi_search, "_chat", return_value="I'm afraid I can't do that"):
             verdict, _ = pi_search._check_section_relevant(
-                section("isolation", [leaf("mrsa", "x")]), "q", "crumb", run=RunState())
+                section("isolation", [leaf("mrsa", "x")]), "q", "crumb", run=QuestionRun())
         assert verdict is True
 
 
@@ -139,8 +139,8 @@ class TestPruneAndCollect:
         return leaves, node_meta
 
     def test_a_kept_branch_yields_its_leaves_and_a_pruned_one_does_not(self, tree):
-        run = RunState()
-        run.start(3)
+        run = QuestionRun()
+        run.set_total(3)
         surviving, meta = self._run_prune(
             tree, lambda prompt, *a: PRUNE if "Catering" in prompt else KEEP, run)
 
@@ -150,8 +150,8 @@ class TestPruneAndCollect:
 
     def test_leaves_under_a_pruned_branch_are_accounted_for(self, tree):
         """Not marking them would leave the run permanently short of its total."""
-        run = RunState()
-        run.start(3)
+        run = QuestionRun()
+        run.set_total(3)
         _, meta = self._run_prune(
             tree, lambda prompt, *a: PRUNE if "Catering" in prompt else KEEP, run)
 
@@ -160,15 +160,15 @@ class TestPruneAndCollect:
         assert run.progress()["done"] == 1, "the one pruned leaf should count as done"
 
     def test_a_pruned_leaf_says_why_and_names_its_ancestor(self, tree):
-        run = RunState()
-        run.start(3)
+        run = QuestionRun()
+        run.set_total(3)
         _, meta = self._run_prune(
             tree, lambda prompt, *a: PRUNE if "Catering" in prompt else KEEP, run)
         assert "Catering" in meta["menus"]["reason"]
 
     def test_an_outage_prunes_nothing(self, tree):
-        run = RunState()
-        run.start(3)
+        run = QuestionRun()
+        run.set_total(3)
 
         def down(*_a, **_k):
             raise RuntimeError("connection refused")
@@ -179,23 +179,25 @@ class TestPruneAndCollect:
         assert sorted(n.node_id for n in surviving) == ["menus", "mrsa", "vre"]
 
 
-class TestRetrieveWithMetadataFromPath:
+class MutableDocumentIndex:
+    def __init__(self):
+        self.index = None
+
+    @property
+    def nodes(self):
+        return self.index.nodes
+
+
+class TestRetrieveWithMetadata:
     @pytest.fixture
-    def index_path(self, tmp_path):
-        return tmp_path / "doc.json"
+    def index(self, tmp_path):
+        return MutableDocumentIndex()
 
-    def _write(self, index_path, root: PageNode):
-        index_path.write_text(
-            json.dumps([_node_to_dict(root)]), encoding="utf-8")
-
-    def test_a_missing_index_is_an_error_not_an_empty_answer(self, index_path):
-        with pytest.raises(FileNotFoundError, match="Index not found"):
-            pi_search.retrieve_with_metadata_from_path(
-                "never-built", "q", RunState(), index_path
-            )
+    def _write(self, index, root: PageNode):
+        index.index = DocumentIndex.from_nodes((root,))
 
     def test_a_direct_descendant_heading_match_survives_a_false_model_prune(
-        self, index_path
+        self, index
     ):
         root = PageNode(
             node_id="hypertension",
@@ -211,7 +213,7 @@ class TestRetrieveWithMetadataFromPath:
                 )],
             )],
         )
-        self._write(index_path, root)
+        self._write(index, root)
 
         def model_verdict(prompt, *_args):
             if "--- SECTION CONTENT ---" in prompt:
@@ -223,17 +225,17 @@ class TestRetrieveWithMetadataFromPath:
             return PRUNE
 
         with patch.object(pi_search, "_chat", side_effect=model_verdict):
-            nodes, _ = pi_search.retrieve_with_metadata_from_path(
+            nodes, _ = pi_search.retrieve_with_metadata(
                 "guideline",
                 "What sodium intake is recommended?",
-                RunState(),
-                index_path,
+                QuestionRun(),
+                index,
             )
 
         assert [node.node_id for node in nodes] == ["sodium-restriction"]
 
     def test_a_leaf_can_answer_one_explicit_part_of_a_compound_query(
-        self, index_path
+        self, index
     ):
         quote = (
             "Train-of-four stimulation is used to titrate neuromuscular "
@@ -247,7 +249,7 @@ class TestRetrieveWithMetadataFromPath:
             summary="ARDS indications and monitoring",
             children=[leaf("monitoring-and-safety", quote)],
         )
-        self._write(index_path, root)
+        self._write(index, root)
 
         def model_verdict(prompt, *_args):
             if "--- SECTION CONTENT ---" not in prompt:
@@ -261,25 +263,20 @@ class TestRetrieveWithMetadataFromPath:
             })
 
         with patch.object(pi_search, "_chat", side_effect=model_verdict):
-            nodes, _ = pi_search.retrieve_with_metadata_from_path(
+            nodes, _ = pi_search.retrieve_with_metadata(
                 "guideline",
                 (
                     "When are neuromuscular blocking agents indicated in ARDS "
                     "and how is the depth of blockade monitored?"
                 ),
-                RunState(),
-                index_path,
+                QuestionRun(),
+                index,
             )
 
         assert [node.node_id for node in nodes] == ["monitoring-and-safety"]
 
-    def test_an_explicit_generation_path_is_the_document_read(self, tmp_path):
-        index_path = tmp_path / "generation" / "doc.json"
-        index_path.parent.mkdir()
-        index_path.write_text(
-            json.dumps([_node_to_dict(leaf("pinned", "Pinned passage."))]),
-            encoding="utf-8",
-        )
+    def test_the_passed_document_index_is_the_document_read(self, index):
+        self._write(index, leaf("pinned", "Pinned passage."))
         with patch.object(
             pi_search,
             "_chat",
@@ -288,32 +285,27 @@ class TestRetrieveWithMetadataFromPath:
                 '"quote": "Pinned passage."}'
             ),
         ):
-            nodes, _ = pi_search.retrieve_with_metadata_from_path(
-                "doc", "q", RunState(), index_path
+            nodes, _ = pi_search.retrieve_with_metadata(
+                "doc", "q", QuestionRun(), index
             )
         assert [node.node_id for node in nodes] == ["pinned"]
 
-    def test_an_empty_index_returns_nothing_without_calling_the_model(self, index_path):
-        # A childless node is itself a leaf, so "no leaves" means an empty tree.
-        index_path.write_text("[]", encoding="utf-8")
-        with patch.object(pi_search, "_chat", side_effect=AssertionError("must not be called")):
-            nodes, meta = pi_search.retrieve_with_metadata_from_path(
-                "doc", "q", RunState(), index_path
-            )
-        assert nodes == [] and meta == {}
+    def test_an_empty_index_returns_nothing_without_calling_the_model(self, index):
+        with pytest.raises(ValueError, match="non-empty list"):
+            DocumentIndex.from_serialized("[]")
 
-    def test_a_childless_root_is_itself_a_leaf_and_gets_evaluated(self, index_path):
+    def test_a_childless_root_is_itself_a_leaf_and_gets_evaluated(self, index):
         # Worth pinning: a single-section document is not an empty one, and its
         # own text must still be judged rather than skipped for having no children.
-        self._write(index_path, leaf("solo", "Disinfect hands."))
+        self._write(index, leaf("solo", "Disinfect hands."))
         with patch.object(pi_search, "_chat",
                           return_value='{"relevant": true, "reason": "r", "quote": "Disinfect hands."}'):
-            nodes, _ = pi_search.retrieve_with_metadata_from_path(
-                "doc", "q", RunState(), index_path
+            nodes, _ = pi_search.retrieve_with_metadata(
+                "doc", "q", QuestionRun(), index
             )
         assert [n.node_id for n in nodes] == ["solo"]
 
-    def test_selected_leaves_keep_the_document_s_own_order(self, index_path):
+    def test_selected_leaves_keep_the_document_s_own_order(self, index):
         """Sources are numbered [1], [2]… in the answer. If retrieval returned
         them in completion order, the citation numbers would shuffle per run for
         the same question."""
@@ -321,23 +313,23 @@ class TestRetrieveWithMetadataFromPath:
             node_id="root", title="Guideline", heading_level=1, line_idx=0, summary="s",
             children=[leaf("first", "A."), leaf("second", "B."), leaf("third", "C.")],
         )
-        self._write(index_path, root)
+        self._write(index, root)
         def exact_verdict(prompt, *_args):
             quote = next(value for value in ("A.", "B.", "C.") if value in prompt)
             return json.dumps({"relevant": True, "reason": "r", "quote": quote})
 
         with patch.object(pi_search, "_chat", side_effect=exact_verdict):
-            nodes, _ = pi_search.retrieve_with_metadata_from_path(
-                "doc", "q", RunState(), index_path
+            nodes, _ = pi_search.retrieve_with_metadata(
+                "doc", "q", QuestionRun(), index
             )
         assert [n.node_id for n in nodes] == ["first", "second", "third"]
 
-    def test_a_rejected_leaf_is_left_out_of_the_result(self, index_path):
+    def test_a_rejected_leaf_is_left_out_of_the_result(self, index):
         root = PageNode(
             node_id="root", title="Guideline", heading_level=1, line_idx=0, summary="s",
             children=[leaf("wanted", "Yes."), leaf("unwanted", "No.")],
         )
-        self._write(index_path, root)
+        self._write(index, root)
 
         def verdict(prompt, *_a):
             if "Wanted" in prompt:
@@ -345,14 +337,14 @@ class TestRetrieveWithMetadataFromPath:
             return PRUNE
 
         with patch.object(pi_search, "_chat", side_effect=verdict):
-            nodes, meta = pi_search.retrieve_with_metadata_from_path(
-                "doc", "q", RunState(), index_path
+            nodes, meta = pi_search.retrieve_with_metadata(
+                "doc", "q", QuestionRun(), index
             )
         assert [n.node_id for n in nodes] == ["wanted"]
         assert meta["unwanted"]["relevant"] is False
 
-    def test_a_leaf_with_a_fabricated_quote_is_not_retrieved(self, index_path):
-        self._write(index_path, leaf("isolation", "Use a single room."))
+    def test_a_leaf_with_a_fabricated_quote_is_not_retrieved(self, index):
+        self._write(index, leaf("isolation", "Use a single room."))
         with patch.object(
             pi_search,
             "_chat",
@@ -361,28 +353,28 @@ class TestRetrieveWithMetadataFromPath:
                 '"quote": "Use a negative-pressure room."}'
             ),
         ):
-            nodes, meta = pi_search.retrieve_with_metadata_from_path(
-                "doc", "q", RunState(), index_path
+            nodes, meta = pi_search.retrieve_with_metadata(
+                "doc", "q", QuestionRun(), index
             )
 
         assert nodes == []
         assert meta["isolation"]["status"] == "error"
 
-    def test_progress_counts_every_leaf_exactly_once(self, index_path):
+    def test_progress_counts_every_leaf_exactly_once(self, index):
         root = PageNode(
             node_id="root", title="Guideline", heading_level=1, line_idx=0, summary="s",
             children=[leaf(f"n{i}", "text") for i in range(5)],
         )
-        self._write(index_path, root)
-        run = RunState()
-        run.start(5)
+        self._write(index, root)
+        run = QuestionRun()
+        run.set_total(5)
         with patch.object(pi_search, "_chat", return_value=PRUNE):
-            pi_search.retrieve_with_metadata_from_path(
-                "doc", "q", run, index_path
+            pi_search.retrieve_with_metadata(
+                "doc", "q", run, index
             )
         assert run.progress() == {"total": 5, "done": 5}
 
-    def test_a_non_object_section_reply_fails_open_and_is_recorded(self, index_path):
+    def test_a_non_object_section_reply_fails_open_and_is_recorded(self, index):
         root = PageNode(
             node_id="root",
             title="Guideline",
@@ -391,7 +383,7 @@ class TestRetrieveWithMetadataFromPath:
             summary="s",
             children=[section("isolation", [leaf("mrsa", "Single room.")])],
         )
-        self._write(index_path, root)
+        self._write(index, root)
 
         replies = iter(
             [
@@ -401,14 +393,14 @@ class TestRetrieveWithMetadataFromPath:
             ]
         )
         with patch.object(pi_search, "_chat", side_effect=lambda *_a: next(replies)):
-            nodes, meta = pi_search.retrieve_with_metadata_from_path(
-                "doc", "q", RunState(), index_path
+            nodes, meta = pi_search.retrieve_with_metadata(
+                "doc", "q", QuestionRun(), index
             )
 
         assert [node.node_id for node in nodes] == ["mrsa"]
         assert meta["isolation"]["status"] == "error"
 
-    def test_one_retrieval_run_uses_one_model_snapshot(self, index_path, monkeypatch):
+    def test_one_retrieval_run_uses_one_model_snapshot(self, index, monkeypatch):
         root = PageNode(
             node_id="root",
             title="Guideline",
@@ -417,7 +409,7 @@ class TestRetrieveWithMetadataFromPath:
             summary="s",
             children=[section("isolation", [leaf("mrsa", "Single room.")])],
         )
-        self._write(index_path, root)
+        self._write(index, root)
         monkeypatch.setattr(settings, "model", "model-a")
         used_models = []
 
@@ -432,8 +424,8 @@ class TestRetrieveWithMetadataFromPath:
             return KEEP
 
         with patch.object(pi_search, "_chat", side_effect=reply):
-            pi_search.retrieve_with_metadata_from_path(
-                "doc", "q", RunState(), index_path
+            pi_search.retrieve_with_metadata(
+                "doc", "q", QuestionRun(), index
             )
 
         assert used_models == ["model-a", "model-a"]

@@ -58,9 +58,7 @@ def built(tmp_path, monkeypatch):
         {"hygiene": SourceCandidate(source_pdf, ocr_scale=2.0)},
     )
     snapshot = build_generation(["hygiene"])
-    return json.loads(
-        snapshot.document("hygiene").index_path.read_text(encoding="utf-8")
-    )
+    return snapshot.document("hygiene").index.debug_tree
 
 
 def find(nodes: list[dict], node_id: str) -> dict | None:
@@ -179,5 +177,4 @@ def test_build_generation_binds_ingest_source_candidate_metadata(
 
     document = snapshot.document("guide")
     assert document.source is not None
-    assert document.source.pdf_path != source_pdf
-    assert document.source.pdf_path.read_bytes() == source_pdf.read_bytes()
+    assert document.source.read_pdf() == source_pdf.read_bytes()

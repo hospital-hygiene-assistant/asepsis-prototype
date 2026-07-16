@@ -1,4 +1,4 @@
-"""Committed chat fixtures must be exact outputs of the v2 producer."""
+"""Committed chat fixtures must be exact outputs of the v3 producer."""
 
 import json
 from pathlib import Path
@@ -6,7 +6,7 @@ from pathlib import Path
 from api.chat_contract_fixtures import fixture_payloads, main
 
 
-FIXTURES = Path(__file__).parent / "contracts" / "chat_v2"
+FIXTURES = Path(__file__).parent / "contracts" / "chat_v3"
 
 
 def test_all_outcome_fixtures_match_the_authoritative_producer():
@@ -28,7 +28,7 @@ def test_all_outcome_fixtures_match_the_authoritative_producer():
 def test_answered_complete_fixture_covers_an_exact_multi_page_visual():
     payload = json.loads(fixture_payloads()["answered_complete.json"])
 
-    visual = payload["grounding"]["sources"][0]["visual"]
+    visual = payload["outcome"]["citations"][0]["visual"]
     assert visual["status"] == "exact"
     assert [page["page"] for page in visual["pages"]] == [2, 3]
 

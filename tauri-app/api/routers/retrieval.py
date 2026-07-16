@@ -21,8 +21,6 @@ from ..answering_runtime import build_whole_library_retrieval
 from ..ollama_pool import ensure_explainer
 from ..runs import registry
 from ..scoring import eval_case
-from ..trees import read_tree
-
 router = APIRouter()
 
 
@@ -76,18 +74,16 @@ def explain_node(req: ExplainRequest):
         return JSONResponse(
             {"error": "Expected library unavailable"}, status_code=503
         )
-    nodes = [_pi._node_from_dict(d) for d in read_tree(document.index_path)]
-    nodes_by_id = _pi._build_nodes_by_id(nodes)
-    node = nodes_by_id.get(req.node_id)
-    if node is None:
+    try:
+        node = document.index.node(req.node_id)
+    except KeyError:
         return JSONResponse({"error": f"unknown node '{req.node_id}'"}, status_code=404)
 
     url = ensure_explainer()
     if not url:
         return JSONResponse({"error": "no Ollama instance available"}, status_code=503)
 
-    parent_map = _pi._build_parent_map(nodes)
-    breadcrumb = _pi._make_breadcrumb(req.node_id, parent_map, nodes_by_id)
+    breadcrumb = document.index.breadcrumb(req.node_id)
     client = _pi.make_client(url)
     result = _pi.explain_nonselection(node, req.query, req.stem, breadcrumb, client, url)
     result["node_id"] = req.node_id
@@ -122,20 +118,20 @@ def run_query(req: RunRequest):
         return JSONResponse({"error": "No query provided"}, status_code=400)
 
     run = registry.create(req.run_id)
-    run.set_phase("retrieval")
+    run.begin_retrieval()
     try:
         retrieval = build_whole_library_retrieval()
     except Exception:
-        run.set_phase("error")
+        run.fail()
         return JSONResponse(
             {"error": "retrieval runtime unavailable"}, status_code=503
         )
     try:
         search = retrieval.search(query, run)
     except Exception:
-        run.set_phase("error")
+        run.fail()
         raise
-    run.set_phase("idle")
+    run.complete()
     results = search.to_debug_results()
     if search.generation_id is not None:
         for document_id, result in results.items():

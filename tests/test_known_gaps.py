@@ -12,7 +12,7 @@ that belong to Federico.
 
 from unittest.mock import patch
 
-from pageindex import RunState
+from pageindex import QuestionRun
 from pageindex import search as pi_search
 from api.runs import RunRegistry
 from pageindex.library import ExpectedLibraryStore, LibraryCandidate
@@ -31,7 +31,7 @@ class TestC1QuoteVerification:
         fabricated = ('{"relevant": true, "reason": "states the rule", '
                       '"quote": "Isolate in a negative-pressure room for 14 days"}')
         with patch.object(pi_search, "_chat", return_value=fabricated):
-            _, result = pi_search._evaluate_leaf(LEAF, "q", "doc", "crumb", "parent", run=RunState())
+            _, result = pi_search._evaluate_leaf(LEAF, "q", "doc", "crumb", "parent", run=QuestionRun())
         # Neutral on the fix: drop the leaf, or mark it unverified and stop
         # claiming it — either way, nothing still called "retrieved" may carry a
         # quote that is not in the passage it points at.
@@ -41,7 +41,7 @@ class TestC1QuoteVerification:
     def test_a_leaf_with_no_quote_is_not_called_retrieved(self):
         with patch.object(pi_search, "_chat",
                           return_value='{"relevant": true, "reason": "trust me"}'):
-            _, result = pi_search._evaluate_leaf(LEAF, "q", "doc", "crumb", "parent", run=RunState())
+            _, result = pi_search._evaluate_leaf(LEAF, "q", "doc", "crumb", "parent", run=QuestionRun())
         assert result["status"] != "retrieved" or result["quote"]
 
 
@@ -52,7 +52,7 @@ class TestSectionWithoutAVerdictFailsOpen:
         node = PageNode(node_id="isolation", title="Isolation", heading_level=1, line_idx=0,
                         summary="s", children=[LEAF])
         with patch.object(pi_search, "_chat", return_value='["not", "a", "verdict"]'):
-            verdict, _ = pi_search._check_section_relevant(node, "q", "crumb", run=RunState())
+            verdict, _ = pi_search._check_section_relevant(node, "q", "crumb", run=QuestionRun())
         assert verdict is True, "nothing was judged, so nothing may be pruned"
 
 
@@ -69,8 +69,8 @@ class TestM2UnavailableDocumentRemainsVisible:
         })
 
         class OneDocVanishes:
-            def retrieve_with_metadata_from_path(
-                self, doc_name, query, state, index_path, **_options
+            def retrieve_with_metadata(
+                self, doc_name, query, run, index, **_options
             ):
                 if doc_name == "vanished":
                     raise FileNotFoundError("index deleted mid-run")

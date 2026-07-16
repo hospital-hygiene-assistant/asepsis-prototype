@@ -38,7 +38,7 @@ def test_one_question_snapshots_models_and_pool_once_for_every_document(tmp_path
         def __init__(self):
             self.calls = []
 
-        def retrieve_with_metadata_from_path(
+        def retrieve_with_metadata(
             self, document, query, state, path, model=None, instances=None
         ):
             self.calls.append((document, model, instances))
@@ -105,7 +105,7 @@ def test_debug_retrieval_uses_the_same_frozen_runtime_seam(tmp_path):
         def __init__(self):
             self.call = None
 
-        def retrieve_with_metadata_from_path(
+        def retrieve_with_metadata(
             self, document, query, state, path, model=None, instances=None
         ):
             self.call = (model, instances)

@@ -5,7 +5,7 @@ from typing import Optional
 from urllib.parse import quote
 
 from fastapi import APIRouter
-from fastapi.responses import FileResponse, JSONResponse, Response
+from fastapi.responses import JSONResponse, Response
 
 from pageindex.library import (
     ExpectedLibraryCorrupt,
@@ -16,8 +16,6 @@ from pageindex.library import (
 from paths import LIBRARY_DIR
 
 from ..pdf import cache_png, cached_png
-from ..trees import leaf_count, read_tree
-
 router = APIRouter()
 
 
@@ -44,10 +42,21 @@ def get_generation_document_pdf(generation_id: str, document_id: str):
         return document
     if document.source is None:
         return JSONResponse({"error": "document has no source PDF"}, status_code=404)
-    return FileResponse(
-        document.source.pdf_path,
+    try:
+        content = document.source.read_pdf()
+    except ExpectedLibraryCorrupt:
+        return JSONResponse(
+            {"error": "Expected library generation is unavailable"},
+            status_code=503,
+        )
+    return Response(
+        content=content,
         media_type="application/pdf",
-        filename=f"{document.document_id}.pdf",
+        headers={
+            "Content-Disposition": (
+                f'inline; filename="{document.document_id}.pdf"'
+            )
+        },
     )
 
 
@@ -57,16 +66,10 @@ def get_generation_document_full(generation_id: str, document_id: str):
     document = _generation_document(generation_id, document_id)
     if isinstance(document, JSONResponse):
         return document
-    markdown = document.canonical_markdown
-    if document.source is not None:
-        for asset in document.source.assets:
-            markdown = markdown.replace(
-                f"/assets/{document.document_id}/{asset.filename}", asset.href
-            )
     return JSONResponse({
         "document_id": document.document_id,
         "generation_id": generation_id,
-        "markdown": markdown,
+        "markdown": document.linked_markdown(),
     })
 
 
@@ -82,13 +85,18 @@ def get_generation_document_asset(
         return document
     if document.source is None:
         return JSONResponse({"error": "source asset not found"}, status_code=404)
-    asset = next(
-        (item for item in document.source.assets if item.asset_id == asset_id),
-        None,
-    )
-    if asset is None:
+    try:
+        asset = document.source.asset(asset_id)
+    except KeyError:
         return JSONResponse({"error": "source asset not found"}, status_code=404)
-    return FileResponse(asset.path, media_type=asset.media_type)
+    try:
+        content = asset.read_bytes()
+    except ExpectedLibraryCorrupt:
+        return JSONResponse(
+            {"error": "Expected library generation is unavailable"},
+            status_code=503,
+        )
+    return Response(content=content, media_type=asset.media_type)
 
 
 @router.get("/api/documents")
@@ -97,7 +105,7 @@ def get_documents():
     try:
         snapshot = ExpectedLibraryStore(LIBRARY_DIR).open_current()
         for document in snapshot.documents:
-            tree = read_tree(document.index_path)
+            tree = document.index.debug_tree
             base_href = (
                 f"/api/library/{snapshot.generation_id}/documents/"
                 f"{quote(document.document_id, safe='')}"
@@ -105,7 +113,7 @@ def get_documents():
             docs.append({
                 "name": document.document_id,
                 "generation_id": snapshot.generation_id,
-                "leaf_count": leaf_count(tree),
+                "leaf_count": document.index.leaf_count,
                 "tree": tree,
                 "full_href": f"{base_href}/full",
                 "source_href": (
@@ -140,7 +148,6 @@ def get_generation_document_page(
 def _render_document_page(document, page, bbox, regions):
     if document.source is None:
         return JSONResponse({"error": "document has no source PDF"}, status_code=404)
-    pdf_path = document.source.pdf_path
     try:
         import pypdfium2 as pdfium
         from PIL import ImageDraw
@@ -155,7 +162,13 @@ def _render_document_page(document, page, bbox, regions):
         return Response(content=cached, media_type="image/png")
 
     scale = document.source.ocr_scale
-    doc = pdfium.PdfDocument(str(pdf_path))
+    try:
+        doc = pdfium.PdfDocument(document.source.read_pdf())
+    except ExpectedLibraryCorrupt:
+        return JSONResponse(
+            {"error": "Expected library generation is unavailable"},
+            status_code=503,
+        )
     if not (1 <= page <= len(doc)):
         return JSONResponse({"error": f"page {page} out of range 1..{len(doc)}"},
                             status_code=404)

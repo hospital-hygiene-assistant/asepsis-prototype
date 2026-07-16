@@ -1,0 +1,15 @@
+{
+  "contract_version": 3,
+  "run_id": "fixture-insufficient_evidence",
+  "query": "Welche Maßnahmen gelten?",
+  "outcome": {
+    "kind": "insufficient_evidence",
+    "coverage": {
+      "status": "complete",
+      "generation_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "searched_documents": 1,
+      "total_documents": 1,
+      "incomplete_checks": 0
+    }
+  }
+}

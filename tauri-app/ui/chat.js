@@ -113,6 +113,49 @@ function groundingBadge(status) {
 
 function prettyDoc(name) { return (name || '').replace(/_/g, ' '); }
 
+// The debug console has its own rendering model. Keep the v3 wire translation
+// in one adapter so every view below consumes one local shape and no view can
+// accidentally reconstruct immutable evidence links.
+function debugAnswerFromWire(data) {
+  if (data?.contract_version !== 3 || !data.outcome?.kind || !data.outcome.coverage) {
+    throw new Error('The backend returned an invalid chat contract.');
+  }
+  const outcome = data.outcome;
+  if (outcome.kind === 'retrieval_unavailable' || outcome.kind === 'synthesis_unavailable') {
+    throw new Error(outcome.kind === 'retrieval_unavailable'
+      ? 'Document retrieval was unavailable.'
+      : 'Answer synthesis was unavailable.');
+  }
+  const status = outcome.kind === 'answered'
+    ? (outcome.coverage.status === 'complete' ? 'grounded' : 'partially_grounded')
+    : outcome.kind;
+  const citations = outcome.kind === 'answered' ? outcome.citations : [];
+  return {
+    query: data.query,
+    answer: outcome.kind === 'answered' ? outcome.answer : {},
+    grounding: {
+      status,
+      generation_id: outcome.coverage.generation_id,
+      searched_documents: outcome.coverage.searched_documents,
+      total_documents: outcome.coverage.total_documents,
+      incomplete_checks: outcome.coverage.incomplete_checks,
+      sources: citations.map(citation => ({
+        id: citation.id,
+        number: citation.number,
+        document: citation.document_id,
+        node_id: citation.node_id,
+        title: citation.title,
+        breadcrumb: citation.breadcrumb,
+        excerpt: citation.excerpt,
+        quote: citation.quote,
+        reason: citation.selection_reason,
+        source_href: citation.visual.pdf_href,
+        visual: citation.visual,
+      })),
+    },
+  };
+}
+
 function setSendEnabled(enabled) {
   const input = document.getElementById('chat-input');
   const btn = document.getElementById('chat-send');
@@ -209,7 +252,7 @@ async function sendChat(text) {
       query: text,
       run_id: state.runId,
     });
-    finalizeAnswerCard(pending, data);
+    finalizeAnswerCard(pending, debugAnswerFromWire(data));
   } catch (e) {
     pending.card.querySelector('.answer-body').innerHTML =
       `<p class="chat-error">The question could not be processed: ${escHtml(e.message)}</p>`;

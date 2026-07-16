@@ -9,7 +9,6 @@ could not judge is recorded as errored rather than rejected, because "not
 checked" is not "irrelevant".
 """
 
-import json
 import re
 import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -17,7 +16,8 @@ from typing import Optional
 
 import ollama
 
-from .run_state import RunState
+from .question_run import QuestionRun
+from .document_index import DocumentIndex
 from .clients import acquire, pool, release
 from .llm import _chat, _parse_json_response
 from .nodes import (
@@ -26,7 +26,6 @@ from .nodes import (
     _build_nodes_by_id,
     _build_parent_map,
     _make_breadcrumb,
-    _node_from_dict,
 )
 from .prompts import EXPLAIN_PROMPT, LEAF_EVAL_PROMPT, SECTION_CHECK_PROMPT
 from .settings import settings
@@ -49,7 +48,7 @@ def _evaluate_leaf(
     client_url: str = "",
     model: str | None = None,
     *,
-    run: RunState,
+    run: QuestionRun,
 ) -> tuple[str, dict]:
     """Evaluate one leaf. Returns (node_id, {relevant, reason, quote, status})."""
     prompt = (
@@ -80,7 +79,7 @@ def _evaluate_leaf(
                     failure_code = "invalid_quote"
                 else:
                     run.mark("retrieved", leaf.node_id)
-                    run.set_meta(leaf.node_id, "retrieved", reason, quote)
+                    run.record(leaf.node_id, "retrieved", reason, quote)
                     return leaf.node_id, {
                         "relevant": True,
                         "reason": reason,
@@ -89,7 +88,7 @@ def _evaluate_leaf(
                     }
             else:
                 run.mark("rejected", leaf.node_id)
-                run.set_meta(leaf.node_id, "rejected", reason)
+                run.record(leaf.node_id, "rejected", reason)
                 return leaf.node_id, {
                     "relevant": False,
                     "reason": reason,
@@ -111,7 +110,7 @@ def _evaluate_leaf(
     # the truth is that nothing was actually checked. Mirrors the section
     # check, which already refuses to prune on error.
     run.mark("errored", leaf.node_id)
-    run.set_meta(leaf.node_id, "error", failure)
+    run.record(leaf.node_id, "error", failure)
     return leaf.node_id, {
         "relevant": False,
         "reason": failure,
@@ -158,7 +157,7 @@ def _check_section_relevant(
     client_url: str = "",
     model: str | None = None,
     *,
-    run: RunState,
+    run: QuestionRun,
 ) -> tuple[bool, str]:
     """Lightweight LLM call: can this section contain a direct answer?"""
     query_terms = _terms(query)
@@ -169,7 +168,7 @@ def _check_section_relevant(
             + ", ".join(direct_matches)
         )
         run.mark("kept", node.node_id)
-        run.set_meta(node.node_id, "kept", reason)
+        run.record(node.node_id, "kept", reason)
         print(
             f"    [prune-check] {node.node_id}: KEEP (heading match: "
             f"{', '.join(direct_matches)})",
@@ -195,13 +194,13 @@ def _check_section_relevant(
 
         if verdict:
             run.mark("kept", node.node_id)
-            run.set_meta(node.node_id, "kept", reason)
+            run.record(node.node_id, "kept", reason)
 
         print(f"    [prune-check] {node.node_id}: {'KEEP' if verdict else 'PRUNE'} (raw={raw!r:.120})", file=sys.stderr)
         return verdict, reason
     except Exception as exc:
         run.mark("kept", node.node_id)
-        run.set_meta(node.node_id, "error", str(exc))
+        run.record(node.node_id, "error", str(exc))
         print(f"    [prune-check] {node.node_id}: ERROR ({exc}) — keeping", file=sys.stderr)
         return True, f"Error checking section: {exc}"  # conservative: never prune on error
     finally:
@@ -264,7 +263,7 @@ def _prune_and_collect(
     nodes_by_id: dict,
     node_assignment: dict[str, tuple],
     node_meta: dict[str, dict],
-    run: RunState,
+    run: QuestionRun,
     model: str | None = None,
 ) -> list["PageNode"]:
     """
@@ -316,11 +315,11 @@ def _prune_and_collect(
                     # Pruned: count all leaf descendants toward "done" so the
                     # progress counter reaches total. They won't be evaluated again.
                     _prune_reason = f"Pruned because ancestor section '{node.title}' was pruned."
-                    run.set_meta(node.node_id, "pruned", reason or _prune_reason)
+                    run.record(node.node_id, "pruned", reason or _prune_reason)
                     for leaf in _collect_leaves([node]):
-                        run.leaf_done()
+                        run.leaf_complete()
                         run.mark("pruned", leaf.node_id)
-                        run.set_meta(leaf.node_id, "pruned", _prune_reason)
+                        run.record(leaf.node_id, "pruned", _prune_reason)
                         node_meta[leaf.node_id] = {
                             "relevant": False,
                             "reason": _prune_reason,
@@ -329,7 +328,7 @@ def _prune_and_collect(
                     for descendant in _collect_all_nodes([node]):
                         run.mark("pruned", descendant.node_id)
                         if descendant.node_id != node.node_id:
-                            run.set_meta(descendant.node_id, "pruned", _prune_reason)
+                            run.record(descendant.node_id, "pruned", _prune_reason)
                             node_meta[descendant.node_id] = {
                                 "relevant": False,
                                 "reason": _prune_reason,
@@ -341,11 +340,11 @@ def _prune_and_collect(
     return candidate_leaves
 
 
-def retrieve_with_metadata_from_path(
+def retrieve_with_metadata(
     doc_name: str,
     query: str,
-    run: Optional[RunState],
-    index_path,
+    run: Optional[QuestionRun],
+    index: DocumentIndex,
     model: str | None = None,
     instances=None,
 ) -> tuple[list[PageNode], dict[str, dict]]:
@@ -359,16 +358,15 @@ def retrieve_with_metadata_from_path(
 
     Returns (selected_leaves_in_doc_order, {node_id: {reason, quote}}).
     """
-    run = run or RunState()
+    run = run or QuestionRun()
     retrieval_model = model or settings.model
-    if not index_path.exists():
-        raise FileNotFoundError(f"Index not found: {index_path}. Run build first.")
-
-    nodes = [_node_from_dict(d) for d in json.loads(index_path.read_text(encoding="utf-8"))]
+    nodes = list(index.nodes)
     leaves = _collect_leaves(nodes)
 
     if not leaves:
         return [], {}
+    if run.progress()["total"] == 0:
+        run.set_total(len(leaves))
 
     parent_map  = _build_parent_map(nodes)
     nodes_by_id = _build_nodes_by_id(nodes)
@@ -424,7 +422,7 @@ def retrieve_with_metadata_from_path(
             for future in as_completed(futures):
                 node_id, meta = future.result()
                 node_meta[node_id] = meta
-                run.leaf_done()
+                run.leaf_complete()
 
     # Preserve original document order
     selected = [l for l in leaves if node_meta.get(l.node_id, {}).get("relevant")]

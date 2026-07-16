@@ -10,10 +10,7 @@ without waiting for a reply to learn what to poll.
 
 import threading
 import time
-import uuid
-from dataclasses import dataclass, field
-
-from pageindex import RunState
+from pageindex import QuestionRun
 
 # A run is only interesting while its client watches it. These bounds stop a
 # long-lived process accumulating every run it has ever served.
@@ -21,47 +18,23 @@ TTL_SECONDS = 30 * 60
 MAX_RUNS = 64
 
 
-@dataclass
-class Run:
-    """One retrieval pass: the engine's view of it, plus where the API has got to."""
-
-    id: str
-    state: RunState = field(default_factory=RunState)
-    phase: str = "idle"          # idle | retrieval | synthesis | error
-    detail: str = ""
-    started: float = field(default_factory=time.monotonic)
-
-    def set_phase(self, phase: str, detail: str = "") -> None:
-        self.phase = phase
-        self.detail = detail
-
-    def snapshot(self) -> dict:
-        return {
-            "run_id": self.id,
-            "phase": self.phase,
-            "detail": self.detail,
-            "progress": self.state.progress(),
-            "live": self.state.events(),
-        }
-
-
 class RunRegistry:
     """The runs this process is tracking."""
 
     def __init__(self, ttl: float = TTL_SECONDS, max_runs: int = MAX_RUNS) -> None:
-        self._runs: dict[str, Run] = {}
+        self._runs: dict[str, QuestionRun] = {}
         self._lock = threading.Lock()
         self._ttl = ttl
         self._max = max_runs
 
-    def create(self, run_id: str | None = None) -> Run:
-        run = Run(id=run_id or new_run_id())
+    def create(self, run_id: str | None = None) -> QuestionRun:
+        run = QuestionRun(run_id)
         with self._lock:
             self._evict()
             self._runs[run.id] = run
         return run
 
-    def get(self, run_id: str) -> Run | None:
+    def get(self, run_id: str) -> QuestionRun | None:
         with self._lock:
             return self._runs.get(run_id)
 
@@ -73,10 +46,4 @@ class RunRegistry:
         while len(self._runs) >= self._max:
             oldest = min(self._runs, key=lambda i: self._runs[i].started)
             del self._runs[oldest]
-
-
-def new_run_id() -> str:
-    return uuid.uuid4().hex
-
-
 registry = RunRegistry()

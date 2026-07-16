@@ -7,19 +7,10 @@ from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
-from ..answering_runtime import build_question_answering
-from ..chat_wire import ChatErrorV2, encode_outcome
+from ..answering_runtime import answer_question
+from ..chat_wire import encode_outcome
 from ..prompts import CHAT_SYNTHESIS_PROMPT
-from ..question_answering import (
-    AnswerKind,
-    AnswerOutcome,
-    Question,
-)
-from ..retrieval import (
-    LibrarySearchResult,
-    LibraryStatus,
-    SearchDiagnostic,
-)
+from ..question_answering import AnswerKind, Question
 from ..runs import registry
 
 router = APIRouter()
@@ -58,43 +49,21 @@ def chat(req: ChatRequest):
         return JSONResponse({"error": "No query provided"}, status_code=400)
 
     run = registry.create(req.run_id)
-    run.set_phase("retrieval")
+    run.begin_retrieval()
     try:
         try:
-            answering = build_question_answering(run)
-        except Exception:
-            diagnostic = SearchDiagnostic(
-                document="__runtime__",
-                code="question_answering_unavailable",
-                message="question answering runtime failed",
-            )
-            outcome = AnswerOutcome(
-                AnswerKind.RETRIEVAL_UNAVAILABLE,
-                LibrarySearchResult(
-                    query=query,
-                    generation_id=None,
-                    status=LibraryStatus.UNAVAILABLE,
-                    documents=(),
-                    evidence=(),
-                    diagnostics=(diagnostic,),
-                ),
-            )
-            wire = encode_outcome(outcome, run_id=run.id)
-            run.set_phase("error")
-            return JSONResponse(
-                wire.model_dump(mode="json"),
-                status_code=503,
-            )
-        try:
-            outcome = answering.answer(Question(query, req.context), run)
+            outcome = answer_question(Question(query, req.context), run)
             wire = encode_outcome(outcome, run_id=run.id)
         except Exception:
-            run.set_phase("error")
+            run.fail()
             raise
-        if isinstance(wire, ChatErrorV2):
-            run.set_phase("error")
+        if outcome.kind in (
+            AnswerKind.RETRIEVAL_UNAVAILABLE,
+            AnswerKind.SYNTHESIS_UNAVAILABLE,
+        ):
+            run.fail()
             return JSONResponse(wire.model_dump(mode="json"), status_code=503)
         return JSONResponse(wire.model_dump(mode="json"))
     finally:
         if run.phase != "error":
-            run.set_phase("idle")
+            run.complete()

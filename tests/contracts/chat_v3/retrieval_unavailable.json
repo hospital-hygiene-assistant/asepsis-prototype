@@ -1,0 +1,15 @@
+{
+  "contract_version": 3,
+  "run_id": "fixture-retrieval_unavailable",
+  "query": "Welche Maßnahmen gelten?",
+  "outcome": {
+    "kind": "retrieval_unavailable",
+    "coverage": {
+      "status": "unavailable",
+      "generation_id": null,
+      "searched_documents": 0,
+      "total_documents": 0,
+      "incomplete_checks": 0
+    }
+  }
+}

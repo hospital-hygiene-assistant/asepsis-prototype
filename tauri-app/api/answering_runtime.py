@@ -9,11 +9,18 @@ from paths import LIBRARY_DIR
 
 from .pdf import rendered_page_size
 from .question_answering import (
+    AnswerOutcome,
     EvidenceCitationFactory,
     PromptAnswerSynthesizer,
+    Question,
     QuestionAnswering,
 )
-from .retrieval import WholeLibraryRetrieval
+from .retrieval import (
+    LibrarySearchResult,
+    LibraryStatus,
+    SearchDiagnostic,
+    WholeLibraryRetrieval,
+)
 
 
 class _RunLibrary:
@@ -57,7 +64,7 @@ def build_question_answering(
     synthesis_client = make_client(instances[0][1])
 
     def complete(prompt: str) -> str:
-        run.set_phase("synthesis")
+        run.begin_synthesis()
         response = synthesis_client.chat(
             model=synthesis_model,
             messages=[{"role": "user", "content": prompt}],
@@ -86,6 +93,32 @@ def build_question_answering(
         PromptAnswerSynthesizer(complete),
         citations,
     )
+
+
+def answer_question(
+    question: Question,
+    run,
+    **runtime_options,
+) -> AnswerOutcome:
+    """Answer through the shared runtime, including truthful assembly failure."""
+    try:
+        answering = build_question_answering(run, **runtime_options)
+    except Exception:
+        diagnostic = SearchDiagnostic(
+            document="__runtime__",
+            code="question_answering_unavailable",
+            message="question answering runtime failed",
+        )
+        search = LibrarySearchResult(
+            query=question.text.strip(),
+            generation_id=None,
+            status=LibraryStatus.UNAVAILABLE,
+            documents=(),
+            evidence=(),
+            diagnostics=(diagnostic,),
+        )
+        return AnswerOutcome.retrieval_unavailable(search)
+    return answering.answer(question, run)
 
 
 def build_whole_library_retrieval(

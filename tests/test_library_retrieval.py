@@ -2,7 +2,6 @@
 
 from types import SimpleNamespace
 
-from api import retrieval as retrieval_module
 from api.retrieval import LibraryStatus, WholeLibraryRetrieval
 from api.runs import RunRegistry
 from pageindex.library import ExpectedLibraryStore, LibraryCandidate
@@ -36,7 +35,7 @@ class ScriptedIndex:
     def __init__(self, results: dict):
         self.results = results
 
-    def retrieve_with_metadata_from_path(
+    def retrieve_with_metadata(
         self, document, query, state, path, model=None
     ):
         return self.results[document]
@@ -109,7 +108,7 @@ def test_a_document_lost_during_search_remains_named_as_partial_coverage(tmp_pat
     })
 
     class OneDocumentVanishes:
-        def retrieve_with_metadata_from_path(
+        def retrieve_with_metadata(
             self, document, query, state, path, model=None
         ):
             if document == "b_vanished":
@@ -137,36 +136,6 @@ def test_a_document_lost_during_search_remains_named_as_partial_coverage(tmp_pat
     assert [(item.document, item.code) for item in result.diagnostics] == [
         ("b_vanished", "document_unavailable")
     ]
-
-
-def test_a_tree_that_cannot_be_read_is_named_without_aborting_other_documents(
-    tmp_path, monkeypatch
-):
-    passage = leaf("present", "Use hand disinfectant.")
-    library = publish_library(tmp_path, {
-        "a_present": (passage,),
-        "b_corrupt": (leaf("broken", "text"),),
-    })
-    real_read_tree = retrieval_module.read_tree
-
-    def read_tree(path):
-        if path.stem == "b_corrupt":
-            raise ValueError("corrupt index JSON")
-        return real_read_tree(path)
-
-    monkeypatch.setattr(retrieval_module, "read_tree", read_tree)
-    engine = ScriptedIndex({"a_present": ([], {})})
-
-    result = WholeLibraryRetrieval(engine, library_store=library).search(
-        "MRSA?", RunRegistry().create("probe")
-    )
-
-    assert result.status is LibraryStatus.PARTIAL
-    assert [document.document for document in result.documents] == [
-        "a_present",
-        "b_corrupt",
-    ]
-    assert result.document("b_corrupt").status.value == "unavailable"
 
 
 def test_an_unjudged_section_is_named_and_prevents_complete_coverage(tmp_path):
@@ -212,7 +181,7 @@ def test_progress_is_totalled_before_any_document_search(tmp_path):
 
     WholeLibraryRetrieval(engine, library_store=library).search("q", run)
 
-    assert run.state.progress()["total"] == 3
+    assert run.progress()["total"] == 3
 
 
 def test_one_run_uses_one_retrieval_model_across_every_document(tmp_path):
@@ -227,7 +196,7 @@ def test_one_run_uses_one_retrieval_model_across_every_document(tmp_path):
         def __init__(self):
             self.seen = []
 
-        def retrieve_with_metadata_from_path(
+        def retrieve_with_metadata(
             self, document, query, state, path, model=None
         ):
             self.seen.append(model)

@@ -45,7 +45,7 @@ def test_published_source_pdf_is_immutable_and_generation_scoped(tmp_path):
 
     published = snapshot.document("guide").source
     assert published is not None
-    assert published.pdf_path.read_bytes() == original
+    assert published.read_pdf() == original
     assert published.sha256 == hashlib.sha256(original).hexdigest()
     assert published.href == (
         f"/api/library/{snapshot.generation_id}/documents/guide/pdf"
@@ -80,7 +80,7 @@ def test_published_markdown_and_source_assets_are_immutable(tmp_path):
     document = snapshot.document("guide")
     assert document.canonical_markdown == "# Figure\n\nOriginal explanation.\n"
     asset = document.source.assets[0]
-    assert asset.path.read_bytes() == b"\x89PNG\r\n\x1a\noriginal crop"
+    assert asset.read_bytes() == b"\x89PNG\r\n\x1a\noriginal crop"
     assert asset.href == (
         f"/api/library/{snapshot.generation_id}/documents/guide/"
         "assets/figure_1"
@@ -100,7 +100,8 @@ def test_open_generation_rejects_a_missing_source_object(tmp_path):
             ),
         ),
     })
-    snapshot.document("guide").source.pdf_path.unlink()
+    source = snapshot.document("guide").source
+    (store.objects / "pdf" / f"{source.sha256}.pdf").unlink()
 
     with pytest.raises(ExpectedLibraryCorrupt, match="source PDF"):
         store.open_generation(snapshot.generation_id)
@@ -126,7 +127,8 @@ def test_open_generation_rejects_a_corrupt_source_asset(tmp_path):
             ),
         ),
     })
-    snapshot.document("guide").source.assets[0].path.write_bytes(b"corrupt")
+    published_asset = snapshot.document("guide").source.assets[0]
+    (store.objects / "assets" / published_asset.sha256).write_bytes(b"corrupt")
 
     with pytest.raises(ExpectedLibraryCorrupt, match="source asset"):
         store.open_generation(snapshot.generation_id)
@@ -147,7 +149,7 @@ def test_open_generation_rejects_a_replaced_valid_index(tmp_path):
         summary="Different",
         content="Different.",
     ),))
-    snapshot.document("guide").index_path.write_text(
+    (store.generations / snapshot.generation_id / "guide.json").write_text(
         replacement, encoding="utf-8"
     )
 
@@ -303,7 +305,7 @@ def test_generation_identity_rejects_a_rewritten_index_and_manifest(tmp_path):
         summary="Different",
         content="Different.",
     ),))
-    index_path = snapshot.document("guide").index_path
+    index_path = store.generations / snapshot.generation_id / "guide.json"
     index_path.write_text(replacement, encoding="utf-8")
     manifest_path = index_path.parent / "manifest.json"
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
@@ -323,7 +325,9 @@ def test_publish_does_not_promote_a_corrupt_existing_generation(tmp_path):
     first = store.publish({"first": first_candidate})
     second = store.publish({"second": second_candidate})
     store.publish({"first": first_candidate})
-    second.document("second").index_path.write_text("[]", encoding="utf-8")
+    (store.generations / second.generation_id / "second.json").write_text(
+        "[]", encoding="utf-8"
+    )
 
     with pytest.raises(ExpectedLibraryCorrupt, match="document index"):
         store.publish({"second": second_candidate})

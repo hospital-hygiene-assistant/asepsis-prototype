@@ -45,7 +45,7 @@ def corpus(tmp_path, monkeypatch):
 def source_document(path, scale=2.0):
     return SourceDocument(
         sha256=hashlib.sha256(path.read_bytes()).hexdigest(),
-        pdf_path=path,
+        _pdf_path=path,
         ocr_scale=scale,
         href="/immutable/source.pdf",
     )
@@ -78,7 +78,7 @@ class TestRenderedPageSize:
         assert pdf.rendered_page_size(sized_pdf, 0, pin_scale=2.0) is None
 
     def test_a_deleted_source_pdf_has_no_size(self, sized_pdf):
-        sized_pdf.pdf_path.unlink()
+        sized_pdf._pdf_path.unlink()
         assert pdf.rendered_page_size(sized_pdf, 1, pin_scale=2.0) is None
 
     def test_the_size_is_cached(self, sized_pdf):
@@ -91,7 +91,7 @@ class TestRenderedPageSize:
         ) == (400.0, 800.0)
         doc = pdfium.PdfDocument.new()
         doc.new_page(100, 100)
-        doc.save(str(sized_pdf.pdf_path))
+        doc.save(str(sized_pdf._pdf_path))
 
         assert pdf.rendered_page_size(sized_pdf, 1, pin_scale=2.0) is None
 

@@ -58,12 +58,67 @@ class EvidenceCitation:
     visual: VisualLocation
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, init=False)
 class AnswerOutcome:
     kind: AnswerKind
     search: LibrarySearchResult
     answer: GroundedAnswer | None = None
     citations: tuple[EvidenceCitation, ...] = ()
+
+    @classmethod
+    def _create(
+        cls,
+        kind: AnswerKind,
+        search: LibrarySearchResult,
+        answer: GroundedAnswer | None = None,
+        citations: tuple[EvidenceCitation, ...] = (),
+    ) -> "AnswerOutcome":
+        outcome = object.__new__(cls)
+        object.__setattr__(outcome, "kind", kind)
+        object.__setattr__(outcome, "search", search)
+        object.__setattr__(outcome, "answer", answer)
+        object.__setattr__(outcome, "citations", citations)
+        outcome.__post_init__()
+        return outcome
+
+    @classmethod
+    def answered(
+        cls,
+        search: LibrarySearchResult,
+        answer: GroundedAnswer,
+        citations: tuple[EvidenceCitation, ...],
+    ) -> "AnswerOutcome":
+        return cls._create(AnswerKind.ANSWERED, search, answer, citations)
+
+    @classmethod
+    def insufficient_evidence(
+        cls, search: LibrarySearchResult
+    ) -> "AnswerOutcome":
+        return cls._create(AnswerKind.INSUFFICIENT_EVIDENCE, search)
+
+    @classmethod
+    def search_incomplete(
+        cls, search: LibrarySearchResult
+    ) -> "AnswerOutcome":
+        return cls._create(AnswerKind.SEARCH_INCOMPLETE, search)
+
+    @classmethod
+    def retrieval_unavailable(
+        cls, search: LibrarySearchResult
+    ) -> "AnswerOutcome":
+        return cls._create(AnswerKind.RETRIEVAL_UNAVAILABLE, search)
+
+    @classmethod
+    def synthesis_unavailable(
+        cls,
+        search: LibrarySearchResult,
+        citations: tuple[EvidenceCitation, ...],
+    ) -> "AnswerOutcome":
+        return cls._create(
+            AnswerKind.SYNTHESIS_UNAVAILABLE,
+            search,
+            citations=citations,
+        )
 
     def __post_init__(self) -> None:
         coverage = self.search.coverage
@@ -255,27 +310,23 @@ class QuestionAnswering:
             raise ValueError("question must not be empty")
         search = self._searcher.search(text, run)
         if search.status is LibraryStatus.COMPLETE and not search.evidence:
-            return AnswerOutcome(AnswerKind.INSUFFICIENT_EVIDENCE, search)
+            return AnswerOutcome.insufficient_evidence(search)
         if search.status is LibraryStatus.PARTIAL and not search.evidence:
-            return AnswerOutcome(AnswerKind.SEARCH_INCOMPLETE, search)
+            return AnswerOutcome.search_incomplete(search)
         if search.status is LibraryStatus.UNAVAILABLE:
-            return AnswerOutcome(AnswerKind.RETRIEVAL_UNAVAILABLE, search)
+            return AnswerOutcome.retrieval_unavailable(search)
         citations = self._citation_factory.create(
             search.evidence, search.generation_id
         )
         try:
             answer = self._synthesizer.synthesise(question, search.evidence)
         except AnswerSynthesisUnavailable:
-            return AnswerOutcome(
-                AnswerKind.SYNTHESIS_UNAVAILABLE, search, citations=citations
-            )
+            return AnswerOutcome.synthesis_unavailable(search, citations)
         cited = {int(value) for value in re.findall(r"\[(\d+)\]", answer.content)}
         if not cited or any(
             number < 1 or number > len(search.evidence) for number in cited
         ):
-            return AnswerOutcome(
-                AnswerKind.SYNTHESIS_UNAVAILABLE, search, citations=citations
-            )
+            return AnswerOutcome.synthesis_unavailable(search, citations)
         sections = (
             answer.short_answer,
             answer.recommended_action,
@@ -291,7 +342,5 @@ class QuestionAnswering:
             )
             for section in sections
         ):
-            return AnswerOutcome(
-                AnswerKind.SYNTHESIS_UNAVAILABLE, search, citations=citations
-            )
-        return AnswerOutcome(AnswerKind.ANSWERED, search, answer, citations)
+            return AnswerOutcome.synthesis_unavailable(search, citations)
+        return AnswerOutcome.answered(search, answer, citations)

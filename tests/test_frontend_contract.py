@@ -178,7 +178,10 @@ class TestDocumentPdfRoute:
                 "# Doc\n\nContent.", SourceCandidate(source, 2.0)
             )},
         )
-        immutable_path = snapshot.document("doc").source.pdf_path
+        published = snapshot.document("doc").source
+        immutable_path = (
+            tmp_path / "library" / "objects" / "pdf" / f"{published.sha256}.pdf"
+        )
         immutable_path.unlink()
 
         response = client.get(

@@ -1,0 +1,33 @@
+{
+  "contract_version": 3,
+  "run_id": "fixture-synthesis_unavailable_partial",
+  "query": "Welche Maßnahmen gelten?",
+  "outcome": {
+    "kind": "synthesis_unavailable",
+    "coverage": {
+      "status": "partial",
+      "generation_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "searched_documents": 1,
+      "total_documents": 2,
+      "incomplete_checks": 1
+    },
+    "citations": [
+      {
+        "id": "s1",
+        "number": 1,
+        "document_id": "hygiene",
+        "node_id": "ppe",
+        "title": "Schutzkleidung",
+        "breadcrumb": "Hygiene › Schutzkleidung",
+        "excerpt": "Verifizierte Dokumentstelle.",
+        "quote": "Verifizierte Dokumentstelle.",
+        "selection_reason": "verifizierte Auswahl",
+        "visual": {
+          "status": "unavailable",
+          "reason": "page_size_unavailable",
+          "pdf_href": "/api/library/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/documents/hygiene/pdf"
+        }
+      }
+    ]
+  }
+}

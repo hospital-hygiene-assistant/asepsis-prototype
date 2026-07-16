@@ -11,8 +11,8 @@ from pathlib import Path
 from typing import Mapping
 from urllib.parse import quote
 
+from .document_index import DocumentIndex
 from .nodes import PageNode, parse_document
-from .serialization import deserialize_document, serialize_document
 
 
 class ExpectedLibraryNotBuilt(RuntimeError):
@@ -84,7 +84,7 @@ class LibraryCandidate:
 @dataclass(frozen=True)
 class SourceDocument:
     sha256: str
-    pdf_path: Path
+    _pdf_path: Path = field(repr=False)
     ocr_scale: float
     href: str
     assets: tuple["SourceAsset", ...] = ()
@@ -92,23 +92,60 @@ class SourceDocument:
     def __post_init__(self) -> None:
         object.__setattr__(self, "ocr_scale", _normalize_ocr_scale(self.ocr_scale))
 
+    def read_pdf(self) -> bytes:
+        """Read this immutable source, refusing missing or changed bytes."""
+        try:
+            data = self._pdf_path.read_bytes()
+        except OSError as exc:
+            raise ExpectedLibraryCorrupt("source PDF is missing") from exc
+        if hashlib.sha256(data).hexdigest() != self.sha256:
+            raise ExpectedLibraryCorrupt("source PDF digest mismatch")
+        return data
+
+    def asset(self, asset_id: str) -> "SourceAsset":
+        try:
+            return next(asset for asset in self.assets if asset.asset_id == asset_id)
+        except StopIteration as exc:
+            raise KeyError(asset_id) from exc
+
 
 @dataclass(frozen=True)
 class SourceAsset:
     asset_id: str
     filename: str
     sha256: str
-    path: Path
+    _path: Path = field(repr=False)
     media_type: str
     href: str
+
+    def read_bytes(self) -> bytes:
+        """Read this immutable source asset with digest verification."""
+        try:
+            data = self._path.read_bytes()
+        except OSError as exc:
+            raise ExpectedLibraryCorrupt("source asset is missing") from exc
+        if hashlib.sha256(data).hexdigest() != self.sha256:
+            raise ExpectedLibraryCorrupt("source asset digest mismatch")
+        return data
 
 
 @dataclass(frozen=True)
 class LibraryDocument:
     document_id: str
-    index_path: Path
+    index: DocumentIndex
     canonical_markdown: str
     source: SourceDocument | None
+
+    def linked_markdown(self) -> str:
+        """Canonical Markdown with generation-scoped asset references."""
+        markdown = self.canonical_markdown
+        if self.source is None:
+            return markdown
+        for asset in self.source.assets:
+            markdown = markdown.replace(
+                f"/assets/{self.document_id}/{asset.filename}", asset.href
+            )
+        return markdown
 
 
 @dataclass(frozen=True)
@@ -148,8 +185,7 @@ class ExpectedLibraryStore:
         for document_id, candidate in ordered:
             validate_library_segment(document_id, "document identity")
             nodes = tuple(parse_document(candidate.canonical_markdown, document_id))
-            index_json = serialize_document(nodes)
-            deserialize_document(index_json)
+            index_json = DocumentIndex.from_nodes(nodes).serialize()
             index_payloads[document_id] = index_json
             if candidate.source is None and any(
                 node.pin is not None for node in _walk_nodes(nodes)
@@ -366,7 +402,7 @@ class ExpectedLibraryStore:
                 index_path, record["index_sha256"], "document index"
             )
             index_json = index_path.read_text(encoding="utf-8")
-            deserialize_document(index_json)
+            index = DocumentIndex.from_serialized(index_json)
             markdown_path = generation_dir / f"{document_id}.md"
             self._verify_object(
                 markdown_path,
@@ -396,7 +432,7 @@ class ExpectedLibraryStore:
                         asset_id=asset["asset_id"],
                         filename=asset["filename"],
                         sha256=asset["sha256"],
-                        path=asset_path,
+                        _path=asset_path,
                         media_type=asset["media_type"],
                         href=(
                             f"/api/library/{generation_id}/documents/"
@@ -407,7 +443,7 @@ class ExpectedLibraryStore:
                 assets = tuple(assets_list)
                 source = SourceDocument(
                     sha256=sha256,
-                    pdf_path=pdf_path,
+                    _pdf_path=pdf_path,
                     ocr_scale=ocr_scale,
                     href=(
                         f"/api/library/{generation_id}/documents/"
@@ -417,7 +453,7 @@ class ExpectedLibraryStore:
                 )
             documents.append(LibraryDocument(
                 document_id=document_id,
-                index_path=index_path,
+                index=index,
                 canonical_markdown=canonical_markdown,
                 source=source,
             ))

@@ -142,7 +142,7 @@ def test_an_outcome_rejects_impossible_complete_coverage():
     )
 
     with pytest.raises(ValueError, match="non-empty expected library"):
-        AnswerOutcome(AnswerKind.INSUFFICIENT_EVIDENCE, search)
+        AnswerOutcome.insufficient_evidence(search)
 
 
 def test_an_outcome_rejects_a_noncanonical_generation_identity():
@@ -156,7 +156,7 @@ def test_an_outcome_rejects_a_noncanonical_generation_identity():
     )
 
     with pytest.raises(ValueError, match="64 lowercase hexadecimal"):
-        AnswerOutcome(AnswerKind.RETRIEVAL_UNAVAILABLE, search)
+        AnswerOutcome.retrieval_unavailable(search)
 
 
 @pytest.mark.parametrize(
@@ -193,7 +193,7 @@ def test_an_outcome_rejects_contradictory_incomplete_coverage(
     )
 
     with pytest.raises(ValueError, match="coverage"):
-        AnswerOutcome(AnswerKind.SYNTHESIS_UNAVAILABLE, search)
+        AnswerOutcome.synthesis_unavailable(search, ())
 
 
 def test_outcome_kinds_reject_contradictory_search_facts():
@@ -219,16 +219,18 @@ def test_outcome_kinds_reject_contradictory_search_facts():
     )
 
     contradictions = (
-        (AnswerKind.INSUFFICIENT_EVIDENCE, partial, None),
-        (AnswerKind.SEARCH_INCOMPLETE, complete, None),
-        (AnswerKind.ANSWERED, complete, GroundedAnswer("Behauptung [1].")),
-        (AnswerKind.RETRIEVAL_UNAVAILABLE, complete, None),
-        (AnswerKind.SYNTHESIS_UNAVAILABLE, unavailable_search, None),
+        (AnswerOutcome.insufficient_evidence, (partial,)),
+        (AnswerOutcome.search_incomplete, (complete,)),
+        (AnswerOutcome.answered, (
+            complete, GroundedAnswer("Behauptung [1]."), ()
+        )),
+        (AnswerOutcome.retrieval_unavailable, (complete,)),
+        (AnswerOutcome.synthesis_unavailable, (unavailable_search, ())),
     )
 
-    for kind, search, answer in contradictions:
+    for factory, arguments in contradictions:
         with pytest.raises(ValueError, match="outcome"):
-            AnswerOutcome(kind, search, answer)
+            factory(*arguments)
 
 
 def test_an_outcome_rejects_a_citation_bound_to_different_evidence():
@@ -269,8 +271,7 @@ def test_an_outcome_rejects_a_citation_bound_to_different_evidence():
     )
 
     with pytest.raises(ValueError, match="citation does not match verified evidence"):
-        AnswerOutcome(
-            AnswerKind.ANSWERED,
+        AnswerOutcome.answered(
             search,
             GroundedAnswer("Answer [1]."),
             (citation,),

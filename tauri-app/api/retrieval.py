@@ -19,9 +19,6 @@ from pageindex.library import (
 )
 from paths import LIBRARY_DIR
 
-from .trees import leaf_count, read_tree
-
-
 class LibraryStatus(StrEnum):
     """How completely the expected document library was searched."""
 
@@ -182,18 +179,6 @@ def _legacy_node(evidence: VerifiedEvidence) -> dict[str, Any]:
     }
 
 
-def _document_node_order(tree: tuple[dict, ...]) -> dict[str, int]:
-    order: dict[str, int] = {}
-
-    def visit(nodes: list[dict] | tuple[dict, ...]) -> None:
-        for node in nodes:
-            order[node["nodeId"]] = len(order)
-            visit(node.get("children", []))
-
-    visit(tree)
-    return order
-
-
 class WholeLibraryRetrieval:
     """Search the expected library and expose one truthful coverage result."""
 
@@ -218,7 +203,7 @@ class WholeLibraryRetrieval:
         try:
             snapshot = self._library_store.open_current()
         except (ExpectedLibraryNotBuilt, ExpectedLibraryCorrupt) as exc:
-            run.state.start(0)
+            run.set_total(0)
             diagnostic = SearchDiagnostic(
                 document="__expected_library__",
                 code="expected_library_unavailable",
@@ -247,8 +232,8 @@ class WholeLibraryRetrieval:
         for library_document in snapshot.documents:
             document = library_document.document_id
             try:
-                tree = tuple(read_tree(library_document.index_path))
-                if leaf_count(tree) == 0:
+                tree = tuple(library_document.index.debug_tree)
+                if library_document.index.leaf_count == 0:
                     raise ValueError("document index has no searchable leaves")
             except Exception as exc:
                 diagnostic = SearchDiagnostic(
@@ -260,8 +245,9 @@ class WholeLibraryRetrieval:
                 continue
             prepared.append((library_document, tree, None))
 
-        run.state.start(sum(
-            leaf_count(tree) for _, tree, _ in prepared if tree is not None
+        run.set_total(sum(
+            document.index.leaf_count
+            for document, tree, _ in prepared if tree is not None
         ))
         documents: list[DocumentSearch] = []
         for library_document, tree, read_diagnostic in prepared:
@@ -281,11 +267,11 @@ class WholeLibraryRetrieval:
                 retrieval_options = {"model": retrieval_model}
                 if self._instances is not None:
                     retrieval_options["instances"] = self._instances
-                nodes, node_meta = self._engine.retrieve_with_metadata_from_path(
+                nodes, node_meta = self._engine.retrieve_with_metadata(
                     document,
                     query,
-                    run.state,
-                    library_document.index_path,
+                    run,
+                    library_document.index,
                     **retrieval_options,
                 )
             except Exception as exc:
@@ -307,9 +293,6 @@ class WholeLibraryRetrieval:
                 continue
 
             evidence: list[VerifiedEvidence] = []
-            tree_nodes = [_pi._node_from_dict(item) for item in tree]
-            nodes_by_id = _pi._build_nodes_by_id(tree_nodes)
-            parent_map = _pi._build_parent_map(tree_nodes)
             diagnostics = [
                 SearchDiagnostic(
                     document=document,
@@ -336,13 +319,11 @@ class WholeLibraryRetrieval:
                 evidence.append(VerifiedEvidence(
                     document=document,
                     node=node,
-                    breadcrumb=_pi._make_breadcrumb(
-                        node.node_id, parent_map, nodes_by_id
-                    ),
+                    breadcrumb=library_document.index.breadcrumb(node.node_id),
                     reason=str(meta.get("reason") or ""),
                     quote=quote,
                 ))
-            node_order = _document_node_order(tree)
+            node_order = library_document.index.node_order()
             diagnostics.sort(
                 key=lambda item: node_order.get(item.node_id or "", len(node_order))
             )

@@ -9,7 +9,6 @@ from pageindex.pins import NormalizedRegion, VisualLocation
 
 from .chat_wire import encode_outcome
 from .question_answering import (
-    AnswerKind,
     AnswerOutcome,
     EvidenceCitation,
     GroundedAnswer,
@@ -126,33 +125,30 @@ def fixture_payloads() -> dict[str, str]:
     citation = (_citation(),)
     exact_citation = (_citation(exact=True),)
     outcomes = {
-        "answered_complete.json": AnswerOutcome(
-            AnswerKind.ANSWERED, _complete(evidence), _answer(), exact_citation
+        "answered_complete.json": AnswerOutcome.answered(
+            _complete(evidence), _answer(), exact_citation
         ),
-        "answered_partial.json": AnswerOutcome(
-            AnswerKind.ANSWERED, _partial(evidence), _answer(), citation
+        "answered_partial.json": AnswerOutcome.answered(
+            _partial(evidence), _answer(), citation
         ),
-        "insufficient_evidence.json": AnswerOutcome(
-            AnswerKind.INSUFFICIENT_EVIDENCE, _complete(())
+        "insufficient_evidence.json": AnswerOutcome.insufficient_evidence(
+            _complete(())
         ),
-        "search_incomplete.json": AnswerOutcome(
-            AnswerKind.SEARCH_INCOMPLETE, _partial(())
+        "search_incomplete.json": AnswerOutcome.search_incomplete(
+            _partial(())
         ),
-        "retrieval_unavailable.json": AnswerOutcome(
-            AnswerKind.RETRIEVAL_UNAVAILABLE,
+        "retrieval_unavailable.json": AnswerOutcome.retrieval_unavailable(
             LibrarySearchResult(
                 QUERY, None, LibraryStatus.UNAVAILABLE, (), (), ()
             ),
         ),
-        "synthesis_unavailable_complete.json": AnswerOutcome(
-            AnswerKind.SYNTHESIS_UNAVAILABLE,
+        "synthesis_unavailable_complete.json": AnswerOutcome.synthesis_unavailable(
             _complete(evidence),
-            citations=citation,
+            citation,
         ),
-        "synthesis_unavailable_partial.json": AnswerOutcome(
-            AnswerKind.SYNTHESIS_UNAVAILABLE,
+        "synthesis_unavailable_partial.json": AnswerOutcome.synthesis_unavailable(
             _partial(evidence),
-            citations=citation,
+            citation,
         ),
     }
     return {
@@ -192,7 +188,7 @@ def _mismatches(targets: list[Path]) -> list[str]:
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
-        description="Write or verify authoritative v2 chat fixtures."
+        description="Write or verify authoritative v3 chat fixtures."
     )
     action = parser.add_mutually_exclusive_group(required=True)
     action.add_argument("--write", action="store_true")

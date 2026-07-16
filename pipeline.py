@@ -18,9 +18,9 @@ sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "tauri-app"))
 
 import pageindex
-from api.answering_runtime import build_question_answering
+from api.answering_runtime import answer_question
 from api.question_answering import AnswerKind, Question
-from api.runs import Run
+from pageindex import QuestionRun
 from modules.registry import defaults, discover, load
 from paths import KB_DIR, LIBRARY_DIR
 
@@ -58,8 +58,8 @@ def index(doc: Optional[str] = None) -> None:
 
 def query(text: str) -> str:
     """Answer through the same whole-library interface as practitioner chat."""
-    run = Run(id="cli")
-    outcome = build_question_answering(run).answer(Question(text), run)
+    run = QuestionRun("cli")
+    outcome = answer_question(Question(text), run)
     if (
         outcome.kind is AnswerKind.RETRIEVAL_UNAVAILABLE
         and any(

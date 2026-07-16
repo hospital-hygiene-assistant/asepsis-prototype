@@ -15,7 +15,7 @@ from fastapi.testclient import TestClient
 
 import server
 from api.runs import RunRegistry
-from pageindex import RunState
+from pageindex import QuestionRun
 
 
 @pytest.fixture
@@ -23,26 +23,26 @@ def client():
     return TestClient(server.app)
 
 
-class TestRunStateIsolation:
+class TestQuestionRunIsolation:
     def test_two_runs_keep_their_own_progress(self):
-        a, b = RunState(), RunState()
-        a.start(10)
-        b.start(3)
-        a.leaf_done()
+        a, b = QuestionRun(), QuestionRun()
+        a.set_total(10)
+        b.set_total(3)
+        a.leaf_complete()
         assert a.progress() == {"total": 10, "done": 1}
         assert b.progress() == {"total": 3, "done": 0}
 
     def test_starting_one_run_does_not_reset_another(self):
-        a = RunState()
-        a.start(5)
-        a.leaf_done()
-        RunState().start(99)          # a second client arrives mid-run
+        a = QuestionRun()
+        a.set_total(5)
+        a.leaf_complete()
+        QuestionRun().set_total(99)   # a second client arrives mid-run
         assert a.progress() == {"total": 5, "done": 1}
 
     def test_verdicts_do_not_leak_between_runs(self):
-        a, b = RunState(), RunState()
+        a, b = QuestionRun(), QuestionRun()
         a.mark("retrieved", "a-node")
-        a.set_meta("a-node", "retrieved", "because of A's question", quote="A's quote")
+        a.record("a-node", "retrieved", "because of A's question", quote="A's quote")
         b.mark("rejected", "b-node")
 
         assert a.events()["retrieved"] == ["a-node"]
@@ -51,13 +51,13 @@ class TestRunStateIsolation:
         assert "a-node" not in b.events()["meta"]
 
     def test_concurrent_writers_do_not_lose_records(self):
-        run = RunState()
-        run.start(200)
+        run = QuestionRun()
+        run.set_total(200)
 
         def worker(offset: int):
             for i in range(100):
                 run.mark("retrieved", f"n{offset + i}")
-                run.leaf_done()
+                run.leaf_complete()
 
         threads = [threading.Thread(target=worker, args=(o,)) for o in (0, 1000)]
         for t in threads:
@@ -108,9 +108,9 @@ class TestRunsEndpoint:
     def test_a_run_reports_its_own_progress(self, client):
         from api.runs import registry
         run = registry.create("probe")
-        run.set_phase("retrieval", "Reading…")
-        run.state.start(7)
-        run.state.leaf_done()
+        run.begin_retrieval("Reading…")
+        run.set_total(7)
+        run.leaf_complete()
 
         body = client.get("/api/runs/probe").json()
         assert body["run_id"] == "probe"
