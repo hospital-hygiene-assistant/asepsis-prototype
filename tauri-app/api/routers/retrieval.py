@@ -3,17 +3,22 @@
 import pageindex as _pi
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from pathlib import Path
 from typing import Optional
+from urllib.parse import quote
 
 from modules.registry import defaults as _module_defaults
-from pageindex.generations import IndexGenerationStore
-from paths import INDEX_DIR
+from pageindex.library import (
+    ExpectedLibraryCorrupt,
+    ExpectedLibraryNotBuilt,
+    ExpectedLibraryStore,
+)
+from paths import LIBRARY_DIR
 from retrieval_cases import RETRIEVAL_CASES
 
+from ..answering_runtime import build_whole_library_retrieval
 from ..ollama_pool import ensure_explainer
-from ..retrieval import WholeLibraryRetrieval
 from ..runs import registry
 from ..scoring import eval_case
 from ..trees import read_tree
@@ -21,7 +26,31 @@ from ..trees import read_tree
 router = APIRouter()
 
 
+def _document_href(generation_id: str, document_id: str) -> str:
+    return (
+        f"/api/library/{generation_id}/documents/"
+        f"{quote(document_id, safe='')}"
+    )
+
+
+def _bind_pin_asset(pin, base_href: str):
+    if not isinstance(pin, dict) or not isinstance(pin.get("asset"), dict):
+        return pin
+    asset = dict(pin["asset"])
+    asset_id = asset.get("id")
+    if isinstance(asset_id, str):
+        asset["image"] = f"{base_href}/assets/{quote(asset_id, safe='')}"
+    return {**pin, "asset": asset}
+
+
+def _bind_tree_assets(nodes: list[dict], base_href: str) -> None:
+    for node in nodes:
+        node["pin"] = _bind_pin_asset(node.get("pin"), base_href)
+        _bind_tree_assets(node.get("children", []), base_href)
+
+
 class ExplainRequest(BaseModel):
+    generation_id: str = Field(pattern=r"^[0-9a-f]{64}$")
     stem: str
     node_id: str
     query: str
@@ -34,13 +63,20 @@ def explain_node(req: ExplainRequest):
     Runs on a dedicated Ollama instance so it never disturbs an in-flight query.
     """
     stem = Path(req.stem).name
-    with IndexGenerationStore(INDEX_DIR).pin_current() as snapshot:
-        idx = next((path for path in snapshot.document_paths if path.stem == stem), None)
-        if idx is None:
-            return JSONResponse(
-                {"error": f"unknown document '{req.stem}'"}, status_code=404
-            )
-        nodes = [_pi._node_from_dict(d) for d in read_tree(idx)]
+    try:
+        snapshot = ExpectedLibraryStore(LIBRARY_DIR).open_generation(
+            req.generation_id
+        )
+        document = snapshot.document(stem)
+    except KeyError:
+        return JSONResponse(
+            {"error": f"unknown document '{req.stem}'"}, status_code=404
+        )
+    except (ExpectedLibraryNotBuilt, ExpectedLibraryCorrupt):
+        return JSONResponse(
+            {"error": "Expected library unavailable"}, status_code=503
+        )
+    nodes = [_pi._node_from_dict(d) for d in read_tree(document.index_path)]
     nodes_by_id = _pi._build_nodes_by_id(nodes)
     node = nodes_by_id.get(req.node_id)
     if node is None:
@@ -56,7 +92,10 @@ def explain_node(req: ExplainRequest):
     result = _pi.explain_nonselection(node, req.query, req.stem, breadcrumb, client, url)
     result["node_id"] = req.node_id
     result["instance"] = url
-    result["pin"] = node.pin.to_dict() if node.pin else None
+    result["pin"] = _bind_pin_asset(
+        node.pin.to_dict() if node.pin else None,
+        _document_href(req.generation_id, stem),
+    )
     return JSONResponse(result)
 
 
@@ -83,8 +122,32 @@ def run_query(req: RunRequest):
         return JSONResponse({"error": "No query provided"}, status_code=400)
 
     run = registry.create(req.run_id)
-    search = WholeLibraryRetrieval(_pi).search(query, run)
+    run.set_phase("retrieval")
+    try:
+        retrieval = build_whole_library_retrieval()
+    except Exception:
+        run.set_phase("error")
+        return JSONResponse(
+            {"error": "retrieval runtime unavailable"}, status_code=503
+        )
+    try:
+        search = retrieval.search(query, run)
+    except Exception:
+        run.set_phase("error")
+        raise
+    run.set_phase("idle")
     results = search.to_debug_results()
+    if search.generation_id is not None:
+        for document_id, result in results.items():
+            base_href = _document_href(search.generation_id, document_id)
+            result.update({
+                "generation_id": search.generation_id,
+                "full_href": f"{base_href}/full",
+                "page_href": f"{base_href}/page/{{page}}",
+            })
+            _bind_tree_assets(result.get("tree", []), base_href)
+            for node in result.get("nodes", []):
+                node["pin"] = _bind_pin_asset(node.get("pin"), base_href)
 
     test_result = eval_case(test, results) if test else None
     return JSONResponse({

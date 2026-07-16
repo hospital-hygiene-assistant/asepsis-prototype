@@ -11,8 +11,13 @@ import json
 import pytest
 
 from pageindex import build
-from pageindex.build import build_generation, build_index
+from pageindex.build import build_generation
 from pageindex.nodes import _node_from_dict
+from pageindex.library import (
+    ExpectedLibraryStore,
+    SourceCandidate,
+    write_source_candidates,
+)
 
 DOC = """\
 # Hygiene Guideline
@@ -40,13 +45,22 @@ Single room for confirmed MRSA.
 @pytest.fixture
 def built(tmp_path, monkeypatch):
     """Build DOC through the real entrypoint and hand back the parsed index."""
-    kb, index = tmp_path / "kb", tmp_path / "index"
+    kb, library = tmp_path / "kb", tmp_path / "library"
     kb.mkdir()
     monkeypatch.setattr(build, "KB_DIR", kb)
-    monkeypatch.setattr(build, "INDEX_DIR", index)
+    monkeypatch.setattr(build, "LIBRARY_DIR", library)
+    monkeypatch.setattr(build, "SOURCES_MANIFEST", kb / ".sources.json")
     (kb / "hygiene.md").write_text(DOC, encoding="utf-8")
-    build_index("hygiene")
-    return json.loads((index / "hygiene.json").read_text(encoding="utf-8"))
+    source_pdf = tmp_path / "hygiene.pdf"
+    source_pdf.write_bytes(b"%PDF-1.7\nsource\n")
+    write_source_candidates(
+        kb / ".sources.json",
+        {"hygiene": SourceCandidate(source_pdf, ocr_scale=2.0)},
+    )
+    snapshot = build_generation(["hygiene"])
+    return json.loads(
+        snapshot.document("hygiene").index_path.read_text(encoding="utf-8")
+    )
 
 
 def find(nodes: list[dict], node_id: str) -> dict | None:
@@ -59,15 +73,11 @@ def find(nodes: list[dict], node_id: str) -> dict | None:
     return None
 
 
-class TestBuildIndex:
+class TestBuildGeneration:
     def test_a_missing_document_is_an_error_not_an_empty_index(self, tmp_path, monkeypatch):
         monkeypatch.setattr(build, "KB_DIR", tmp_path)
-        monkeypatch.setattr(build, "INDEX_DIR", tmp_path / "index")
         with pytest.raises(FileNotFoundError, match="Document not found"):
-            build_index("never-ingested")
-
-    def test_the_index_directory_is_created_on_demand(self, built, tmp_path):
-        assert (tmp_path / "index" / "hygiene.json").is_file()
+            build_generation(["never-ingested"])
 
     def test_headings_become_the_hierarchy(self, built):
         root = built[0]
@@ -130,7 +140,8 @@ def test_build_generation_promotes_the_corpus_only_after_every_document_builds(
     kb, index = tmp_path / "kb", tmp_path / "index"
     kb.mkdir()
     monkeypatch.setattr(build, "KB_DIR", kb)
-    monkeypatch.setattr(build, "INDEX_DIR", index)
+    monkeypatch.setattr(build, "LIBRARY_DIR", index)
+    monkeypatch.setattr(build, "SOURCES_MANIFEST", kb / ".sources.json")
     (kb / "a.md").write_text("# A\n\nFirst passage.", encoding="utf-8")
     (kb / "b.md").write_text("# B\n\nSecond passage.", encoding="utf-8")
 
@@ -138,4 +149,35 @@ def test_build_generation_promotes_the_corpus_only_after_every_document_builds(
 
     pointer = json.loads((index / "current.json").read_text(encoding="utf-8"))
     assert pointer["generation_id"] == snapshot.generation_id
-    assert [path.stem for path in snapshot.document_paths] == ["a", "b"]
+    assert [document.document_id for document in snapshot.documents] == ["a", "b"]
+    assert snapshot.document("a").canonical_markdown == "# A\n\nFirst passage."
+    assert (
+        ExpectedLibraryStore(index).open_current().generation_id
+        == snapshot.generation_id
+    )
+
+
+def test_build_generation_binds_ingest_source_candidate_metadata(
+    tmp_path, monkeypatch
+):
+    kb, index = tmp_path / "kb", tmp_path / "index"
+    kb.mkdir()
+    source_pdf = tmp_path / "incoming.pdf"
+    source_pdf.write_bytes(b"%PDF-1.7\nsource bytes\n")
+    markdown = "# Guide\n\nSource text."
+    (kb / "guide.md").write_text(markdown, encoding="utf-8")
+    manifest = kb / ".sources.json"
+    write_source_candidates(
+        manifest,
+        {"guide": SourceCandidate(source_pdf, ocr_scale=2.0)},
+    )
+    monkeypatch.setattr(build, "KB_DIR", kb)
+    monkeypatch.setattr(build, "LIBRARY_DIR", index)
+    monkeypatch.setattr(build, "SOURCES_MANIFEST", manifest)
+
+    snapshot = build_generation(["guide"])
+
+    document = snapshot.document("guide")
+    assert document.source is not None
+    assert document.source.pdf_path != source_pdf
+    assert document.source.pdf_path.read_bytes() == source_pdf.read_bytes()

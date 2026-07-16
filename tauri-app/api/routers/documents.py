@@ -1,94 +1,146 @@
 """The ingested corpus: trees, markdown, source PDFs and rendered pages."""
 
 import json
-from pathlib import Path
 from typing import Optional
+from urllib.parse import quote
 
 from fastapi import APIRouter
 from fastapi.responses import FileResponse, JSONResponse, Response
 
-from pageindex.generations import IndexGenerationStore
-from paths import INDEX_DIR, KB_DIR
+from pageindex.library import (
+    ExpectedLibraryCorrupt,
+    ExpectedLibraryNotBuilt,
+    ExpectedLibraryStore,
+    validate_library_segment,
+)
+from paths import LIBRARY_DIR
 
 from ..pdf import cache_png, cached_png
-from ..sources import load_sources
 from ..trees import leaf_count, read_tree
 
 router = APIRouter()
 
 
-@router.get("/api/documents")
-def get_documents():
-    docs = []
-    with IndexGenerationStore(INDEX_DIR).pin_current() as snapshot:
-        for idx in snapshot.document_paths:
-            tree = read_tree(idx)
-            docs.append({
-                "name": idx.stem,
-                "leaf_count": leaf_count(tree),
-                "tree": tree,
-            })
-    return JSONResponse(docs)
+def _generation_document(generation_id: str, document_id: str):
+    try:
+        validate_library_segment(document_id, "document identity")
+        return ExpectedLibraryStore(LIBRARY_DIR).open_generation(
+            generation_id
+        ).document(document_id)
+    except (KeyError, ValueError):
+        return JSONResponse({"error": "document not found"}, status_code=404)
+    except ExpectedLibraryCorrupt:
+        return JSONResponse(
+            {"error": "Expected library generation is unavailable"},
+            status_code=503,
+        )
 
 
-@router.get("/api/document/{stem}/full")
-def get_document_full(stem: str):
-    """Return the raw markdown for a single knowledge-base document.
+@router.get("/api/library/{generation_id}/documents/{document_id}/pdf")
+def get_generation_document_pdf(generation_id: str, document_id: str):
+    """Serve the exact immutable PDF bound to one Expected library generation."""
+    document = _generation_document(generation_id, document_id)
+    if isinstance(document, JSONResponse):
+        return document
+    if document.source is None:
+        return JSONResponse({"error": "document has no source PDF"}, status_code=404)
+    return FileResponse(
+        document.source.pdf_path,
+        media_type="application/pdf",
+        filename=f"{document.document_id}.pdf",
+    )
 
-    The frontend renders the markdown and derives its own table of contents
-    from the rendered headings, so anchors always stay consistent.
-    """
 
-    # Guard against path traversal — only allow plain stems that exist.
-    safe_stem = Path(stem).name
-    md_path = KB_DIR / f"{safe_stem}.md"
-    if not md_path.exists() or md_path.parent.resolve() != KB_DIR.resolve():
-        return JSONResponse({"error": f"Document '{stem}' not found"}, status_code=404)
-
+@router.get("/api/library/{generation_id}/documents/{document_id}/full")
+def get_generation_document_full(generation_id: str, document_id: str):
+    """Return canonical Markdown from the same immutable generation."""
+    document = _generation_document(generation_id, document_id)
+    if isinstance(document, JSONResponse):
+        return document
+    markdown = document.canonical_markdown
+    if document.source is not None:
+        for asset in document.source.assets:
+            markdown = markdown.replace(
+                f"/assets/{document.document_id}/{asset.filename}", asset.href
+            )
     return JSONResponse({
-        "stem": safe_stem,
-        "markdown": md_path.read_text(encoding="utf-8"),
+        "document_id": document.document_id,
+        "generation_id": generation_id,
+        "markdown": markdown,
     })
 
 
-@router.get("/api/document/{stem}/pdf")
-def get_document_pdf(stem: str):
-    """Serve a document's source PDF so a client can render it itself.
+@router.get(
+    "/api/library/{generation_id}/documents/{document_id}/assets/{asset_id}"
+)
+def get_generation_document_asset(
+    generation_id: str, document_id: str, asset_id: str
+):
+    """Serve one immutable provenance asset from the bound generation."""
+    document = _generation_document(generation_id, document_id)
+    if isinstance(document, JSONResponse):
+        return document
+    if document.source is None:
+        return JSONResponse({"error": "source asset not found"}, status_code=404)
+    asset = next(
+        (item for item in document.source.assets if item.asset_id == asset_id),
+        None,
+    )
+    if asset is None:
+        return JSONResponse({"error": "source asset not found"}, status_code=404)
+    return FileResponse(asset.path, media_type=asset.media_type)
 
-    The path is resolved from the server-side manifest keyed by a bare stem, so
-    `stem` never reaches the filesystem — same guard as the other document routes.
-    """
-    safe_stem = Path(stem).name
-    src = load_sources().get(safe_stem)
-    if not src:
+
+@router.get("/api/documents")
+def get_documents():
+    docs = []
+    try:
+        snapshot = ExpectedLibraryStore(LIBRARY_DIR).open_current()
+        for document in snapshot.documents:
+            tree = read_tree(document.index_path)
+            base_href = (
+                f"/api/library/{snapshot.generation_id}/documents/"
+                f"{quote(document.document_id, safe='')}"
+            )
+            docs.append({
+                "name": document.document_id,
+                "generation_id": snapshot.generation_id,
+                "leaf_count": leaf_count(tree),
+                "tree": tree,
+                "full_href": f"{base_href}/full",
+                "source_href": (
+                    document.source.href if document.source is not None else None
+                ),
+                "page_href": f"{base_href}/page/{{page}}",
+            })
+    except (ExpectedLibraryNotBuilt, ExpectedLibraryCorrupt):
         return JSONResponse(
-            {"error": f"'{safe_stem}' has no source PDF (not ingested from a PDF)"},
-            status_code=404)
-    pdf_path = Path(src["pdf"])
-    if not pdf_path.exists():
-        return JSONResponse({"error": f"source PDF for '{safe_stem}' is unavailable"},
-                            status_code=404)
-    return FileResponse(pdf_path, media_type="application/pdf",
-                        filename=f"{safe_stem}.pdf")
+            {"error": "Expected library is unavailable"}, status_code=503
+        )
+    return JSONResponse(docs)
 
 
-@router.get("/api/document/{stem}/page/{page}")
-def get_document_page(stem: str, page: int, bbox: Optional[str] = None,
-                      regions: Optional[str] = None):
-    """Render one page of the document's SOURCE PDF as a PNG, optionally with
-    the pin's bbox highlighted — powers 'jump to its page/bbox' in the UI.
+@router.get(
+    "/api/library/{generation_id}/documents/{document_id}/page/{page}"
+)
+def get_generation_document_page(
+    generation_id: str,
+    document_id: str,
+    page: int,
+    bbox: Optional[str] = None,
+    regions: Optional[str] = None,
+):
+    """Render one page from one immutable Expected library generation."""
+    document = _generation_document(generation_id, document_id)
+    if isinstance(document, JSONResponse):
+        return document
+    return _render_document_page(document, page, bbox, regions)
 
-    `bbox` is "x0,y0,x1,y1" and `regions` is JSON [[page,x0,y0,x1,y1],...],
-    both in render pixels at the ingest ocr_scale (the pin convention)."""
-    src = load_sources().get(Path(stem).name)
-    if not src:
-        return JSONResponse(
-            {"error": f"'{stem}' has no source PDF (not ingested from a PDF)"},
-            status_code=404)
-    pdf_path = Path(src["pdf"])
-    if not pdf_path.exists():
-        return JSONResponse({"error": f"source PDF moved or deleted: {pdf_path}"},
-                            status_code=404)
+
+def _render_document_page(document, page, bbox, regions):
+    if document.source is None:
+        return JSONResponse({"error": "document has no source PDF"}, status_code=404)
+    pdf_path = document.source.pdf_path
     try:
         import pypdfium2 as pdfium
         from PIL import ImageDraw
@@ -97,12 +149,12 @@ def get_document_page(stem: str, page: int, bbox: Optional[str] = None,
             {"error": f"page rendering needs pypdfium2 + Pillow: {exc}"},
             status_code=501)
 
-    cache_key = (str(pdf_path), pdf_path.stat().st_mtime, page, bbox or "", regions or "")
+    cache_key = (document.source.sha256, page, bbox or "", regions or "")
     cached = cached_png(cache_key)
     if cached is not None:
         return Response(content=cached, media_type="image/png")
 
-    scale = float(src.get("ocr_scale", 2.0))
+    scale = document.source.ocr_scale
     doc = pdfium.PdfDocument(str(pdf_path))
     if not (1 <= page <= len(doc)):
         return JSONResponse({"error": f"page {page} out of range 1..{len(doc)}"},

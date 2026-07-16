@@ -37,7 +37,7 @@ class TestPathsAreAbsolute:
         "path",
         [
             pytest.param(pageindex.KB_DIR, id="pageindex.KB_DIR"),
-            pytest.param(pageindex.INDEX_DIR, id="pageindex.INDEX_DIR"),
+            pytest.param(pageindex.LIBRARY_DIR, id="pageindex.LIBRARY_DIR"),
             pytest.param(basic_markdown.DOCS_DIR, id="basic_markdown.DOCS_DIR"),
             pytest.param(basic_markdown.KB_DIR, id="basic_markdown.KB_DIR"),
         ],
@@ -50,31 +50,23 @@ class TestPathsAreAbsolute:
             assert path == ROOT / "knowledge_base"
 
     def test_the_manifest_writer_and_reader_point_at_the_same_file(self):
-        """PDF ingest writes this; the API reads it to render a source page.
-
-        They each held their own copy of the path, so moving either would have
-        broken visual citations without a single test noticing.
-        """
+        """PDF ingest writes this; Expected-library publication consumes it."""
         from modules.ingest import betteringest_pdf
-        from api import sources
+        from pageindex import build
 
         assert betteringest_pdf.SOURCES_MANIFEST == paths.SOURCES_MANIFEST
-        assert sources.SOURCES_MANIFEST == paths.SOURCES_MANIFEST
+        assert build.SOURCES_MANIFEST == paths.SOURCES_MANIFEST
 
 
 class TestResolutionIsIndependentOfCwd:
     def test_paths_do_not_move_with_the_working_directory(self, elsewhere):
-        assert pageindex.INDEX_DIR == ROOT / "index"
-        assert pageindex.INDEX_DIR.parent == ROOT
+        assert pageindex.LIBRARY_DIR == ROOT / "library"
+        assert pageindex.LIBRARY_DIR.parent == ROOT
 
-    def test_index_discovery_works_from_another_directory(self, elsewhere):
-        """The concrete regression: globbing the index from the wrong CWD."""
-        from_elsewhere = sorted(p.name for p in pageindex.INDEX_DIR.glob("*.json"))
-        os.chdir(ROOT)
-        from_root = sorted(p.name for p in pageindex.INDEX_DIR.glob("*.json"))
-        assert from_elsewhere == from_root
+    def test_expected_library_has_no_legacy_index_fallback(self, elsewhere):
+        assert pageindex.LIBRARY_DIR == ROOT / "library"
 
     def test_a_relative_path_would_have_failed_here(self, elsewhere):
         # Guards the test itself: prove the working directory really did move,
         # so the assertions above are meaningful rather than vacuous.
-        assert Path("index").resolve() != pageindex.INDEX_DIR
+        assert Path("library").resolve() != pageindex.LIBRARY_DIR

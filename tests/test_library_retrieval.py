@@ -1,12 +1,12 @@
 """Whole-library retrieval truth through its public interface."""
 
-import json
 from types import SimpleNamespace
 
 from api import retrieval as retrieval_module
 from api.retrieval import LibraryStatus, WholeLibraryRetrieval
 from api.runs import RunRegistry
-from pageindex.nodes import PageNode, _node_to_dict
+from pageindex.library import ExpectedLibraryStore, LibraryCandidate
+from pageindex.nodes import PageNode
 
 
 def leaf(node_id: str, content: str) -> PageNode:
@@ -20,18 +20,16 @@ def leaf(node_id: str, content: str) -> PageNode:
     )
 
 
-def write_index(index_dir, stem: str, *leaves: PageNode) -> None:
-    root = PageNode(
-        node_id="root",
-        title="Guideline",
-        heading_level=1,
-        line_idx=0,
-        summary="s",
-        children=list(leaves),
-    )
-    (index_dir / f"{stem}.json").write_text(
-        json.dumps([_node_to_dict(root)]), encoding="utf-8"
-    )
+def publish_library(tmp_path, documents: dict[str, tuple[PageNode, ...]]):
+    store = ExpectedLibraryStore(tmp_path / "library")
+    store.publish({
+        document: LibraryCandidate("\n\n".join((
+            "# Guideline",
+            *(f"## {node.title}\n\n{node.content}" for node in leaves),
+        )))
+        for document, leaves in documents.items()
+    })
+    return store
 
 
 class ScriptedIndex:
@@ -46,7 +44,7 @@ class ScriptedIndex:
 
 def test_a_fully_searched_library_exposes_only_exactly_quoted_evidence(tmp_path):
     passage = leaf("isolation", "MRSA patients require a single room.")
-    write_index(tmp_path, "hygiene", passage)
+    library = publish_library(tmp_path, {"hygiene": (passage,)})
     index = ScriptedIndex(
         {
             "hygiene": (
@@ -62,7 +60,7 @@ def test_a_fully_searched_library_exposes_only_exactly_quoted_evidence(tmp_path)
         }
     )
 
-    result = WholeLibraryRetrieval(index, index_dir=tmp_path).search(
+    result = WholeLibraryRetrieval(index, library_store=library).search(
         "MRSA?", RunRegistry().create("probe")
     )
 
@@ -75,7 +73,7 @@ def test_a_fully_searched_library_exposes_only_exactly_quoted_evidence(tmp_path)
 
 def test_an_invalid_quote_is_excluded_and_makes_coverage_partial(tmp_path):
     passage = leaf("isolation", "MRSA patients require a single room.")
-    write_index(tmp_path, "hygiene", passage)
+    library = publish_library(tmp_path, {"hygiene": (passage,)})
     index = ScriptedIndex(
         {
             "hygiene": (
@@ -91,7 +89,7 @@ def test_an_invalid_quote_is_excluded_and_makes_coverage_partial(tmp_path):
         }
     )
 
-    result = WholeLibraryRetrieval(index, index_dir=tmp_path).search(
+    result = WholeLibraryRetrieval(index, library_store=library).search(
         "MRSA?", RunRegistry().create("probe")
     )
 
@@ -105,8 +103,10 @@ def test_an_invalid_quote_is_excluded_and_makes_coverage_partial(tmp_path):
 def test_a_document_lost_during_search_remains_named_as_partial_coverage(tmp_path):
     present = leaf("present", "Use hand disinfectant.")
     vanished = leaf("vanished", "Use protective equipment.")
-    write_index(tmp_path, "a_present", present)
-    write_index(tmp_path, "b_vanished", vanished)
+    library = publish_library(tmp_path, {
+        "a_present": (present,),
+        "b_vanished": (vanished,),
+    })
 
     class OneDocumentVanishes:
         def retrieve_with_metadata_from_path(
@@ -123,7 +123,7 @@ def test_a_document_lost_during_search_remains_named_as_partial_coverage(tmp_pat
             }
 
     result = WholeLibraryRetrieval(
-        OneDocumentVanishes(), index_dir=tmp_path
+        OneDocumentVanishes(), library_store=library
     ).search("MRSA?", RunRegistry().create("probe"))
 
     assert result.status is LibraryStatus.PARTIAL
@@ -143,8 +143,10 @@ def test_a_tree_that_cannot_be_read_is_named_without_aborting_other_documents(
     tmp_path, monkeypatch
 ):
     passage = leaf("present", "Use hand disinfectant.")
-    write_index(tmp_path, "a_present", passage)
-    write_index(tmp_path, "b_corrupt", leaf("broken", "text"))
+    library = publish_library(tmp_path, {
+        "a_present": (passage,),
+        "b_corrupt": (leaf("broken", "text"),),
+    })
     real_read_tree = retrieval_module.read_tree
 
     def read_tree(path):
@@ -155,7 +157,7 @@ def test_a_tree_that_cannot_be_read_is_named_without_aborting_other_documents(
     monkeypatch.setattr(retrieval_module, "read_tree", read_tree)
     engine = ScriptedIndex({"a_present": ([], {})})
 
-    result = WholeLibraryRetrieval(engine, index_dir=tmp_path).search(
+    result = WholeLibraryRetrieval(engine, library_store=library).search(
         "MRSA?", RunRegistry().create("probe")
     )
 
@@ -169,7 +171,7 @@ def test_a_tree_that_cannot_be_read_is_named_without_aborting_other_documents(
 
 def test_an_unjudged_section_is_named_and_prevents_complete_coverage(tmp_path):
     passage = leaf("isolation", "Use a single room.")
-    write_index(tmp_path, "hygiene", passage)
+    library = publish_library(tmp_path, {"hygiene": (passage,)})
     index = ScriptedIndex(
         {
             "hygiene": (
@@ -189,7 +191,7 @@ def test_an_unjudged_section_is_named_and_prevents_complete_coverage(tmp_path):
         }
     )
 
-    result = WholeLibraryRetrieval(index, index_dir=tmp_path).search(
+    result = WholeLibraryRetrieval(index, library_store=library).search(
         "MRSA?", RunRegistry().create("probe")
     )
 
@@ -201,19 +203,23 @@ def test_an_unjudged_section_is_named_and_prevents_complete_coverage(tmp_path):
 
 
 def test_progress_is_totalled_before_any_document_search(tmp_path):
-    write_index(tmp_path, "a", leaf("l1", "one"), leaf("l2", "two"))
-    write_index(tmp_path, "b", leaf("l3", "three"))
+    library = publish_library(tmp_path, {
+        "a": (leaf("l1", "one"), leaf("l2", "two")),
+        "b": (leaf("l3", "three"),),
+    })
     engine = ScriptedIndex({"a": ([], {}), "b": ([], {})})
     run = RunRegistry().create("probe")
 
-    WholeLibraryRetrieval(engine, index_dir=tmp_path).search("q", run)
+    WholeLibraryRetrieval(engine, library_store=library).search("q", run)
 
     assert run.state.progress()["total"] == 3
 
 
 def test_one_run_uses_one_retrieval_model_across_every_document(tmp_path):
-    write_index(tmp_path, "a", leaf("l1", "one"))
-    write_index(tmp_path, "b", leaf("l2", "two"))
+    library = publish_library(tmp_path, {
+        "a": (leaf("l1", "one"),),
+        "b": (leaf("l2", "two"),),
+    })
 
     class ModelChangingEngine:
         settings = SimpleNamespace(model="model-a")
@@ -230,7 +236,7 @@ def test_one_run_uses_one_retrieval_model_across_every_document(tmp_path):
 
     engine = ModelChangingEngine()
 
-    WholeLibraryRetrieval(engine, index_dir=tmp_path).search(
+    WholeLibraryRetrieval(engine, library_store=library).search(
         "q", RunRegistry().create("probe")
     )
 
@@ -239,7 +245,7 @@ def test_one_run_uses_one_retrieval_model_across_every_document(tmp_path):
 
 def test_debug_adapter_preserves_verified_reason_quote_and_content(tmp_path):
     passage = leaf("isolation", "Use a single room.")
-    write_index(tmp_path, "hygiene", passage)
+    library = publish_library(tmp_path, {"hygiene": (passage,)})
     engine = ScriptedIndex({
         "hygiene": ([passage], {
             "isolation": {
@@ -250,7 +256,7 @@ def test_debug_adapter_preserves_verified_reason_quote_and_content(tmp_path):
         }),
     })
 
-    result = WholeLibraryRetrieval(engine, index_dir=tmp_path).search(
+    result = WholeLibraryRetrieval(engine, library_store=library).search(
         "q", RunRegistry().create("probe")
     ).to_debug_results()
 
@@ -260,22 +266,13 @@ def test_debug_adapter_preserves_verified_reason_quote_and_content(tmp_path):
     assert node["content"] == "Use a single room."
 
 
-def test_an_empty_expected_library_is_unavailable_not_an_honest_negative(tmp_path):
+def test_an_unbuilt_expected_library_is_unavailable_not_an_honest_negative(tmp_path):
     result = WholeLibraryRetrieval(
-        ScriptedIndex({}), index_dir=tmp_path
+        ScriptedIndex({}),
+        library_store=ExpectedLibraryStore(tmp_path / "library"),
     ).search("q", RunRegistry().create("probe"))
 
     assert result.status is LibraryStatus.UNAVAILABLE
+    assert result.generation_id is None
     assert result.documents == ()
-
-
-def test_a_named_document_with_zero_leaves_is_unavailable_not_searched(tmp_path):
-    (tmp_path / "empty.json").write_text("[]", encoding="utf-8")
-
-    result = WholeLibraryRetrieval(
-        ScriptedIndex({}), index_dir=tmp_path
-    ).search("q", RunRegistry().create("probe"))
-
-    assert result.status is LibraryStatus.UNAVAILABLE
-    assert result.document("empty").status.value == "unavailable"
-    assert result.diagnostics[0].code == "document_unavailable"
+    assert result.diagnostics[0].code == "expected_library_unavailable"

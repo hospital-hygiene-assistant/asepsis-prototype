@@ -10,15 +10,14 @@ ARCHITECTURE_REVIEW_2026-07-14.md for the full findings and the open questions
 that belong to Federico.
 """
 
-import json
-
 import pytest
 from unittest.mock import patch
 
 from pageindex import RunState
 from pageindex import search as pi_search
 from api.runs import RunRegistry
-from pageindex.nodes import PageNode, _node_to_dict
+from pageindex.library import ExpectedLibraryStore, LibraryCandidate
+from pageindex.nodes import PageNode
 
 LEAF = PageNode(
     node_id="glycaemic-targets", title="Glycaemic Targets", heading_level=2,
@@ -61,19 +60,18 @@ class TestSectionWithoutAVerdictFailsOpen:
 class TestM2UnavailableDocumentRemainsVisible:
     """A document that cannot be searched remains named in coverage truth."""
 
-    def test_a_document_that_could_not_be_read_is_reported(self, tmp_path, monkeypatch):
+    def test_a_document_that_could_not_be_read_is_reported(self, tmp_path):
         from api import retrieval as api_retrieval
 
-        monkeypatch.setattr(api_retrieval, "INDEX_DIR", tmp_path)
-        root = PageNode(node_id="root", title="Guideline", heading_level=1, line_idx=0,
-                        summary="s", children=[LEAF])
-        for stem in ("present", "vanished"):
-            (tmp_path / f"{stem}.json").write_text(
-                json.dumps([_node_to_dict(root)]), encoding="utf-8")
+        library = ExpectedLibraryStore(tmp_path / "library")
+        library.publish({
+            "present": LibraryCandidate("# Present\n\nGuidance."),
+            "vanished": LibraryCandidate("# Vanished\n\nGuidance."),
+        })
 
         class OneDocVanishes:
             def retrieve_with_metadata_from_path(
-                self, doc_name, query, state, index_path, model=None
+                self, doc_name, query, state, index_path, **_options
             ):
                 if doc_name == "vanished":
                     raise FileNotFoundError("index deleted mid-run")
@@ -81,7 +79,7 @@ class TestM2UnavailableDocumentRemainsVisible:
 
         run = RunRegistry().create("probe")
         results = api_retrieval.WholeLibraryRetrieval(
-            OneDocVanishes(), index_dir=tmp_path
+            OneDocVanishes(), library_store=library
         ).search("q", run)
         # Neutral on the fix: name it in the results, count it as an error, or
         # fold it into the partial-grounding caveat — but it must not vanish.
@@ -111,51 +109,3 @@ class TestH6InstanceCountIsUnbounded:
                             lambda n: {"requested": n, "live": 1, "urls": [], "errors": []})
         response = TestClient(server.app).post("/api/config", json={"ollama_instances": 500})
         assert response.status_code == 422, "a request to fork 499 processes should not validate"
-
-
-class TestC3RetrieveCannotSayItDidNotSearch:
-    """The lossy low-level interface refuses to flatten an incomplete search."""
-
-    @pytest.fixture
-    def index_of_two_leaves(self, tmp_path, monkeypatch):
-        """Written through the real serialiser, not hand-rolled JSON.
-
-        A hand-written tree silently used snake_case keys and every read raised
-        KeyError — which `pytest.raises(Exception)` then caught and reported as
-        the bug being reproduced. Round-tripping real PageNodes cannot drift.
-        """
-        monkeypatch.setattr(pi_search, "INDEX_DIR", tmp_path)
-        root = PageNode(
-            node_id="root", title="Guideline", heading_level=1, line_idx=0, summary="root",
-            children=[
-                PageNode(node_id="hand-hygiene", title="Hand Hygiene", heading_level=2,
-                         line_idx=4, summary="s", content="Disinfect hands."),
-                PageNode(node_id="isolation", title="Isolation", heading_level=2,
-                         line_idx=9, summary="s", content="Single room."),
-            ],
-        )
-        (tmp_path / "hygiene.json").write_text(
-            json.dumps([_node_to_dict(root)]), encoding="utf-8")
-        return tmp_path
-
-    def test_an_unreachable_model_is_not_an_empty_result(self, index_of_two_leaves):
-        down = RuntimeError("Failed to connect to Ollama.")
-        with patch.object(pi_search, "_chat", side_effect=down):
-            try:
-                nodes = pi_search.retrieve("hygiene", "MRSA?", RunState())
-            except Exception:
-                return  # Refusing loudly is a valid fix; its shape is Federico's call.
-        # Neutral on the fix: raise, or return something that carries "not
-        # searched". What must not happen is an empty list, which every caller
-        # reads as "the library holds no guidance on this".
-        assert nodes != [], "an empty list is indistinguishable from a genuine absence"
-
-    def test_a_genuine_absence_still_returns_empty(self, index_of_two_leaves):
-        """The honest negative must survive whatever fix lands above.
-
-        Doubles as the fixture's own guard: if the tree stopped deserialising,
-        this fails loudly instead of quietly propping up the xfail above.
-        """
-        with patch.object(pi_search, "_chat",
-                          return_value='{"relevant": false, "reason": "off topic"}'):
-            assert pi_search.retrieve("hygiene", "unrelated", RunState()) == []

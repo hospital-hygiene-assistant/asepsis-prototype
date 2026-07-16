@@ -13,7 +13,7 @@ from typing import Any, Callable, Protocol
 from pageindex.pins import VisualLocation, locate_visual_citation
 
 from .prompts import CHAT_SYNTHESIS_PROMPT, _context_block, _parse_answer_sections
-from .retrieval import LibrarySearchResult, LibraryStatus
+from .retrieval import LibrarySearchResult, LibraryStatus, SearchCoverage
 
 
 class AnswerKind(StrEnum):
@@ -54,7 +54,7 @@ class EvidenceCitation:
     excerpt: str
     quote: str
     reason: str
-    has_source_pdf: bool
+    source_href: str | None
     visual: VisualLocation
 
 
@@ -64,6 +64,72 @@ class AnswerOutcome:
     search: LibrarySearchResult
     answer: GroundedAnswer | None = None
     citations: tuple[EvidenceCitation, ...] = ()
+
+    def __post_init__(self) -> None:
+        coverage = self.search.coverage
+        has_evidence = bool(self.search.evidence)
+        citations_match = (
+            len(self.citations) == len(self.search.evidence)
+            and all(
+                citation.number == number
+                and citation.document == evidence.document
+                and citation.node_id == evidence.node.node_id
+                and citation.title == evidence.node.title
+                and citation.breadcrumb == evidence.breadcrumb
+                and citation.excerpt == (evidence.node.content or "")
+                and citation.quote == evidence.quote
+                and citation.reason == evidence.reason
+                for number, (evidence, citation) in enumerate(
+                    zip(self.search.evidence, self.citations), start=1
+                )
+            )
+        )
+        if self.citations and not citations_match:
+            raise ValueError("citation does not match verified evidence")
+        has_all_citations = has_evidence and citations_match
+        if self.kind is AnswerKind.INSUFFICIENT_EVIDENCE:
+            valid = (
+                coverage.status is LibraryStatus.COMPLETE
+                and not has_evidence
+                and self.answer is None
+                and not self.citations
+            )
+        elif self.kind is AnswerKind.SEARCH_INCOMPLETE:
+            valid = (
+                coverage.status is LibraryStatus.PARTIAL
+                and not has_evidence
+                and self.answer is None
+                and not self.citations
+            )
+        elif self.kind is AnswerKind.ANSWERED:
+            valid = (
+                coverage.status in (LibraryStatus.COMPLETE, LibraryStatus.PARTIAL)
+                and has_evidence
+                and self.answer is not None
+                and has_all_citations
+            )
+        elif self.kind is AnswerKind.RETRIEVAL_UNAVAILABLE:
+            valid = (
+                coverage.status is LibraryStatus.UNAVAILABLE
+                and not has_evidence
+                and self.answer is None
+                and not self.citations
+            )
+        else:
+            valid = (
+                coverage.status in (LibraryStatus.COMPLETE, LibraryStatus.PARTIAL)
+                and has_evidence
+                and self.answer is None
+                and has_all_citations
+            )
+        if not valid:
+            raise ValueError(
+                f"{self.kind.value} outcome contradicts coverage, evidence, or answer"
+            )
+
+    @property
+    def coverage(self) -> SearchCoverage:
+        return self.search.coverage
 
 
 class LibrarySearcher(Protocol):
@@ -79,14 +145,15 @@ class EvidenceCitationFactory:
 
     def __init__(
         self,
-        page_size: Callable[[str, int], tuple[float, float] | None],
-        source_documents: Callable[[], set[str]],
+        page_size: Callable[[str, str, int, float], tuple[float, float] | None],
+        source_href: Callable[[str, str], str | None],
     ) -> None:
         self._page_size = page_size
-        self._source_documents = source_documents
+        self._source_href = source_href
 
-    def create(self, evidence: tuple) -> tuple[EvidenceCitation, ...]:
-        source_documents = self._source_documents()
+    def create(
+        self, evidence: tuple, generation_id: str
+    ) -> tuple[EvidenceCitation, ...]:
         citations = []
         for number, item in enumerate(evidence, start=1):
             node = item.node
@@ -103,7 +170,9 @@ class EvidenceCitationFactory:
                     node.pin,
                     node.content or "",
                     item.quote,
-                    self._page_size,
+                    lambda document, page: self._page_size(
+                        generation_id, document, page, node.pin.scale
+                    ),
                 )
             citations.append(EvidenceCitation(
                 id=f"s{number}",
@@ -115,7 +184,7 @@ class EvidenceCitationFactory:
                 excerpt=node.content or "",
                 quote=item.quote,
                 reason=item.reason,
-                has_source_pdf=item.document in source_documents,
+                source_href=self._source_href(generation_id, item.document),
                 visual=visual,
             ))
         return tuple(citations)
@@ -174,7 +243,7 @@ class QuestionAnswering:
         self,
         searcher: LibrarySearcher,
         synthesizer: AnswerSynthesizer,
-        citation_factory: EvidenceCitationFactory | None = None,
+        citation_factory: EvidenceCitationFactory,
     ) -> None:
         self._searcher = searcher
         self._synthesizer = synthesizer
@@ -191,10 +260,8 @@ class QuestionAnswering:
             return AnswerOutcome(AnswerKind.SEARCH_INCOMPLETE, search)
         if search.status is LibraryStatus.UNAVAILABLE:
             return AnswerOutcome(AnswerKind.RETRIEVAL_UNAVAILABLE, search)
-        citations = (
-            self._citation_factory.create(search.evidence)
-            if self._citation_factory is not None
-            else ()
+        citations = self._citation_factory.create(
+            search.evidence, search.generation_id
         )
         try:
             answer = self._synthesizer.synthesise(question, search.evidence)

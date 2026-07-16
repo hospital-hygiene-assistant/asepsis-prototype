@@ -5,55 +5,30 @@ the first child becomes a synthetic leaf, summaries are heuristic, and pins are
 lifted out of the markdown onto the node.
 """
 
-import json
+from paths import KB_DIR, LIBRARY_DIR, SOURCES_MANIFEST
 
-from paths import INDEX_DIR, KB_DIR
-
-from .generations import IndexGenerationStore, IndexSnapshot
-from .nodes import (
-    _collect_leaves,
-    _node_to_dict,
-    parse_document,
+from .library import (
+    ExpectedLibrarySnapshot,
+    ExpectedLibraryStore,
+    LibraryCandidate,
+    read_source_candidates,
 )
 
 
-def _build_document(doc_name: str) -> tuple[str, int, int]:
-    doc_path = KB_DIR / f"{doc_name}.md"
-    if not doc_path.exists():
-        raise FileNotFoundError(f"Document not found: {doc_path}")
-    nodes = parse_document(doc_path.read_text(encoding="utf-8"), doc_name)
-    payload = json.dumps(
-        [_node_to_dict(node) for node in nodes], indent=2, ensure_ascii=False
-    )
-    return payload, len(nodes), len(_collect_leaves(nodes))
-
-
-def build_index(doc_name: str) -> None:
-    """Parse and index a single document from knowledge_base/."""
-    print(f"  Indexing {doc_name}...")
-    payload, top_level_count, leaf_total = _build_document(doc_name)
-
-    INDEX_DIR.mkdir(exist_ok=True)
-    index_path = INDEX_DIR / f"{doc_name}.json"
-    index_path.write_text(payload, encoding="utf-8")
-
-    print(
-        f"    → {index_path} ({top_level_count} top-level nodes, "
-        f"{leaf_total} leaves)"
-    )
-
-
-def build_generation(doc_names: list[str]) -> IndexSnapshot:
+def build_generation(doc_names: list[str]) -> ExpectedLibrarySnapshot:
     """Build and atomically promote one complete immutable corpus index."""
-    documents: dict[str, str] = {}
+    documents: dict[str, LibraryCandidate] = {}
+    source_candidates = read_source_candidates(SOURCES_MANIFEST)
     for doc_name in sorted(doc_names):
         print(f"  Indexing {doc_name}...")
-        payload, top_level_count, leaf_total = _build_document(doc_name)
-        documents[doc_name] = payload
-        print(
-            f"    staged {doc_name} ({top_level_count} top-level nodes, "
-            f"{leaf_total} leaves)"
+        document_path = KB_DIR / f"{doc_name}.md"
+        if not document_path.exists():
+            raise FileNotFoundError(f"Document not found: {document_path}")
+        documents[doc_name] = LibraryCandidate(
+            canonical_markdown=document_path.read_text(encoding="utf-8"),
+            source=source_candidates.get(doc_name),
         )
-    snapshot = IndexGenerationStore(INDEX_DIR).publish(documents)
-    print(f"    → promoted index generation {snapshot.generation_id}")
+        print(f"    staged {doc_name}")
+    snapshot = ExpectedLibraryStore(LIBRARY_DIR).publish(documents)
+    print(f"    → promoted Expected library {snapshot.generation_id}")
     return snapshot

@@ -6,12 +6,18 @@ return the same shape.
 
 from dataclasses import dataclass
 from enum import StrEnum
-from pathlib import Path
+import re
 from typing import Any
 
 import pageindex as _pi
-from pageindex.generations import IndexGenerationStore, IndexSnapshot
-from paths import INDEX_DIR
+from pageindex.library import (
+    ExpectedLibraryCorrupt,
+    ExpectedLibraryNotBuilt,
+    ExpectedLibrarySnapshot,
+    ExpectedLibraryStore,
+    LibraryDocument,
+)
+from paths import LIBRARY_DIR
 
 from .trees import leaf_count, read_tree
 
@@ -41,6 +47,57 @@ class SearchDiagnostic:
 
 
 @dataclass(frozen=True)
+class SearchCoverage:
+    """Truthful extent of one Whole-library search."""
+
+    status: LibraryStatus
+    generation_id: str | None
+    searched_documents: int
+    total_documents: int
+    incomplete_checks: int
+
+    def __post_init__(self) -> None:
+        if (
+            self.generation_id is not None
+            and re.fullmatch(r"[0-9a-f]{64}", self.generation_id) is None
+        ):
+            raise ValueError(
+                "generation_id must be 64 lowercase hexadecimal characters"
+            )
+        if self.total_documents < 0 or not 0 <= self.searched_documents <= self.total_documents:
+            raise ValueError("search coverage document counts are invalid")
+        if self.incomplete_checks < 0:
+            raise ValueError("search coverage incomplete checks cannot be negative")
+        if self.status is LibraryStatus.COMPLETE:
+            if self.generation_id is None:
+                raise ValueError("complete coverage requires a generation identity")
+            if self.total_documents == 0:
+                raise ValueError("complete coverage requires a non-empty expected library")
+            if (
+                self.searched_documents != self.total_documents
+                or self.incomplete_checks != 0
+            ):
+                raise ValueError(
+                    "complete coverage requires every document and no incomplete checks"
+                )
+        elif self.status is LibraryStatus.PARTIAL:
+            if self.generation_id is None:
+                raise ValueError("partial coverage requires a generation identity")
+            if self.total_documents == 0 or self.searched_documents == 0:
+                raise ValueError(
+                    "partial coverage requires a non-empty expected library and "
+                    "at least one searched document"
+                )
+            if (
+                self.searched_documents == self.total_documents
+                and self.incomplete_checks == 0
+            ):
+                raise ValueError("partial coverage requires incomplete facts")
+        elif self.searched_documents != 0:
+            raise ValueError("unavailable coverage cannot contain searched documents")
+
+
+@dataclass(frozen=True)
 class VerifiedEvidence:
     document: str
     node: _pi.PageNode
@@ -62,11 +119,24 @@ class DocumentSearch:
 @dataclass(frozen=True)
 class LibrarySearchResult:
     query: str
-    generation_id: str
+    generation_id: str | None
     status: LibraryStatus
     documents: tuple[DocumentSearch, ...]
     evidence: tuple[VerifiedEvidence, ...]
     diagnostics: tuple[SearchDiagnostic, ...]
+
+    @property
+    def coverage(self) -> SearchCoverage:
+        return SearchCoverage(
+            status=self.status,
+            generation_id=self.generation_id,
+            searched_documents=sum(
+                document.status is not DocumentStatus.UNAVAILABLE
+                for document in self.documents
+            ),
+            total_documents=len(self.documents),
+            incomplete_checks=len(self.diagnostics),
+        )
 
     def document(self, name: str) -> DocumentSearch | None:
         return next((document for document in self.documents if document.document == name), None)
@@ -127,33 +197,57 @@ def _document_node_order(tree: tuple[dict, ...]) -> dict[str, int]:
 class WholeLibraryRetrieval:
     """Search the expected library and expose one truthful coverage result."""
 
-    def __init__(self, engine, *, index_dir: Path | None = None) -> None:
+    def __init__(
+        self,
+        engine,
+        *,
+        library_store: ExpectedLibraryStore | None = None,
+        retrieval_model: str | None = None,
+        instances: tuple | None = None,
+    ) -> None:
         self._engine = engine
-        self._index_dir = index_dir if index_dir is not None else INDEX_DIR
+        self._library_store = library_store or ExpectedLibraryStore(LIBRARY_DIR)
+        self._retrieval_model = retrieval_model
+        self._instances = instances
 
     def search(self, query: str, run) -> LibrarySearchResult:
         engine_settings = getattr(self._engine, "settings", None)
-        retrieval_model = (
+        retrieval_model = self._retrieval_model or (
             str(engine_settings.model) if engine_settings is not None else None
         )
-        with IndexGenerationStore(self._index_dir).pin_current() as snapshot:
-            return self._search_snapshot(query, run, snapshot, retrieval_model)
+        try:
+            snapshot = self._library_store.open_current()
+        except (ExpectedLibraryNotBuilt, ExpectedLibraryCorrupt) as exc:
+            run.state.start(0)
+            diagnostic = SearchDiagnostic(
+                document="__expected_library__",
+                code="expected_library_unavailable",
+                message=str(exc),
+            )
+            return LibrarySearchResult(
+                query=query,
+                generation_id=None,
+                status=LibraryStatus.UNAVAILABLE,
+                documents=(),
+                evidence=(),
+                diagnostics=(diagnostic,),
+            )
+        return self._search_snapshot(query, run, snapshot, retrieval_model)
 
     def _search_snapshot(
         self,
         query: str,
         run,
-        snapshot: IndexSnapshot,
+        snapshot: ExpectedLibrarySnapshot,
         retrieval_model: str | None,
     ) -> LibrarySearchResult:
-        index_files = snapshot.document_paths
         prepared: list[
-            tuple[Path, tuple[dict, ...] | None, SearchDiagnostic | None]
+            tuple[LibraryDocument, tuple[dict, ...] | None, SearchDiagnostic | None]
         ] = []
-        for path in index_files:
-            document = path.stem
+        for library_document in snapshot.documents:
+            document = library_document.document_id
             try:
-                tree = tuple(read_tree(path))
+                tree = tuple(read_tree(library_document.index_path))
                 if leaf_count(tree) == 0:
                     raise ValueError("document index has no searchable leaves")
             except Exception as exc:
@@ -162,16 +256,16 @@ class WholeLibraryRetrieval:
                     code="document_unavailable",
                     message=str(exc),
                 )
-                prepared.append((path, None, diagnostic))
+                prepared.append((library_document, None, diagnostic))
                 continue
-            prepared.append((path, tree, None))
+            prepared.append((library_document, tree, None))
 
         run.state.start(sum(
             leaf_count(tree) for _, tree, _ in prepared if tree is not None
         ))
         documents: list[DocumentSearch] = []
-        for path, tree, read_diagnostic in prepared:
-            document = path.stem
+        for library_document, tree, read_diagnostic in prepared:
+            document = library_document.document_id
             if tree is None:
                 assert read_diagnostic is not None
                 documents.append(DocumentSearch(
@@ -184,8 +278,15 @@ class WholeLibraryRetrieval:
                 ))
                 continue
             try:
+                retrieval_options = {"model": retrieval_model}
+                if self._instances is not None:
+                    retrieval_options["instances"] = self._instances
                 nodes, node_meta = self._engine.retrieve_with_metadata_from_path(
-                    document, query, run.state, path, model=retrieval_model
+                    document,
+                    query,
+                    run.state,
+                    library_document.index_path,
+                    **retrieval_options,
                 )
             except Exception as exc:
                 diagnostic = SearchDiagnostic(

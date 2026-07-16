@@ -4,8 +4,8 @@ Anchored to the repo rather than the working directory: the server, the pipeline
 CLI and the Tauri launcher all start from different places, and a relative path
 resolves to an empty corpus instead of failing.
 
-One definition per location. The source manifest in particular is written by the
-PDF ingest module and read by the API, so the two cannot be allowed to drift.
+One definition per location. The source-candidate manifest is written by ingest
+adapters and consumed only when the Expected library is published.
 """
 
 from pathlib import Path
@@ -16,13 +16,13 @@ DOCS_DIR = ROOT / "docs"
 """Source documents, as supplied. Ingest reads from here and never writes."""
 
 KB_DIR = ROOT / "knowledge_base"
-"""Ingested markdown. The corpus the index is built from and answers cite."""
+"""Ingest staging for canonical Markdown before immutable publication."""
 
-INDEX_DIR = ROOT / "index"
-"""One heading tree per document, as JSON."""
+LIBRARY_DIR = ROOT / "library"
+"""Complete immutable Expected library generations and source objects."""
 
 ASSETS_DIR = KB_DIR / "assets"
-"""Figure and table crops lifted out during PDF ingest, served at /assets."""
+"""Ingest staging for figure/table crops before immutable publication."""
 
 SOURCES_MANIFEST = KB_DIR / ".sources.json"
-"""stem -> {pdf, ocr_scale}. Written by PDF ingest, read to render source pages."""
+"""Versioned source candidates written by ingest and consumed at publication."""

@@ -1,0 +1,36 @@
+{
+  "contract_version": 2,
+  "run_id": "fixture-answered_partial",
+  "query": "Welche Maßnahmen gelten?",
+  "answer": {
+    "content": "SHORT_ANSWER: Belegte Aussage [1].\nRECOMMENDED_ACTION: Belegte Handlung [1].\nRATIONALE: Belegte Begründung [1].\nLIMITATIONS: Belegte Einschränkung [1].",
+    "short_answer": "Belegte Aussage [1].",
+    "recommended_action": "Belegte Handlung [1].",
+    "rationale": "Belegte Begründung [1].",
+    "limitations": "Belegte Einschränkung [1]."
+  },
+  "grounding": {
+    "status": "partially_grounded",
+    "generation_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "searched_documents": 1,
+    "total_documents": 2,
+    "incomplete_checks": 1,
+    "sources": [
+      {
+        "id": "s1",
+        "number": 1,
+        "document": "hygiene",
+        "node_id": "ppe",
+        "title": "Schutzkleidung",
+        "breadcrumb": "Hygiene › Schutzkleidung",
+        "excerpt": "Verifizierte Dokumentstelle.",
+        "quote": "Verifizierte Dokumentstelle.",
+        "source_href": "/api/library/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa/documents/hygiene/pdf",
+        "visual": {
+          "status": "unavailable",
+          "reason": "page_size_unavailable"
+        }
+      }
+    ]
+  }
+}

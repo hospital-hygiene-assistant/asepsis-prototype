@@ -23,7 +23,14 @@ from pageindex.nodes import PageNode
 import server
 from api.routers import chat as chat_router
 from api.question_answering import AnswerKind, AnswerOutcome
-from api.retrieval import LibrarySearchResult, LibraryStatus
+from api.retrieval import (
+    DocumentSearch,
+    DocumentStatus,
+    LibrarySearchResult,
+    LibraryStatus,
+)
+
+GENERATION_ID = "a" * 64
 
 
 @pytest.fixture
@@ -100,11 +107,16 @@ class TestChatEndpointRefusesToFakeAFinding:
 
     @staticmethod
     def _search(status):
+        complete = status is LibraryStatus.COMPLETE
         return LibrarySearchResult(
             query="What PPE for MRSA?",
-            generation_id="generation-test",
+            generation_id=GENERATION_ID if complete else None,
             status=status,
-            documents=(),
+            documents=(
+                DocumentSearch(
+                    "hygiene", DocumentStatus.SEARCHED, (), {}, (), ()
+                ),
+            ) if complete else (),
             evidence=(),
             diagnostics=(),
         )
@@ -116,7 +128,7 @@ class TestChatEndpointRefusesToFakeAFinding:
             self._search(LibraryStatus.UNAVAILABLE),
         )
         monkeypatch.setattr(
-            chat_router, "_question_answering", self._answering(outcome)
+            chat_router, "build_question_answering", self._answering(outcome)
         )
         response = client.post("/api/chat", json={"query": "What PPE for MRSA?"})
 
@@ -131,10 +143,18 @@ class TestChatEndpointRefusesToFakeAFinding:
             self._search(LibraryStatus.UNAVAILABLE),
         )
         monkeypatch.setattr(
-            chat_router, "_question_answering", self._answering(outcome)
+            chat_router, "build_question_answering", self._answering(outcome)
         )
         response = client.post("/api/chat", json={"query": "q"})
-        assert response.json()["error"]["kind"] == "retrieval_unavailable"
+        body = response.json()
+        assert body["error"]["kind"] == "retrieval_unavailable"
+        assert body["coverage"] == {
+            "status": "unavailable",
+            "generation_id": None,
+            "searched_documents": 0,
+            "total_documents": 0,
+            "incomplete_checks": 0,
+        }
 
     def test_genuine_empty_result_still_reports_insufficient_evidence(self, client, monkeypatch):
         """A real "nothing matched" must survive — every leaf was checked."""
@@ -143,8 +163,33 @@ class TestChatEndpointRefusesToFakeAFinding:
             self._search(LibraryStatus.COMPLETE),
         )
         monkeypatch.setattr(
-            chat_router, "_question_answering", self._answering(outcome)
+            chat_router, "build_question_answering", self._answering(outcome)
         )
         response = client.post("/api/chat", json={"query": "unrelated question"})
         assert response.status_code == 200
         assert response.json()["grounding"]["status"] == "insufficient_evidence"
+
+    def test_a_wire_defect_after_search_is_not_relabeled_as_retrieval_unavailable(
+        self, monkeypatch
+    ):
+        outcome = AnswerOutcome(
+            AnswerKind.INSUFFICIENT_EVIDENCE,
+            self._search(LibraryStatus.COMPLETE),
+        )
+        monkeypatch.setattr(
+            chat_router, "build_question_answering", self._answering(outcome)
+        )
+        real_encode = chat_router.encode_outcome
+
+        def fail_only_for_completed_search(result, *, run_id):
+            if result.kind is AnswerKind.INSUFFICIENT_EVIDENCE:
+                raise RuntimeError("producer defect")
+            return real_encode(result, run_id=run_id)
+
+        monkeypatch.setattr(chat_router, "encode_outcome", fail_only_for_completed_search)
+        response = TestClient(
+            server.app, raise_server_exceptions=False
+        ).post("/api/chat", json={"query": "q"})
+
+        assert response.status_code == 500
+        assert "retrieval_unavailable" not in response.text

@@ -18,8 +18,18 @@ import urllib.request
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from paths import DOCS_DIR, INDEX_DIR, KB_DIR, ROOT  # noqa: E402
-from pageindex.generations import IndexGenerationStore  # noqa: E402
+from pageindex.library import (  # noqa: E402
+    ExpectedLibraryCorrupt,
+    ExpectedLibraryNotBuilt,
+    ExpectedLibraryStore,
+)
+from paths import (  # noqa: E402
+    DOCS_DIR,
+    KB_DIR,
+    LIBRARY_DIR,
+    ROOT,
+    SOURCES_MANIFEST,
+)
 
 TAURI_DIR = ROOT / "tauri-app"
 # Both stages go through pipeline.py so the launcher uses the same ingest adapter
@@ -48,21 +58,41 @@ def _run_pipeline_if_needed():
         return
 
     # Ingest: run if knowledge_base is missing or stale
-    kb_files  = set(p.stem for p in KB_DIR.glob("*.md"))  if KB_DIR.exists()    else set()
+    kb_paths = {path.stem: path for path in KB_DIR.glob("*.md")}
+    kb_files = set(kb_paths)
     doc_stems = set(p.stem for p in docs)
-    if not kb_files >= doc_stems:
+    needs_ingest = not kb_files >= doc_stems or any(
+        source.stat().st_mtime_ns > kb_paths[source.stem].stat().st_mtime_ns
+        for source in docs
+        if source.stem in kb_paths
+    )
+    if needs_ingest:
         print("  Running ingest…")
         subprocess.check_call([sys.executable, str(PIPELINE), "ingest"], cwd=ROOT)
+        kb_paths = {path.stem: path for path in KB_DIR.glob("*.md")}
+        kb_files = set(kb_paths)
 
-    # Index: run if any doc is missing from the index
+    # Library: rebuild if its complete canonical Markdown set has changed.
+    library_store = ExpectedLibraryStore(LIBRARY_DIR)
     try:
-        idx_files = {
-            path.stem
-            for path in IndexGenerationStore(INDEX_DIR).snapshot().document_paths
+        snapshot = library_store.open_current()
+        published = {
+            document.document_id: document.canonical_markdown
+            for document in snapshot.documents
         }
-    except (OSError, ValueError, KeyError):
-        idx_files = set()
-    if not idx_files >= doc_stems:
+    except (ExpectedLibraryNotBuilt, ExpectedLibraryCorrupt):
+        published = {}
+    library_is_stale = set(published) != kb_files or any(
+        published.get(stem) != path.read_text(encoding="utf-8")
+        for stem, path in kb_paths.items()
+    )
+    library_is_stale = library_is_stale or (
+        SOURCES_MANIFEST.is_file()
+        and library_store.current.is_file()
+        and SOURCES_MANIFEST.stat().st_mtime_ns
+        > library_store.current.stat().st_mtime_ns
+    )
+    if library_is_stale:
         print("  Building index…")
         subprocess.check_call([sys.executable, str(PIPELINE), "index"], cwd=ROOT)
 

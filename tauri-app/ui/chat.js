@@ -456,12 +456,12 @@ function buildSourceCard(s, answerId) {
   }
 
   const actions = el('div', 'source-actions');
-  if (exactPage && s.has_source_pdf) {
+  if (exactPage && s.source_href) {
     const b = el('button', 'source-action');
     b.type = 'button';
     b.innerHTML = `${ICONS.zoom} Open source page`;
     b.addEventListener('click', () => window.open(
-      `/api/document/${encodeURIComponent(documentName)}/pdf#page=${exactPage}`,
+      `${s.source_href}#page=${exactPage}`,
       '_blank',
     ));
     actions.appendChild(b);

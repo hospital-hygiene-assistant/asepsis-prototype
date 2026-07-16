@@ -5,12 +5,25 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 import pipeline
-from api.question_answering import AnswerKind, AnswerOutcome, GroundedAnswer
-from api.retrieval import LibrarySearchResult, LibraryStatus, VerifiedEvidence
+from api.question_answering import (
+    AnswerKind,
+    AnswerOutcome,
+    EvidenceCitation,
+    GroundedAnswer,
+)
+from api.retrieval import (
+    DocumentSearch,
+    DocumentStatus,
+    LibrarySearchResult,
+    LibraryStatus,
+    SearchDiagnostic,
+    VerifiedEvidence,
+)
+from pageindex.library import ExpectedLibraryStore, LibraryCandidate
 from pageindex.nodes import PageNode
-from pageindex.nodes import _node_to_dict
-from pageindex.generations import IndexGenerationStore
-import json
+from pageindex.pins import VisualLocation
+
+GENERATION_ID = "a" * 64
 
 
 @pytest.fixture
@@ -35,21 +48,52 @@ def kb(tmp_path, monkeypatch):
 
 
 @pytest.fixture
-def index_dir(tmp_path, monkeypatch):
-    directory = tmp_path / "index"
+def library_dir(tmp_path, monkeypatch):
+    directory = tmp_path / "library"
     directory.mkdir()
-    monkeypatch.setattr(pipeline, "INDEX_DIR", directory)
+    monkeypatch.setattr(pipeline, "LIBRARY_DIR", directory)
     return directory
 
 
 def search(status=LibraryStatus.COMPLETE, evidence=()):
+    if status is LibraryStatus.UNAVAILABLE:
+        documents = ()
+        diagnostics = ()
+        generation_id = None
+    elif status is LibraryStatus.PARTIAL:
+        diagnostic = SearchDiagnostic(
+            "unavailable", "document_unavailable", "technical"
+        )
+        documents = (
+            DocumentSearch(
+                "ready", DocumentStatus.SEARCHED, (), {}, tuple(evidence), ()
+            ),
+            DocumentSearch(
+                "unavailable",
+                DocumentStatus.UNAVAILABLE,
+                (),
+                {},
+                (),
+                (diagnostic,),
+            ),
+        )
+        diagnostics = (diagnostic,)
+        generation_id = GENERATION_ID
+    else:
+        documents = (
+            DocumentSearch(
+                "ready", DocumentStatus.SEARCHED, (), {}, tuple(evidence), ()
+            ),
+        )
+        diagnostics = ()
+        generation_id = GENERATION_ID
     return LibrarySearchResult(
         query="q",
-        generation_id="generation-test",
+        generation_id=generation_id,
         status=status,
-        documents=(),
+        documents=documents,
         evidence=evidence,
-        diagnostics=(),
+        diagnostics=diagnostics,
     )
 
 
@@ -62,17 +106,25 @@ def answering(outcome):
     return StubAnswering()
 
 
-def ready_index(index_dir):
-    node = PageNode(
-        node_id="ready",
-        title="Ready",
-        heading_level=1,
-        line_idx=0,
-        summary="s",
-        content="ready",
+def citation(evidence: VerifiedEvidence) -> EvidenceCitation:
+    return EvidenceCitation(
+        id="s1",
+        number=1,
+        document=evidence.document,
+        node_id=evidence.node.node_id,
+        title=evidence.node.title,
+        breadcrumb=evidence.breadcrumb,
+        excerpt=evidence.node.content or "",
+        quote=evidence.quote,
+        reason=evidence.reason,
+        source_href=None,
+        visual=VisualLocation("unavailable", reason="missing_provenance_pin"),
     )
-    IndexGenerationStore(index_dir).publish({
-        "ready": json.dumps([_node_to_dict(node)]),
+
+
+def ready_library(library_dir):
+    ExpectedLibraryStore(library_dir).publish({
+        "ready": LibraryCandidate("# Ready\n\nready\n"),
     })
 
 
@@ -126,36 +178,71 @@ class TestIndex:
 
 
 class TestQuery:
-    def test_an_empty_index_refuses_to_answer(self, index_dir, capsys):
+    def test_an_empty_index_refuses_to_answer(
+        self, library_dir, capsys, monkeypatch
+    ):
+        diagnostic = SearchDiagnostic(
+            "__expected_library__",
+            "expected_library_unavailable",
+            "technical",
+        )
+        outcome = AnswerOutcome(
+            AnswerKind.RETRIEVAL_UNAVAILABLE,
+            LibrarySearchResult(
+                "q", None, LibraryStatus.UNAVAILABLE, (), (), (diagnostic,)
+            ),
+        )
+        calls = []
+
+        def build(run, **_options):
+            calls.append(run.id)
+            return answering(outcome)
+
+        monkeypatch.setattr(pipeline, "build_question_answering", build)
         with pytest.raises(SystemExit):
             pipeline.query("q")
+        assert calls == ["cli"]
         assert "Run 'pipeline.py index' first" in capsys.readouterr().out
 
-    def test_it_returns_the_one_grounded_answer(self, index_dir, monkeypatch):
-        ready_index(index_dir)
+    def test_it_returns_the_one_grounded_answer(self, library_dir, monkeypatch):
+        ready_library(library_dir)
+        node = PageNode(
+            node_id="ready",
+            title="Ready",
+            heading_level=1,
+            line_idx=0,
+            summary="",
+            content="ready",
+        )
+        evidence = VerifiedEvidence(
+            "ready", node, "Ready", "exact", "ready"
+        )
         outcome = AnswerOutcome(
             AnswerKind.ANSWERED,
-            search(),
+            search(evidence=(evidence,)),
             GroundedAnswer("Die Antwort [1]."),
+            (citation(evidence),),
         )
         monkeypatch.setattr(
-            pipeline, "_question_answering", lambda _index: answering(outcome)
+            pipeline,
+            "build_question_answering",
+            lambda _run, **_options: answering(outcome),
         )
 
         assert pipeline.query("q") == "Die Antwort [1]."
 
     def test_a_complete_negative_is_the_only_honest_empty_result(
-        self, index_dir, monkeypatch
+        self, library_dir, monkeypatch
     ):
-        ready_index(index_dir)
+        ready_library(library_dir)
         outcome = AnswerOutcome(AnswerKind.INSUFFICIENT_EVIDENCE, search())
         monkeypatch.setattr(
-            pipeline, "_question_answering", lambda _index: answering(outcome)
+            pipeline,
+            "build_question_answering",
+            lambda _run, **_options: answering(outcome),
         )
 
-        result = pipeline.query("q")
-
-        assert "complete library search" in result
+        assert pipeline.query("q") == "insufficient_evidence"
 
     @pytest.mark.parametrize(
         ("kind", "status"),
@@ -165,19 +252,21 @@ class TestQuery:
         ],
     )
     def test_an_incomplete_search_is_never_rephrased_as_no_evidence(
-        self, index_dir, monkeypatch, kind, status
+        self, library_dir, monkeypatch, kind, status
     ):
-        ready_index(index_dir)
+        ready_library(library_dir)
         outcome = AnswerOutcome(kind, search(status))
         monkeypatch.setattr(
-            pipeline, "_question_answering", lambda _index: answering(outcome)
+            pipeline,
+            "build_question_answering",
+            lambda _run, **_options: answering(outcome),
         )
 
         with pytest.raises(RuntimeError, match=kind.value):
             pipeline.query("q")
 
-    def test_it_reports_only_verified_evidence(self, index_dir, monkeypatch, capsys):
-        ready_index(index_dir)
+    def test_it_reports_only_verified_evidence(self, library_dir, monkeypatch, capsys):
+        ready_library(library_dir)
         node = PageNode(
             node_id="mrsa",
             title="MRSA",
@@ -193,9 +282,12 @@ class TestQuery:
             AnswerKind.ANSWERED,
             search(evidence=(evidence,)),
             GroundedAnswer("Einzelzimmer [1]."),
+            (citation(evidence),),
         )
         monkeypatch.setattr(
-            pipeline, "_question_answering", lambda _index: answering(outcome)
+            pipeline,
+            "build_question_answering",
+            lambda _run, **_options: answering(outcome),
         )
 
         pipeline.query("q")

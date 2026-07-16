@@ -19,7 +19,6 @@ from api import console
 from api.config import CORS_ORIGINS, SERVE_UI
 from api.ollama_pool import shutdown_pool, start_configured_instances
 from api.routers import chat, documents, ingest, retrieval, status
-from paths import ASSETS_DIR
 
 PORT = 8765
 
@@ -69,13 +68,6 @@ if SERVE_UI and console.UI_DIR.is_dir():
     # StaticFiles re-checks per request and raises, so a missing ui/ would 500
     # rather than 404.
     app.mount("/static", StaticFiles(directory=console.UI_DIR), name="static")
-
-# The crops directory only appears on the first PDF ingest, and a mount over a
-# missing directory 500s every request (see above). Create it so an asset that
-# has not been ingested yet is an honest 404.
-ASSETS_DIR.mkdir(parents=True, exist_ok=True)
-app.mount("/assets", StaticFiles(directory=ASSETS_DIR), name="assets")
-
 
 if __name__ == "__main__":
     uvicorn.run(app, host="127.0.0.1", port=PORT, log_level="warning")

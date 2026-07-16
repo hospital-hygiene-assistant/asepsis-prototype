@@ -18,17 +18,11 @@ sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(ROOT / "tauri-app"))
 
 import pageindex
-from api.question_answering import (
-    AnswerKind,
-    PromptAnswerSynthesizer,
-    Question,
-    QuestionAnswering,
-)
-from api.retrieval import WholeLibraryRetrieval
+from api.answering_runtime import build_question_answering
+from api.question_answering import AnswerKind, Question
 from api.runs import Run
 from modules.registry import defaults, discover, load
-from pageindex.generations import IndexGenerationStore
-from paths import INDEX_DIR, KB_DIR
+from paths import KB_DIR, LIBRARY_DIR
 
 
 def _print_modules(registry: dict) -> None:
@@ -49,7 +43,7 @@ def ingest(module: Optional[str] = None) -> None:
 
 
 def index(doc: Optional[str] = None) -> None:
-    """Atomically replace the index generation for the complete corpus."""
+    """Atomically publish one Expected library generation for the corpus."""
     documents = [path.stem for path in sorted(KB_DIR.glob("*.md"))]
     if not documents:
         print(f"No documents found in {KB_DIR}/. Run 'pipeline.py ingest' first.")
@@ -62,38 +56,22 @@ def index(doc: Optional[str] = None) -> None:
     print("Done.")
 
 
-def _question_answering(index_dir: Path) -> QuestionAnswering:
-    synthesis_model = pageindex.settings.synthesis_model
-    client = pageindex.make_client(pageindex.OLLAMA_URLS[0])
-
-    def complete(prompt: str) -> str:
-        response = client.chat(
-            model=synthesis_model,
-            messages=[{"role": "user", "content": prompt}],
-            options={"temperature": 0},
-        )
-        return response["message"]["content"]
-
-    return QuestionAnswering(
-        WholeLibraryRetrieval(pageindex, index_dir=index_dir),
-        PromptAnswerSynthesizer(complete),
-    )
-
-
 def query(text: str) -> str:
     """Answer through the same whole-library interface as practitioner chat."""
-    try:
-        snapshot = IndexGenerationStore(INDEX_DIR).snapshot()
-        ready = snapshot.generation_id != "legacy-flat" and bool(
-            snapshot.document_paths
+    run = Run(id="cli")
+    outcome = build_question_answering(run).answer(Question(text), run)
+    if (
+        outcome.kind is AnswerKind.RETRIEVAL_UNAVAILABLE
+        and any(
+            diagnostic.code == "expected_library_unavailable"
+            for diagnostic in outcome.search.diagnostics
         )
-    except (OSError, ValueError, KeyError):
-        ready = False
-    if not ready:
-        print(f"No index files in {INDEX_DIR}/. Run 'pipeline.py index' first.")
+    ):
+        print(
+            f"Expected library unavailable in {LIBRARY_DIR}/. "
+            "Run 'pipeline.py index' first."
+        )
         raise SystemExit(1)
-
-    outcome = _question_answering(INDEX_DIR).answer(Question(text), Run(id="cli"))
     print(
         f"\nVerified {len(outcome.search.evidence)} source passage(s) across "
         f"{len(outcome.search.documents)} document(s):"
@@ -104,7 +82,7 @@ def query(text: str) -> str:
     if outcome.kind is AnswerKind.ANSWERED and outcome.answer is not None:
         return outcome.answer.content
     if outcome.kind is AnswerKind.INSUFFICIENT_EVIDENCE:
-        return "No verified evidence was found in a complete library search."
+        return AnswerKind.INSUFFICIENT_EVIDENCE.value
     raise RuntimeError(f"question answering did not complete: {outcome.kind.value}")
 
 

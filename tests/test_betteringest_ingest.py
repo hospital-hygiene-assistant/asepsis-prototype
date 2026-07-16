@@ -10,6 +10,7 @@ from modules.ingest._betteringest.betteringest import Asset, IngestedDoc
 from modules.ingest._betteringest.ocr import Block
 from modules.ingest._massage import massage
 from modules.registry import discover
+from pageindex.library import read_source_candidates
 
 
 def _fake_doc(tmp_path) -> IngestedDoc:
@@ -154,6 +155,41 @@ def test_registry_discovers_betteringest_pdf():
     assert "betteringest_pdf" in mods["ingest"]
     assert mods["ingest"]["betteringest_pdf"]["source"] == "pdf_folder"
     assert "basic_markdown" in mods["ingest"]       # old module still there
+
+
+def test_pdf_ingest_emits_expected_library_source_candidates(
+    tmp_path, monkeypatch
+):
+    import sys
+    from unittest.mock import MagicMock
+
+    from modules.ingest import betteringest_pdf
+    from modules.ingest import _betteringest
+    from modules.ingest import _captioning
+
+    incoming = tmp_path / "incoming" / "demo.pdf"
+    incoming.parent.mkdir()
+    incoming.write_bytes(b"%PDF-1.7\nsource bytes\n")
+    doc = _fake_doc(tmp_path / "work")
+    fake_ingester = MagicMock()
+    fake_ingester.ingest.return_value = doc
+    monkeypatch.setitem(sys.modules, "paddle", MagicMock())
+    monkeypatch.setitem(sys.modules, "paddlex", MagicMock())
+    monkeypatch.setattr(_betteringest, "BetterIngest", lambda **_kw: fake_ingester)
+    monkeypatch.setattr(_captioning, "caption_assets", lambda *_a, **_kw: None)
+    monkeypatch.setattr(betteringest_pdf, "KB_DIR", tmp_path / "kb")
+    monkeypatch.setattr(
+        betteringest_pdf, "SOURCES_MANIFEST", tmp_path / "kb" / ".sources.json"
+    )
+    monkeypatch.setattr(betteringest_pdf, "OUT_DIR", tmp_path / "out")
+    monkeypatch.setattr(betteringest_pdf, "OCR_CACHE_DIR", tmp_path / "cache")
+
+    betteringest_pdf._ingest_pdfs([incoming], caption_backend="none")
+
+    source = read_source_candidates(betteringest_pdf.SOURCES_MANIFEST)["demo"]
+    assert source.pdf_path == incoming.resolve()
+    assert source.ocr_scale == 2.0
+    assert [asset.asset_id for asset in source.assets] == ["figure_1"]
 
 
 def test_save_asset_crops_unlabeled_assets(tmp_path):

@@ -1,15 +1,20 @@
-# Asepsis Prototype
+# ASEPSIS backend and retrieval console
 
-A retrieval-augmented-generation (RAG) **exploration and explainability** tool. It
+This repository provides the local FastAPI backend and a vanilla-JavaScript
+**retrieval debug console**. The German Next.js application in the sibling
+`frontend/` repository is the only practitioner surface. The console described
+below exists for corpus, retrieval, and provenance inspection; its chat is not a
+second product surface.
+
+ASEPSIS is a retrieval-augmented-generation (RAG) **exploration and explainability** tool. It
 indexes a corpus of heading-structured documents (currently medical guidelines),
 answers a natural-language query by walking the document trees with an LLM, and
 visualizes **which parts of each document the model selected, rejected, or skipped —
 and why**.
 
-The app has **two tabs that share one backend run state**:
+The debug console has **two tabs that share one backend run state**:
 
-- **💬 Chatbot** — an ASEPSIS-styled practitioner chat (visual language ported from
-  the Prototype_UCL surface). A question triggers the exact same retrieval workflow
+- **💬 Chatbot** — a diagnostic mirror of the answering workflow. A question triggers the exact same retrieval workflow
   as the Retrieval tab, then a synthesis call produces a structured, citation-anchored
   answer (`Short answer · Recommended action · Rationale · Limitations`) with a
   grounding badge. Each inline `[n]` citation links to a source card showing the
@@ -107,9 +112,9 @@ Both phases run in parallel across the configured Ollama instances.
 - **Outcome:** a desktop window titled *Asepsis Prototype* opens (or the system browser, if Tauri's CLI isn't installed). Nothing is interactive yet — the UI is loading.
 
 ⚙️ **Backend**
-- `run-tauri.py` installs Python deps if missing, then **runs the pipeline only if needed**: ingest (`docs/ → knowledge_base/`) if the knowledge base is stale, and index (`knowledge_base/ → index/*.json`) if any document is unindexed.
+- `run-tauri.py` installs Python deps if missing, then **runs the pipeline only if needed**: ingest (`docs/ → knowledge_base/`) if the knowledge base is stale, and publication (`knowledge_base/ → library/`) if the Expected library is absent or stale.
 - Starts FastAPI on `127.0.0.1:8765` and waits until it responds, then opens the window pointing at it.
-- **Outcome:** the server is up; document trees exist as `index/<doc>.json`. No LLM work yet.
+- **Outcome:** the server is up; one immutable Expected library generation binds every document tree to its canonical Markdown and available source evidence. No LLM work yet.
 - *Note:* every response is sent `Cache-Control: no-store`, and asset URLs are versioned by file mtime, so the webview never serves a stale UI across launches.
 
 ---
@@ -135,7 +140,7 @@ Both phases run in parallel across the configured Ollama instances.
 - **Outcome:** the **document viewer modal** opens with the rendered markdown of that document, a clickable table of contents on the left, and click-to-scroll to a section. Because no query has run yet, this is a **plain reading view** — no verdict colors.
 
 ⚙️ **Backend**
-- `GET /api/document/{stem}/full` returns the raw markdown (from `knowledge_base/`); the frontend renders it with the vendored `marked.js` and derives the TOC from the rendered headings.
+- The `/api/documents` listing supplies a generation-scoped `full_href`; it returns canonical Markdown from the same immutable generation as the displayed tree. The console renders it with the vendored `marked.js` and derives the TOC from the headings.
 
 ---
 
@@ -162,7 +167,7 @@ Both phases run in parallel across the configured Ollama instances.
 - **Action available mid-run:** click a box to open the **document viewer while the run is happening**. The markdown is annotated **in real time** — sections gain their verdict color the moment the model decides, and **hovering a paragraph shows the model's live decision** (status + reason), marked `· live`.
 - The frontend polls `/api/status` every **250 ms** to drive all of the above.
 
-⚙️ **Backend** — two-phase retrieval (`pageindex.retrieve_with_metadata`):
+⚙️ **Backend** — two-phase retrieval (`pageindex.retrieve_with_metadata_from_path`):
 1. **Top-down pruning** (`_check_section_relevant`): BFS over the heading tree; each section is judged (from its full descendant outline) as possibly-relevant or not. Pruned branches are skipped entirely — their leaves are counted as "done" but never read. *Errs toward inclusion to avoid false negatives.*
 2. **Per-leaf evaluation** (`_evaluate_leaf`): every surviving leaf gets one focused LLM call returning `{relevant, reason, quote}`; the `quote` must be verbatim from the content.
 - Both phases run via a `ThreadPoolExecutor`, **round-robin across the Ollama pool** (each leaf is assigned to exactly one instance — no duplicated work).
@@ -195,7 +200,7 @@ Both phases run in parallel across the configured Ollama instances.
 - **Graph controls** (top-right): adjust card size, node spacing, and hide/show the snippets panel.
 
 ⚙️ **Backend**
-- No new work — everything here is rendered from the `node_meta` already returned by `/api/run` and the markdown from `/api/document/{stem}/full`.
+- No new work — everything here is rendered from the `node_meta` already returned by `/api/run` and generation-scoped canonical Markdown.
 
 ---
 
@@ -246,7 +251,9 @@ Both phases run in parallel across the configured Ollama instances.
 | `GET` | `/api/config` · `POST` `/api/config` | Read / set the Ollama instance count |
 | `GET` | `/api/modules` | Available ingest adapters |
 | `GET` | `/api/documents` | All indexed document trees |
-| `GET` | `/api/document/{stem}/full` | Raw markdown for the document viewer |
+| `GET` | `/api/library/{generation}/documents/{document}/full` | Canonical Markdown from one immutable generation |
+| `GET` | `/api/library/{generation}/documents/{document}/pdf` | Source PDF bound to that generation |
+| `GET` | `/api/library/{generation}/documents/{document}/assets/{asset}` | Provenance asset bound to that generation |
 | `GET` | `/api/status` | Ollama instance activity |
 | `GET` | `/api/runs/{run_id}` | Progress and verdict state for one retrieval run |
 | `POST` | `/api/run` | Run retrieval for a query/test |
@@ -258,6 +265,12 @@ Both phases run in parallel across the configured Ollama instances.
 The two real ingest alternatives are discovered from `modules/ingest/*.py`.
 Indexing, whole-library retrieval, and question answering each have one direct
 implementation; they are not configurable plugin stages.
+
+The former `index/` layout is not read. After upgrading an existing checkout,
+run `python3 pipeline.py ingest` and `python3 pipeline.py index` to publish the
+first Expected library generation. If that checkout has a pre-version-2
+`knowledge_base/.sources.json`, remove that staging manifest before ingest; a
+legacy manifest is rejected rather than trusted as source evidence.
 
 | Default adapter | Role |
 |-----------------|------|
@@ -287,7 +300,7 @@ One muted palette is shared across the treemap, the Graph tree, the snippet high
 astepsis/
 ├── docs/                     # Source documents (.md)
 ├── knowledge_base/           # Ingested markdown  (ingest output)
-├── index/                    # Heading-tree indexes, one JSON per doc (index output)
+├── library/                  # Immutable indexes, Markdown, source bindings, and content-addressed objects
 ├── paths.py                  # Where the data lives — one definition, imported everywhere
 ├── pageindex/                # The retrieval engine
 │   ├── nodes.py · build.py   #   heading tree; writing it (deterministic, no model)

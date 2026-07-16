@@ -11,7 +11,7 @@ The pieces live alongside and can be imported directly: settings, clients,
 run_state, pins, nodes, build, prompts, llm, search.
 """
 
-from paths import INDEX_DIR, KB_DIR
+from paths import KB_DIR, LIBRARY_DIR
 
 from .clients import OLLAMA_URLS, get_activity, make_client, reconfigure_clients
 from .nodes import (
@@ -46,7 +46,7 @@ from .run_state import RunState
 from .settings import settings
 
 __all__ = [
-    "INDEX_DIR", "KB_DIR",
+    "KB_DIR", "LIBRARY_DIR",
     "HeadingIdentity", "PageNode", "heading_identities", "parse_document",
     "AssetProvenance", "NormalizedRegion", "PinValidationError", "PixelBox",
     "ProvenancePin", "SourceSpan", "VisualLocation", "emit_pin",

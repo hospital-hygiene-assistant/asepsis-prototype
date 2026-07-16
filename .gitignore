@@ -9,6 +9,7 @@ venv/
 # Generated pipeline artifacts (rebuilt locally, not committed)
 /knowledge_base/
 /index/
+/library/
 
 # Rust / Tauri build output
 tauri-app/src-tauri/target/

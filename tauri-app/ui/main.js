@@ -39,8 +39,9 @@ const state = {
   nodeSpacing: prefs.get('nodeSpacing', 36),
   showPins: prefs.get('showPins', false),
   docViewerStem: null,
+  docViewerDescriptor: null,
   liveStatus: null,
-  explainCache: {},                      // {stem: {node_id: explanation}}
+  explainCache: {},                      // {generation: {stem: {node_id: explanation}}}
   ingestModules: {},                     // {name: MODULE_INFO}
   moduleDescs: {},                       // {'stage/name': description}
 };
@@ -49,6 +50,24 @@ let _docsCache = null;
 async function getDocs() {
   if (!_docsCache) _docsCache = await apiGet('/api/documents');
   return _docsCache;
+}
+
+function resultDocumentDescriptor(stem) {
+  const result = state.currentResults?.results?.[stem];
+  if (!result?.generation_id || !result.full_href || !result.page_href) return null;
+  return result;
+}
+
+async function resolveDocumentDescriptor(stem, preferResult = state.view === 'results') {
+  if (
+    state.docViewerStem === stem
+    && state.docViewerDescriptor?.generation_id
+  ) return state.docViewerDescriptor;
+  if (preferResult) {
+    const result = resultDocumentDescriptor(stem);
+    if (result) return result;
+  }
+  return (await getDocs()).find((item) => item.name === stem) || null;
 }
 
 /* ── 2 · API + toasts ──────────────────────────────────────── */
@@ -1240,6 +1259,10 @@ function resultBoxClass(nodeData, retrieved, meta) {
   return 'tm-pending';
 }
 
+function pinFirstPage(pin) {
+  return pin?.page || pin?.spans?.[0]?.page || null;
+}
+
 /* ── 8 · Evidence (snippets) ───────────────────────────────── */
 
 function renderSnippets(data) {
@@ -1266,8 +1289,9 @@ function renderSnippets(data) {
       if (expSet.has(node.node_id)) tags.appendChild(badge('expected-tag', 'expected'));
 
       // Provenance pin — one click to the exact page/bbox in the source PDF.
-      if (node.pin?.page) {
-        const pinBadge = badge('pin-tag', `📍 p.${node.pin.page}`);
+      const pinPage = pinFirstPage(node.pin);
+      if (pinPage) {
+        const pinBadge = badge('pin-tag', `📍 p.${pinPage}`);
         pinBadge.title = 'View this passage in the source PDF';
         pinBadge.addEventListener('click', () => openSourceView(docName, node.pin));
         tags.appendChild(pinBadge);
@@ -1284,10 +1308,10 @@ function renderSnippets(data) {
       card.appendChild(title);
 
       // Asset chunks: the model read the caption — show the actual crop too.
-      if (node.pin?.kind === 'asset' && node.pin.image) {
+      if (node.pin?.asset?.image) {
         const fig = el('div', 'snippet-asset');
         const img = document.createElement('img');
-        img.src = node.pin.image;
+        img.src = node.pin.asset.image;
         img.alt = node.title;
         img.loading = 'lazy';
         img.title = 'View in the source PDF';
@@ -1355,6 +1379,11 @@ function slugify(text) {
 // Verdicts for a document: final results if present, else live run events.
 function getDocVerdicts(stem) {
   const res = state.currentResults?.results?.[stem];
+  const resultGeneration = state.currentResults?.coverage?.generation_id;
+  const viewerGeneration = state.docViewerStem === stem
+    ? state.docViewerDescriptor?.generation_id
+    : null;
+  if (viewerGeneration && resultGeneration && viewerGeneration !== resultGeneration) return null;
   if (res) return { retrieved: new Set(res.retrieved_ids || []), meta: res.node_meta || {}, live: false };
   const live = state.liveStatus?.live;
   if (live && (live.meta || live.retrieved)) {
@@ -1389,8 +1418,11 @@ async function openDocViewer(stem, targetTitle = null) {
   modal.hidden = false;
 
   let doc;
+  let descriptor;
   try {
-    doc = await apiGet(`/api/document/${encodeURIComponent(stem)}/full`);
+    descriptor = await resolveDocumentDescriptor(stem);
+    if (!descriptor?.full_href) throw new Error('generation-scoped document unavailable');
+    doc = await apiGet(descriptor.full_href);
   } catch (e) {
     bodyEl.innerHTML = `<div class="empty-msg">Could not load document: ${escHtml(e.message)}</div>`;
     return;
@@ -1430,6 +1462,7 @@ async function openDocViewer(stem, targetTitle = null) {
   });
 
   state.docViewerStem = stem;
+  state.docViewerDescriptor = descriptor;
   bodyEl.dataset.vsig = '';
   decorateDocVerdicts(bodyEl, stem);
 
@@ -1447,6 +1480,7 @@ async function openDocViewer(stem, targetTitle = null) {
 function closeDocViewer() {
   document.getElementById('doc-modal').hidden = true;
   state.docViewerStem = null;
+  state.docViewerDescriptor = null;
 }
 
 function refreshOpenDocViewer() {
@@ -1556,7 +1590,8 @@ function showDecisionTooltip(event, vid) {
   if (m?.quote)  html += `<div class="tt-quote">“${escHtml(m.quote)}”</div>`;
 
   if (verdict === 'rejected' || verdict === 'pruned') {
-    const ex = state.explainCache?.[stem]?.[vid];
+    const generationId = state.docViewerDescriptor?.generation_id;
+    const ex = state.explainCache?.[generationId]?.[stem]?.[vid];
     if (ex && (ex.topic || ex.reason)) {
       if (ex.topic)  html += `<div class="tt-reason" style="margin-top:6px;"><span class="tt-muted">Topic:</span> ${escHtml(ex.topic)}</div>`;
       if (ex.reason) html += `<div class="tt-reason tt-muted">${escHtml(ex.reason)}</div>`;
@@ -1564,7 +1599,7 @@ function showDecisionTooltip(event, vid) {
       html += `<div class="tt-reason tt-muted">The model judged this does not directly answer the query.</div>`;
     }
     html += `<div class="tt-hint">▸ click to ask why (grounded re-read)</div>`;
-  } else if (verdict === 'accepted' && findNodePin(stem, vid)?.page) {
+  } else if (verdict === 'accepted' && pinFirstPage(findNodePin(stem, vid))) {
     html += `<div class="tt-hint">▸ click to view in the source PDF</div>`;
   }
   showTooltip(event, html);
@@ -1603,7 +1638,7 @@ function initDocViewer() {
       requestExplanation(stem, elx.dataset.vid, elx);
     } else if (verdict === 'accepted') {
       const pin = findNodePin(stem, elx.dataset.vid);
-      if (pin?.page) openSourceView(stem, pin);
+      if (pinFirstPage(pin)) openSourceView(stem, pin);
     }
   });
 }
@@ -1652,8 +1687,9 @@ function renderExplainPopover(anchorEl, data) {
       html += `<div class="ep-flag">⚠ On re-read the model now thinks this <b>does</b> address the query — worth a manual check.</div>`;
     }
     if (!data.topic && !data.reason) html += `<div class="ep-reason tt-muted">No explanation returned.</div>`;
-    if (data.pin?.page) {
-      html += `<button class="ep-pin-link">📍 View in source PDF — page ${escHtml(String(data.pin.page))}</button>`;
+    const pinPage = pinFirstPage(data.pin);
+    if (pinPage) {
+      html += `<button class="ep-pin-link">📍 View in source PDF — page ${escHtml(String(pinPage))}</button>`;
     }
   }
   p.innerHTML = html;
@@ -1664,11 +1700,22 @@ function renderExplainPopover(anchorEl, data) {
 }
 
 async function requestExplanation(stem, nodeId, anchorEl) {
-  const cache = (state.explainCache[stem] ||= {});
+  const generationId = state.docViewerDescriptor?.generation_id;
+  if (!generationId) {
+    renderExplainPopover(anchorEl, { error: 'Generation-scoped document unavailable' });
+    return;
+  }
+  const generationCache = (state.explainCache[generationId] ||= {});
+  const cache = (generationCache[stem] ||= {});
   if (cache[nodeId]) { renderExplainPopover(anchorEl, cache[nodeId]); return; }
   renderExplainPopover(anchorEl, { loading: true });
   try {
-    const res = await apiPost('/api/explain', { stem, node_id: nodeId, query: state.currentQuery || '' });
+    const res = await apiPost('/api/explain', {
+      generation_id: generationId,
+      stem,
+      node_id: nodeId,
+      query: state.currentQuery || '',
+    });
     cache[nodeId] = res;
     renderExplainPopover(anchorEl, res);
   } catch (e) {
@@ -1679,8 +1726,15 @@ async function requestExplanation(stem, nodeId, anchorEl) {
 /* ── provenance pins in the reader ──────────────────────────── */
 
 function findNodePin(stem, nodeId) {
-  const doc = (_docsCache || []).find(d => d.name === stem);
-  if (!doc) return null;
+  const result = resultDocumentDescriptor(stem);
+  const resultGeneration = state.currentResults?.coverage?.generation_id;
+  const viewerGeneration = state.docViewerDescriptor?.generation_id;
+  const resultMatchesViewer = result
+    && (!viewerGeneration || viewerGeneration === resultGeneration);
+  const tree = resultMatchesViewer
+    ? result.tree
+    : (_docsCache || []).find(d => d.name === stem)?.tree;
+  if (!tree) return null;
   let found = null;
   (function walk(nodes) {
     for (const n of nodes || []) {
@@ -1688,11 +1742,15 @@ function findNodePin(stem, nodeId) {
       if (n.nodeId === nodeId) { found = n.pin || null; return; }
       walk(n.children);
     }
-  })(doc.tree);
+  })(tree);
   return found;
 }
 
 function parsePinText(text) {
+  try {
+    const parsed = JSON.parse((text || '').trim());
+    if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) return parsed;
+  } catch { /* legacy line-oriented pin */ }
   const pin = {};
   for (const line of (text || '').split('\n')) {
     const i = line.indexOf(':');
@@ -1717,10 +1775,13 @@ function decoratePinBlocks(bodyEl, stem) {
     wrap.className = 'pin-block';
     const chip = document.createElement('button');
     chip.className = 'pin-chip';
-    chip.innerHTML = `📍 <b>${escHtml(pin.id || 'pin')}</b> · ${escHtml(pin.kind || '')}` +
-      (pin.page ? ` · p.${escHtml(String(pin.page))}` : '') +
-      (pin.page ? ` <span class="pin-chip-hint">view in PDF ↗</span>` : '');
-    chip.addEventListener('click', () => { if (pin.page) openSourceView(stem, pin); });
+    const pinPage = pinFirstPage(pin);
+    const pinIdentity = pin.nodeId || pin.id || 'pin';
+    const pinKind = pin.asset?.type || pin.kind || 'section';
+    chip.innerHTML = `📍 <b>${escHtml(pinIdentity)}</b> · ${escHtml(pinKind)}` +
+      (pinPage ? ` · p.${escHtml(String(pinPage))}` : '') +
+      (pinPage ? ` <span class="pin-chip-hint">view in PDF ↗</span>` : '');
+    chip.addEventListener('click', () => { if (pinPage) openSourceView(stem, pin); });
     pre.replaceWith(wrap);
     wrap.appendChild(chip);
     wrap.appendChild(pre);
@@ -1899,16 +1960,28 @@ function getSourcePopover() {
   return p;
 }
 
-function openSourceView(stem, pin) {
-  if (!pin || !pin.page) return;
+async function openSourceView(stem, pin) {
+  const page = pinFirstPage(pin);
+  if (!pin || !page) return;
+  const documentName = pin.document || pin.doc || stem;
+  const descriptor = await resolveDocumentDescriptor(documentName);
+  if (!descriptor?.page_href) {
+    toast('Generation-scoped source PDF unavailable', 'warn', 8000);
+    return;
+  }
   const p = getSourcePopover();
   const img = p.querySelector('#sp-img');
   const params = new URLSearchParams();
   if (Array.isArray(pin.bbox)) params.set('bbox', pin.bbox.join(','));
   if (Array.isArray(pin.regions)) params.set('regions', JSON.stringify(pin.regions));
+  if (Array.isArray(pin.spans)) {
+    params.set('regions', JSON.stringify(pin.spans.map((span) => [
+      span.page, ...span.box,
+    ])));
+  }
   p.querySelector('#sp-title').textContent =
-    `${(pin.doc || stem).replace(/_/g, ' ')} — page ${pin.page}` +
-    (pin.kind === 'asset' ? ` · ${pin.asset || 'asset'}` : '');
+    `${documentName.replace(/_/g, ' ')} — page ${page}` +
+    (pin.asset ? ` · ${pin.asset.id || pin.asset.type || 'asset'}` : '');
   img.src = '';
   p.classList.add('sp-loading');
   img.onload = () => p.classList.remove('sp-loading');
@@ -1916,7 +1989,7 @@ function openSourceView(stem, pin) {
     p.classList.remove('sp-loading');
     p.querySelector('#sp-title').textContent += ' — source PDF unavailable';
   };
-  img.src = `/api/document/${encodeURIComponent(pin.doc || stem)}/page/${pin.page}?${params}`;
+  img.src = `${descriptor.page_href.replace('{page}', String(page))}?${params}`;
   p.style.display = 'flex';
 }
 

@@ -20,13 +20,19 @@ from api.prompts import (
     MAX_CONTEXT_CHARS,
     _sanitize_context,
 )
-from api import pdf
-from api.pdf import _normalized_bbox
+from pageindex.library import ExpectedLibraryStore, LibraryCandidate, SourceCandidate
 
 
 @pytest.fixture
 def client():
     return TestClient(server.app)
+
+
+def bind_library(tmp_path, monkeypatch, candidates):
+    library = tmp_path / "library"
+    snapshot = ExpectedLibraryStore(library).publish(candidates)
+    monkeypatch.setattr(documents_router, "LIBRARY_DIR", library)
+    return snapshot
 
 
 class TestSanitizeContext:
@@ -133,98 +139,68 @@ class TestSynthesisPrompt:
         assert "Do not use markdown headers" in prompt
 
 
-class TestNormalizedBbox:
-    @pytest.fixture(autouse=True)
-    def fixed_page_size(self, monkeypatch):
-        monkeypatch.setattr(pdf, "_rendered_page_size", lambda stem, page: (1000.0, 2000.0))
-
-    def test_corners_become_extents_as_fractions(self):
-        assert _normalized_bbox("doc", {"page": 1, "bbox": [100, 200, 600, 400]}) == {
-            "page": 1, "x": 0.1, "y": 0.1, "width": 0.5, "height": 0.1,
-        }
-
-    def test_out_of_page_bbox_is_clamped_into_range(self):
-        box = _normalized_bbox("doc", {"page": 1, "bbox": [-50, -100, 1500, 3000]})
-        assert box["x"] == 0.0 and box["y"] == 0.0
-        assert 0 < box["width"] <= 1.0 and 0 < box["height"] <= 1.0
-
-    def test_a_negative_left_edge_does_not_stretch_the_box(self):
-        """Clamping the origin while sizing from the raw span overstates the box.
-
-        With x0=-100 and x1=200 on a 1000px page, the visible extent is 0..0.2.
-        Sizing from (x1-x0) would give 0..0.3 and drop the highlight over 100px
-        of text that is not the cited passage.
-        """
-        box = _normalized_bbox("doc", {"page": 1, "bbox": [-100, -200, 200, 400]})
-        assert box["x"] == 0.0 and box["y"] == 0.0
-        assert box["width"] == pytest.approx(0.2)
-        assert box["height"] == pytest.approx(0.2)
-
-    def test_the_box_never_extends_past_the_page(self):
-        box = _normalized_bbox("doc", {"page": 1, "bbox": [900, 1800, 1400, 2400]})
-        assert box["x"] + box["width"] <= 1.0
-        assert box["y"] + box["height"] <= 1.0
-
-    def test_a_fully_off_page_box_is_dropped_not_pinned_to_the_edge(self):
-        # Drawing it at the page edge would highlight text it has no relation to.
-        assert _normalized_bbox("doc", {"page": 1, "bbox": [-500, -500, -100, -100]}) is None
-
-    @pytest.mark.parametrize(
-        "pin",
-        [
-            {"page": 1, "bbox": [10, 10, 10, 400]},   # zero width
-            {"page": 1, "bbox": [10, 10, 400, 10]},   # zero height
-            {"page": 1, "bbox": [400, 10, 100, 400]}, # inverted corners
-        ],
-    )
-    def test_degenerate_bboxes_are_dropped(self, pin):
-        # The consuming schema requires positive extents; None is the honest answer.
-        assert _normalized_bbox("doc", pin) is None
-
-    @pytest.mark.parametrize(
-        "pin",
-        [
-            {"page": None, "bbox": [1, 2, 3, 4]},
-            {"page": 1, "bbox": None},
-            {"page": 1, "bbox": "1,2,3,4"},
-            {"page": 1, "bbox": [1, 2, 3]},
-            {"page": 1, "bbox": ["a", "b", "c", "d"]},
-            {},
-        ],
-    )
-    def test_malformed_pins_return_none(self, pin):
-        assert _normalized_bbox("doc", pin) is None
-
-    def test_unknown_document_returns_none(self, monkeypatch):
-        monkeypatch.setattr(pdf, "_rendered_page_size", lambda stem, page: None)
-        assert _normalized_bbox("nope", {"page": 1, "bbox": [1, 2, 3, 4]}) is None
-
-
 class TestDocumentPdfRoute:
-    def test_unknown_stem_is_404(self, client, monkeypatch):
-        monkeypatch.setattr(documents_router, "load_sources", dict)
-        assert client.get("/api/document/nothing/pdf").status_code == 404
+    def test_unknown_stem_is_404(self, client, monkeypatch, tmp_path):
+        snapshot = bind_library(
+            tmp_path,
+            monkeypatch,
+            {"known": LibraryCandidate("# Known\n\nContent.")},
+        )
+        path = (
+            f"/api/library/{snapshot.generation_id}/documents/nothing/pdf"
+        )
+        assert client.get(path).status_code == 404
 
     @pytest.mark.parametrize("stem", ["../../etc/passwd", "..%2f..%2fsecret", "/etc/hosts"])
-    def test_path_traversal_is_rejected(self, client, monkeypatch, stem):
-        """`stem` must never reach the filesystem — it only keys the manifest."""
-        monkeypatch.setattr(documents_router, "load_sources", lambda: {"real_doc": {"pdf": "/tmp/x.pdf"}})
-        response = client.get(f"/api/document/{stem}/pdf")
+    def test_path_traversal_is_rejected(
+        self, client, monkeypatch, tmp_path, stem
+    ):
+        snapshot = bind_library(
+            tmp_path,
+            monkeypatch,
+            {"real_doc": LibraryCandidate("# Real\n\nContent.")},
+        )
+        response = client.get(
+            f"/api/library/{snapshot.generation_id}/documents/{stem}/pdf"
+        )
         assert response.status_code == 404
         assert "passwd" not in response.text and "hosts" not in response.text
 
-    def test_missing_file_is_404_without_leaking_the_path(self, client, monkeypatch):
-        secret = "/home/someone/private/guidelines.pdf"
-        monkeypatch.setattr(documents_router, "load_sources", lambda: {"doc": {"pdf": secret}})
-        response = client.get("/api/document/doc/pdf")
-        assert response.status_code == 404
-        assert secret not in response.text
+    def test_corrupt_bound_source_is_503_without_leaking_its_path(
+        self, client, monkeypatch, tmp_path
+    ):
+        source = tmp_path / "private-guidelines.pdf"
+        source.write_bytes(b"private")
+        snapshot = bind_library(
+            tmp_path,
+            monkeypatch,
+            {"doc": LibraryCandidate(
+                "# Doc\n\nContent.", SourceCandidate(source, 2.0)
+            )},
+        )
+        immutable_path = snapshot.document("doc").source.pdf_path
+        immutable_path.unlink()
+
+        response = client.get(
+            f"/api/library/{snapshot.generation_id}/documents/doc/pdf"
+        )
+        assert response.status_code == 503
+        assert str(immutable_path) not in response.text
 
     def test_serves_the_pdf(self, client, monkeypatch, tmp_path):
         pdf_file = tmp_path / "guide.pdf"
         pdf_file.write_bytes(b"%PDF-1.4 fake")
-        monkeypatch.setattr(documents_router, "load_sources", lambda: {"guide": {"pdf": str(pdf_file)}})
-        response = client.get("/api/document/guide/pdf")
+        snapshot = bind_library(
+            tmp_path,
+            monkeypatch,
+            {"guide": LibraryCandidate(
+                "# Guide\n\nContent.", SourceCandidate(pdf_file, 2.0)
+            )},
+        )
+        pdf_file.write_bytes(b"replacement")
+        response = client.get(
+            f"/api/library/{snapshot.generation_id}/documents/guide/pdf"
+        )
         assert response.status_code == 200
         assert response.headers["content-type"] == "application/pdf"
         assert response.content == b"%PDF-1.4 fake"

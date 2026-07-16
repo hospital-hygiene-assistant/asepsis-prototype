@@ -16,8 +16,6 @@ from typing import Optional
 
 import ollama
 
-from paths import INDEX_DIR
-
 from .run_state import RunState
 from .clients import acquire, pool, release
 from .llm import _chat, _parse_json_response
@@ -126,9 +124,6 @@ def _evaluate_leaf(
 # Public API
 # ---------------------------------------------------------------------------
 
-
-class RetrievalUnavailable(RuntimeError):
-    """The lossy single-document interface cannot represent this search."""
 
 def _format_descendant_outline(node: "PageNode", depth: int = 0) -> str:
     """Indented bullet list of all descendant headings — gives the LLM full visibility."""
@@ -317,36 +312,13 @@ def _prune_and_collect(
     return candidate_leaves
 
 
-def retrieve(doc_name: str, query: str, run: Optional[RunState] = None) -> list[PageNode]:
-    """Relevant leaf nodes for a query against one document's index.
-
-    Without a run, progress goes nowhere — which is what a CLI wants.
-    """
-    nodes_result, metadata = retrieve_with_metadata(doc_name, query, run)
-    errors = [
-        item for item in metadata.values() if item.get("status") == "error"
-    ]
-    if errors:
-        raise RetrievalUnavailable(
-            f"retrieval was incomplete for {doc_name}: {len(errors)} error(s)"
-        )
-    return nodes_result
-
-
-def retrieve_with_metadata(
-    doc_name: str, query: str, run: Optional[RunState] = None,
-) -> tuple[list[PageNode], dict[str, dict]]:
-    return retrieve_with_metadata_from_path(
-        doc_name, query, run, INDEX_DIR / f"{doc_name}.json"
-    )
-
-
 def retrieve_with_metadata_from_path(
     doc_name: str,
     query: str,
     run: Optional[RunState],
     index_path,
     model: str | None = None,
+    instances=None,
 ) -> tuple[list[PageNode], dict[str, dict]]:
     """Two-phase retrieval with top-down pruning.
 
@@ -375,7 +347,7 @@ def retrieve_with_metadata_from_path(
     # Assign every node (section + leaf) to an Ollama instance round-robin by
     # branch. Read the pool once: it can be swapped while a run is in flight,
     # and a branch has to keep the instance its nodes were assigned to.
-    instances = pool()
+    instances = tuple(instances) if instances is not None else tuple(pool())
     branch_roots = nodes[0].children if (len(nodes) == 1 and nodes[0].children) else nodes
     node_assignment: dict[str, tuple[ollama.Client, str]] = {}
     for i, branch in enumerate(branch_roots):

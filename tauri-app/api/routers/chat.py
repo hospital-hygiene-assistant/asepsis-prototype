@@ -1,7 +1,5 @@
 """Practitioner question answering through the one grounded workflow."""
 
-from collections import defaultdict
-from pathlib import Path
 from typing import Optional
 
 import pageindex as _pi
@@ -9,19 +7,20 @@ from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
 
-from ..pdf import _rendered_page_size
+from ..answering_runtime import build_question_answering
+from ..chat_wire import ChatErrorV2, encode_outcome
 from ..prompts import CHAT_SYNTHESIS_PROMPT
 from ..question_answering import (
     AnswerKind,
     AnswerOutcome,
-    EvidenceCitationFactory,
-    PromptAnswerSynthesizer,
     Question,
-    QuestionAnswering,
 )
-from ..retrieval import LibraryStatus, WholeLibraryRetrieval
+from ..retrieval import (
+    LibrarySearchResult,
+    LibraryStatus,
+    SearchDiagnostic,
+)
 from ..runs import registry
-from ..sources import load_sources
 
 router = APIRouter()
 
@@ -52,111 +51,6 @@ class ChatRequest(BaseModel):
     context: Optional[str] = None
 
 
-def _question_answering(run):
-    """Snapshot model selection once and assemble the answering module."""
-    synthesis_model = _pi.settings.synthesis_model
-    synthesis_url = _pi.OLLAMA_URLS[0]
-    synthesis_client = _pi.make_client(synthesis_url)
-
-    def complete(prompt: str) -> str:
-        run.set_phase("synthesis")
-        response = synthesis_client.chat(
-            model=synthesis_model,
-            messages=[{"role": "user", "content": prompt}],
-            options={"temperature": 0},
-        )
-        return response["message"]["content"]
-
-    citations = EvidenceCitationFactory(
-        page_size=_rendered_page_size,
-        source_documents=lambda: {
-            stem
-            for stem, source in load_sources().items()
-            if Path(str(source.get("pdf") or "")).is_file()
-        },
-    )
-    return QuestionAnswering(
-        WholeLibraryRetrieval(_pi),
-        PromptAnswerSynthesizer(complete),
-        citations,
-    )
-
-
-def _visual_wire(visual) -> dict:
-    if visual.status != "exact":
-        return {
-            "status": "unavailable",
-            "reason": visual.reason or "location_unavailable",
-        }
-    grouped = defaultdict(list)
-    for region in visual.regions:
-        grouped[region.page].append({
-            "x": region.x,
-            "y": region.y,
-            "width": region.width,
-            "height": region.height,
-        })
-    return {
-        "status": "exact",
-        "pages": [
-            {"page": page, "regions": regions}
-            for page, regions in sorted(grouped.items())
-        ],
-    }
-
-
-def _grounding_status(outcome: AnswerOutcome) -> str:
-    if outcome.kind is AnswerKind.INSUFFICIENT_EVIDENCE:
-        return "insufficient_evidence"
-    if outcome.kind is AnswerKind.SEARCH_INCOMPLETE:
-        return "search_incomplete"
-    if outcome.search.status is LibraryStatus.PARTIAL:
-        return "partially_grounded"
-    return "grounded"
-
-
-def _answer_wire(outcome: AnswerOutcome, run_id: str) -> dict:
-    answer = outcome.answer
-    searched = sum(
-        document.status.value != "unavailable"
-        for document in outcome.search.documents
-    )
-    return {
-        "contract_version": 2,
-        "run_id": run_id,
-        "query": outcome.search.query,
-        "answer": {
-            "content": answer.content if answer else "",
-            "short_answer": answer.short_answer if answer else "",
-            "recommended_action": answer.recommended_action if answer else "",
-            "rationale": answer.rationale if answer else "",
-            "limitations": answer.limitations if answer else "",
-        },
-        "grounding": {
-            "status": _grounding_status(outcome),
-            "generation_id": outcome.search.generation_id,
-            "searched_documents": searched,
-            "total_documents": len(outcome.search.documents),
-            "incomplete_checks": len(outcome.search.diagnostics),
-            "sources": [
-                {
-                    "id": citation.id,
-                    "number": citation.number,
-                    "document": citation.document,
-                    "node_id": citation.node_id,
-                    "title": citation.title,
-                    "breadcrumb": citation.breadcrumb,
-                    "excerpt": citation.excerpt,
-                    "quote": citation.quote,
-                    "has_source_pdf": citation.has_source_pdf,
-                    "visual": _visual_wire(citation.visual),
-                }
-                for citation in outcome.citations
-            ],
-        },
-    }
-
-
 @router.post("/api/chat")
 def chat(req: ChatRequest):
     query = (req.query or "").strip()
@@ -166,37 +60,41 @@ def chat(req: ChatRequest):
     run = registry.create(req.run_id)
     run.set_phase("retrieval")
     try:
-        answering = _question_answering(run)
-        outcome = answering.answer(Question(query, req.context), run)
-        if outcome.kind in (
-            AnswerKind.RETRIEVAL_UNAVAILABLE,
-            AnswerKind.SYNTHESIS_UNAVAILABLE,
-        ):
+        try:
+            answering = build_question_answering(run)
+        except Exception:
+            diagnostic = SearchDiagnostic(
+                document="__runtime__",
+                code="question_answering_unavailable",
+                message="question answering runtime failed",
+            )
+            outcome = AnswerOutcome(
+                AnswerKind.RETRIEVAL_UNAVAILABLE,
+                LibrarySearchResult(
+                    query=query,
+                    generation_id=None,
+                    status=LibraryStatus.UNAVAILABLE,
+                    documents=(),
+                    evidence=(),
+                    diagnostics=(diagnostic,),
+                ),
+            )
+            wire = encode_outcome(outcome, run_id=run.id)
             run.set_phase("error")
             return JSONResponse(
-                {
-                    "contract_version": 2,
-                    "error": {"kind": outcome.kind.value},
-                    "run_id": run.id,
-                },
+                wire.model_dump(mode="json"),
                 status_code=503,
             )
-        return JSONResponse(_answer_wire(outcome, run.id))
-    except Exception:
-        kind = (
-            "synthesis_unavailable"
-            if run.phase == "synthesis"
-            else "retrieval_unavailable"
-        )
-        run.set_phase("error")
-        return JSONResponse(
-            {
-                "contract_version": 2,
-                "error": {"kind": kind},
-                "run_id": run.id,
-            },
-            status_code=503,
-        )
+        try:
+            outcome = answering.answer(Question(query, req.context), run)
+            wire = encode_outcome(outcome, run_id=run.id)
+        except Exception:
+            run.set_phase("error")
+            raise
+        if isinstance(wire, ChatErrorV2):
+            run.set_phase("error")
+            return JSONResponse(wire.model_dump(mode="json"), status_code=503)
+        return JSONResponse(wire.model_dump(mode="json"))
     finally:
         if run.phase != "error":
             run.set_phase("idle")

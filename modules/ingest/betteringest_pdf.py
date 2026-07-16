@@ -18,6 +18,7 @@ results are cached by BetterIngester's own (pdf sha, config) cache in
 from __future__ import annotations
 
 import json
+import mimetypes
 import shutil
 import sys
 from pathlib import Path
@@ -38,6 +39,12 @@ MODULE_INFO = {
 }
 
 from paths import KB_DIR, ROOT, SOURCES_MANIFEST
+from pageindex.library import (
+    SourceAssetCandidate,
+    SourceCandidate,
+    read_source_candidates,
+    write_source_candidates,
+)
 
 OUT_DIR = ROOT / ".betteringest_out"        # BetterIngest working area (crops, raw md)
 OCR_CACHE_DIR = ROOT / ".ocr_cache"         # BetterIngester's own OCR cache format
@@ -58,11 +65,8 @@ def set_source_dir(path: str) -> None:
                            encoding="utf-8")
 
 
-def _load_sources() -> dict:
-    try:
-        return json.loads(SOURCES_MANIFEST.read_text(encoding="utf-8"))
-    except Exception:
-        return {}
+def _load_sources() -> dict[str, SourceCandidate]:
+    return read_source_candidates(SOURCES_MANIFEST)
 
 
 # ── the ingest stage ─────────────────────────────────────────────────────────
@@ -173,14 +177,19 @@ def _ingest_pdfs(pdfs: list[Path], progress=None,
                 shutil.copy2(a.image, asset_dir / Path(a.image).name)
         (KB_DIR / f"{stem}.md").write_text(markdown, encoding="utf-8")
 
-        sources[stem] = {
-            "pdf": str(pdf.resolve()),
-            "ocr_scale": doc.ocr_scale,
-            "module": MODULE_INFO["name"],
-            "assets": [a.to_dict() for a in doc.assets],
-        }
-        SOURCES_MANIFEST.write_text(
-            json.dumps(sources, indent=2, ensure_ascii=False), encoding="utf-8")
+        sources[stem] = SourceCandidate(
+            pdf_path=pdf.resolve(),
+            ocr_scale=doc.ocr_scale,
+            assets=tuple(SourceAssetCandidate(
+                asset_id=asset.asset_id,
+                path=Path(asset.image),
+                media_type=(
+                    mimetypes.guess_type(asset.image)[0]
+                    or "application/octet-stream"
+                ),
+            ) for asset in doc.assets),
+        )
+        write_source_candidates(SOURCES_MANIFEST, sources)
         done_stems.append(stem)
         print(f"  {pdf.name} → {KB_DIR / (stem + '.md')} "
               f"({len(doc.assets)} assets)")
