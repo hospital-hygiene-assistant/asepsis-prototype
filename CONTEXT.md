@@ -9,6 +9,9 @@ ASEPSIS searches the complete local guideline library and may only present evide
 - **Verified evidence**: a selected leaf whose non-empty quote occurs verbatim in its canonical content.
 - **Search diagnostic**: a named document or passage that could not be evaluated. It is technical state, never a negative finding about guideline content.
 - **Question answering**: the single workflow that performs whole-library search, synthesises only from verified evidence, validates every structured answer section's citations, and returns a typed outcome.
+- **Question run**: the thread-safe lifecycle of one question, owning retrieval totals, passage decisions, synthesis phase, completion or failure, and the polling snapshot.
+- **Document index**: the validated, navigable heading tree for one Expected library document. It owns node lookup, breadcrumbs, leaf counts, serialization, and the debug projection.
+- **Chat outcome**: the version 3 wire result for one question: answered, insufficient evidence, incomplete search, unavailable retrieval, or unavailable synthesis. Search coverage occurs exactly once inside it.
 - **Honest negative**: `insufficient_evidence`, emitted only after a complete whole-library search found no verified evidence.
 - **Incomplete search**: a partial or unavailable search. It must never be restated as an honest negative.
 - **Provenance pin**: versioned identity and exact canonical-text spans linking one indexed leaf to its source PDF.
@@ -20,8 +23,10 @@ ASEPSIS searches the complete local guideline library and may only present evide
 
 ## Current Architecture
 
-- The Expected library module owns publication, integrity verification, immutable source lookup, and generation-scoped document links through one interface.
+- The Expected library module owns publication, integrity verification, immutable source reads, the Document index, and generation-scoped document links through one interface.
 - The Whole-library retrieval module searches one library generation with one frozen retrieval model and Ollama pool snapshot.
 - The Question answering module is the single interface for verified evidence, structured synthesis, citations, and typed answer outcomes.
+- The Question run module owns the complete mutable lifecycle exposed to retrieval workers and polling clients; there is no nested run-state interface.
+- The strict version 3 chat adapter renders Question answering outcomes for both the Next.js practitioner surface and the debug console.
 - CLI and HTTP adapters share the same Question answering runtime assembly; neither reconstructs retrieval, synthesis, or provenance rules.
 - The current deployment is local-only. Authentication, safe uploads, bounded job orchestration, and deployment hardening belong to a separate hosted-deployment decision.
