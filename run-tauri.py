@@ -48,14 +48,26 @@ def _ensure_python_deps():
     try:
         import fastapi, uvicorn  # noqa: F401
     except ImportError:
-        print("  Installing Python dependencies…")
-        subprocess.check_call(
-            [sys.executable, "-m", "pip", "install", "-q", "-r", str(ROOT / "requirements.txt")]
+        raise RuntimeError(
+            "Python dependencies are missing. From the backend directory run "
+            "`uv sync --frozen`, then launch with `uv run python run-tauri.py`."
         )
 
 
 # ── pipeline ──────────────────────────────────────────────────
 def _run_pipeline_if_needed():
+    # A published Expected library is authoritative. Generated workspace files
+    # may be absent or older after an operator-reviewed publication; rebuilding
+    # from them automatically would silently roll the review back on restart.
+    library_store = ExpectedLibraryStore(LIBRARY_DIR)
+    if not os.environ.get("ASEPSIS_REBUILD_LIBRARY"):
+        try:
+            library_store.open_current()
+            print("  Using the current immutable Expected library.")
+            return
+        except (ExpectedLibraryNotBuilt, ExpectedLibraryCorrupt):
+            pass
+
     docs = list(DOCS_DIR.glob("*.md")) if DOCS_DIR.exists() else []
     if not docs:
         print("  No docs found in docs/ — skipping pipeline.")
@@ -77,7 +89,6 @@ def _run_pipeline_if_needed():
         kb_files = set(kb_paths)
 
     # Library: rebuild if its complete canonical Markdown set has changed.
-    library_store = ExpectedLibraryStore(LIBRARY_DIR)
     try:
         snapshot = library_store.open_current()
         published = {

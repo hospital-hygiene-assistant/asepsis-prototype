@@ -11,6 +11,7 @@ import pageindex
 
 from modules.registry import load as _load_module
 from paths import KB_DIR
+from .reviews import review_store
 
 router = APIRouter()
 
@@ -19,7 +20,8 @@ router = APIRouter()
 
 _ingest_lock = threading.Lock()
 _ingest_state: dict = {"state": "idle", "phase": "", "doc": "", "done": 0,
-                       "total": 0, "message": "", "warnings": [], "docs": []}
+                       "total": 0, "message": "", "warnings": [], "docs": [],
+                       "review_id": None}
 
 
 def _set_ingest_state(**kw) -> None:
@@ -93,7 +95,7 @@ def run_ingest(req: IngestRunRequest):
                                 status_code=409)
         _ingest_state.update({"state": "running", "phase": "starting", "doc": "",
                               "done": 0, "total": 0, "message": "Starting…",
-                              "warnings": [], "docs": []})
+                              "warnings": [], "docs": [], "review_id": None})
 
     ingest_name = req.ingest_module
     source_dir = req.source_dir
@@ -101,8 +103,23 @@ def run_ingest(req: IngestRunRequest):
     def work():
         try:
             ingest_mod = _load_module("ingest", ingest_name)
+            info = getattr(ingest_mod, "MODULE_INFO", {})
+            if info.get("review_required") is True:
+                documents = ingest_mod.prepare_review(
+                    source_dir=source_dir,
+                    progress=lambda progress: _set_ingest_state(**progress),
+                )
+                session = review_store.create(documents)
+                _set_ingest_state(
+                    state="review",
+                    phase="review",
+                    message="Review figures and tables before publishing",
+                    docs=[document.document_id for document in session.documents],
+                    review_id=session.session_id,
+                )
+                return
             kwargs = {}
-            if getattr(ingest_mod, "MODULE_INFO", {}).get("source") == "pdf_folder":
+            if info.get("source") == "pdf_folder":
                 kwargs = {"source_dir": source_dir, "progress":
                           lambda info: _set_ingest_state(**info)}
             result = ingest_mod.run(**kwargs) or {}
@@ -157,10 +174,24 @@ def add_to_library(req: IngestAddRequest):
                                 status_code=409)
         _ingest_state.update({"state": "running", "phase": "starting", "doc": "",
                               "done": 0, "total": len(pdfs), "message": "Starting…",
-                              "warnings": [], "docs": []})
+                              "warnings": [], "docs": [], "review_id": None})
 
     def work():
         try:
+            if getattr(ingest_mod, "MODULE_INFO", {}).get("review_required") is True:
+                documents = ingest_mod.prepare_review_paths(
+                    [str(x) for x in pdfs],
+                    progress=lambda progress: _set_ingest_state(**progress),
+                )
+                session = review_store.create(documents)
+                _set_ingest_state(
+                    state="review",
+                    phase="review",
+                    message="Review figures and tables before publishing",
+                    docs=[document.document_id for document in session.documents],
+                    review_id=session.session_id,
+                )
+                return
             result = ingest_mod.run_paths(
                 [str(x) for x in pdfs],
                 progress=lambda info: _set_ingest_state(**info)) or {}

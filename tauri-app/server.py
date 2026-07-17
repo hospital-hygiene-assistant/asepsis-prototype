@@ -18,7 +18,7 @@ from fastapi.staticfiles import StaticFiles
 from api import console
 from api.config import CORS_ORIGINS, SERVE_UI
 from api.ollama_pool import shutdown_pool, start_configured_instances
-from api.routers import chat, documents, ingest, retrieval, status
+from api.routers import chat, documents, ingest, retrieval, reviews, status
 
 PORT = 8765
 
@@ -31,6 +31,7 @@ async def lifespan(_app: FastAPI):
     spawning processes.
     """
     start_configured_instances()
+    reviews.review_store.cleanup()
     yield
     shutdown_pool()
 
@@ -56,10 +57,18 @@ async def _no_cache(request, call_next):
     response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
     response.headers["Pragma"] = "no-cache"
     response.headers["Expires"] = "0"
+    response.headers["Content-Security-Policy"] = (
+        "default-src 'self'; base-uri 'none'; object-src 'none'; "
+        "frame-ancestors 'none'; img-src 'self' data: blob:; "
+        "style-src 'self' 'unsafe-inline'; script-src 'self'; "
+        "connect-src 'self'"
+    )
+    response.headers["X-Content-Type-Options"] = "nosniff"
+    response.headers["Referrer-Policy"] = "no-referrer"
     return response
 
 
-for router in (status.router, documents.router, ingest.router,
+for router in (status.router, documents.router, ingest.router, reviews.router,
                retrieval.router, chat.router, console.router):
     app.include_router(router)
 

@@ -1,0 +1,42 @@
+[project]
+name = "asepsis-backend"
+version = "0.1.0"
+description = "Local evidence-grounded document retrieval for ASEPSIS"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+  "fastapi>=0.139,<0.140",
+  "ollama>=0.6.2,<0.7",
+  "pillow>=12.3,<13",
+  "pydantic>=2.13,<3",
+  "pypdfium2>=5.11,<6",
+  "uvicorn>=0.51,<0.52",
+]
+
+[dependency-groups]
+dev = [
+  "httpx>=0.28,<0.29",
+  "hypothesis>=6.140,<7",
+  "pip-audit>=2.9,<3",
+  "playwright>=1.58,<2",
+  "pytest>=9.1,<10",
+  "pytest-cov>=7.1,<8",
+  "pytest-playwright>=0.7,<0.8",
+  "ruff>=0.15,<0.16",
+  "schemathesis>=4.10,<5",
+]
+ocr = [
+  "numpy>=2.4,<3",
+  "paddleocr[doc-parser]>=3.4,<4",
+  "paddlepaddle>=3.2,<4",
+  "paddlex>=3.4,<4",
+]
+
+[tool.uv]
+package = false
+default-groups = ["dev"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+markers = [
+  "browser: operator-console checks requiring Playwright Chromium",
+]

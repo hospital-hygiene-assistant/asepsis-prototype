@@ -7,6 +7,7 @@
   <link rel="icon" type="image/png" href="/static/asepsis-icon.png">
   <link rel="stylesheet" href="/static/style.css">
   <link rel="stylesheet" href="/static/chat.css">
+  <link rel="stylesheet" href="/static/annotorious.css">
   <script src="/static/d3.v7.min.js"></script>
 </head>
 <body>
@@ -322,6 +323,59 @@
 </div>
 
 <!-- ══ Reader (document viewer) ══ -->
+<dialog id="ingest-review-dialog" class="ingest-review-dialog" aria-labelledby="review-title">
+  <div class="review-shell">
+    <header class="review-header">
+      <div>
+        <p class="review-eyebrow">Local ingest review</p>
+        <h2 id="review-title">Confirm figures and tables</h2>
+        <p id="review-summary">The library is unchanged until the complete batch is confirmed.</p>
+      </div>
+      <div class="review-header-actions">
+        <span id="review-state" class="review-state">Draft</span>
+        <button id="review-close" class="icon-btn" type="button" title="Leave review open">✕</button>
+      </div>
+    </header>
+    <div class="review-body">
+      <aside class="review-sidebar">
+        <div id="review-documents" class="review-document-list"></div>
+        <div class="review-sidebar-section">
+          <p class="review-sidebar-label">Page</p>
+          <div id="review-pages" class="review-page-list"></div>
+        </div>
+        <div class="review-sidebar-section">
+          <p class="review-sidebar-label">Regions on this page</p>
+          <div id="review-regions" class="review-region-list"></div>
+        </div>
+      </aside>
+      <section class="review-workspace">
+        <div class="review-toolbar" aria-label="Review tools">
+          <span>New region:</span>
+          <button type="button" class="review-tool active" data-review-kind="figure">Figure</button>
+          <button type="button" class="review-tool" data-review-kind="table">Table</button>
+          <span class="review-toolbar-separator"></span>
+          <button type="button" id="review-undo" class="review-tool">Undo</button>
+          <button type="button" id="review-redo" class="review-tool">Redo</button>
+          <span id="review-sync" class="review-sync">Saved</span>
+        </div>
+        <div class="review-canvas-scroll">
+          <div id="review-canvas" class="review-canvas">
+            <img id="review-page-image" alt="PDF page under review">
+          </div>
+        </div>
+        <p id="review-message" class="review-message" role="status"></p>
+      </section>
+    </div>
+    <footer class="review-footer">
+      <p>Table recognition is advisory and must be confirmed or explicitly acknowledged.</p>
+      <div>
+        <button id="review-cancel" type="button" class="tool-btn">Cancel batch</button>
+        <button id="review-confirm" type="button" class="primary-btn">Publish reviewed batch</button>
+      </div>
+    </footer>
+  </div>
+</dialog>
+
 <div id="doc-modal" class="doc-modal" hidden>
   <div class="doc-modal-backdrop"></div>
   <div class="doc-modal-window">
@@ -350,7 +404,11 @@
 <div id="toasts"></div>
 
 <script src="/static/marked.min.js"></script>
+<script src="/static/dompurify.min.js"></script>
+<script src="/static/safe-markdown.js"></script>
+<script src="/static/annotorious.js"></script>
 <script src="/static/main.js"></script>
+<script src="/static/review.js"></script>
 <script src="/static/chat.js"></script>
 </body>
 </html>

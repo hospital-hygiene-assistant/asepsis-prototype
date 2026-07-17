@@ -1,9 +1,0 @@
-# Layout OCR for the betteringest_pdf ingest module only. Large (PaddlePaddle
-# alone is ~1GB) and imported lazily, so install it only to ingest PDFs.
-# Ingesting markdown needs none of this.
--r requirements.txt
-
-paddlepaddle>=2.6
-paddlex>=3
-paddleocr>=2.7
-numpy>=1.26

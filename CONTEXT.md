@@ -19,6 +19,9 @@ ASEPSIS searches the complete local guideline library and may only present evide
 - **Library generation**: a full-SHA-256, manifest-backed snapshot atomically promoted as the current expected library. Searches and source links retain that identity so a later promotion cannot change their evidence.
 - **Search coverage**: the generation identity and complete, partial, or unavailable extent of one whole-library search. It is carried through successful answers and technical failures; it is never inferred from an empty result.
 - **Ingest adapter**: one of the real alternate producers of canonical markdown. Indexing, retrieval, and question answering each have one implementation and are not plugin stages.
+- **Ingest review**: the expiring, revisioned operator decision over proposed PDF figures and tables. It owns region geometry and table-recognition outcomes but cannot mutate an Expected library generation.
+- **Reviewed asset**: an active figure or table region confirmed through Ingest review. A table is publishable only with recognized structure or an explicit operator acknowledgement that structure recognition failed.
+- **Review publication**: the atomic promotion that converts every document in one ready Ingest review into canonical Markdown, provenance pins, PDFs, and Reviewed assets, then merges them into a new Expected library generation. A partial batch is never current.
 - **Local trust model**: the backend listens on loopback and trusts the person operating the machine. Folder paths, ingest controls, and model-pool controls are not suitable for a hosted deployment without authenticated access and safe upload orchestration.
 
 ## Current Architecture
@@ -29,4 +32,5 @@ ASEPSIS searches the complete local guideline library and may only present evide
 - The Question run module records each document-qualified section or passage decision atomically. Search never reconstructs a decision from polling state, polling preserves document-plus-node identity, and the debug adapter alone renders the tree-oriented legacy representation.
 - The strict version 3 chat adapter renders Question answering outcomes for both the Next.js practitioner surface and the debug console.
 - CLI and HTTP adapters share the same Question answering runtime assembly; neither reconstructs retrieval, synthesis, or provenance rules.
+- The Ingest review module owns persistent review sessions, geometry validation, focused table recognition, and one atomic call into the Expected library publisher. The operator console is an adapter over that interface; it does not publish staging files itself.
 - The current deployment is local-only. Authentication, safe uploads, bounded job orchestration, and deployment hardening belong to a separate hosted-deployment decision.

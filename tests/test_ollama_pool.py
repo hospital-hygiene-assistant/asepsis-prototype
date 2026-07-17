@@ -50,6 +50,36 @@ class TestProbe:
             assert ollama_pool._probe("http://127.0.0.1:11434") is False
 
 
+class TestProcessorStatus:
+    def test_loaded_cpu_models_verify_the_requested_profile(self, monkeypatch):
+        response = MagicMock()
+        response.read.return_value = (
+            b'{"models":[{"name":"qwen","size_vram":0}]}'
+        )
+        response.__enter__.return_value = response
+        monkeypatch.setattr(ollama_pool.urllib.request, "urlopen", MagicMock(return_value=response))
+        monkeypatch.setattr(ollama_pool, "CPU_ONLY", True)
+
+        assert ollama_pool.processor_status("http://127.0.0.1:11434") == {
+            "cpu_only_requested": True,
+            "verified": True,
+            "models": [{"name": "qwen", "size_vram": 0}],
+        }
+
+    def test_vram_use_is_reported_without_claiming_cpu_verification(self, monkeypatch):
+        response = MagicMock()
+        response.read.return_value = (
+            b'{"models":[{"name":"qwen","size_vram":1024}]}'
+        )
+        response.__enter__.return_value = response
+        monkeypatch.setattr(ollama_pool.urllib.request, "urlopen", MagicMock(return_value=response))
+        monkeypatch.setattr(ollama_pool, "CPU_ONLY", True)
+
+        status = ollama_pool.processor_status("http://127.0.0.1:11434")
+        assert status["verified"] is False
+        assert status["models"][0]["size_vram"] == 1024
+
+
 class TestOllamaBin:
     def test_it_reports_the_binary_when_installed(self):
         with patch.object(ollama_pool.shutil, "which", return_value="/usr/bin/ollama"):
@@ -84,6 +114,9 @@ class TestSetInstances:
         assert spawner.call_count == 2
         ports = [call.kwargs["env"]["OLLAMA_HOST"] for call in spawner.call_args_list]
         assert ports == [f"127.0.0.1:{BASE_PORT + 1}", f"127.0.0.1:{BASE_PORT + 2}"]
+        for call in spawner.call_args_list:
+            assert call.kwargs["env"]["GGML_VK_VISIBLE_DEVICES"] == "-1"
+            assert call.kwargs["env"]["CUDA_VISIBLE_DEVICES"] == "-1"
 
     def test_a_port_already_serving_is_noted_but_not_adopted(self, spawner, monkeypatch):
         """Someone else's ollama is not ours to manage — least of all to kill."""

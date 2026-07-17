@@ -26,25 +26,24 @@ done
 [ -n "$PY" ] || die "python3 was not found. Install it from https://www.python.org/downloads/ and double-click again."
 say "Python: $($PY --version 2>&1)"
 
-# ── 2 · Private environment + dependencies ────────────────────
-if [ ! -x .venv/bin/python ]; then
-  say "Creating the app's Python environment (.venv)…"
-  "$PY" -m venv .venv || die "Could not create the virtual environment."
-fi
-say "Checking Python dependencies…"
-.venv/bin/python -m pip install -q --upgrade pip >/dev/null 2>&1
-.venv/bin/python -m pip install -q -r requirements.txt \
+# ── 2 · Locked environment + dependencies ─────────────────────
+command -v uv >/dev/null 2>&1 \
+  || die "uv was not found. Install it from https://docs.astral.sh/uv/ and retry."
+say "Synchronising the locked Python environment…"
+uv sync --frozen --no-group ocr \
   || die "Dependency installation failed. Check your network connection and retry."
 
 # ── 3 · Ollama runtime + model ────────────────────────────────
-MODEL=$(.venv/bin/python -c 'from pageindex.settings import DEFAULT_MODEL; print(DEFAULT_MODEL)') \
+MODEL=$(uv run --frozen python -c 'from pageindex.settings import DEFAULT_MODEL; print(DEFAULT_MODEL)') \
   || die "Could not read the configured language model."
 if ! command -v ollama >/dev/null 2>&1; then
   die "Ollama is not installed. Download it from https://ollama.com/download, open it once, then double-click this file again."
 fi
 if ! curl -s --max-time 2 http://127.0.0.1:11434/api/tags >/dev/null 2>&1; then
   say "Starting the Ollama server…"
-  (ollama serve >/dev/null 2>&1 &)
+  (OLLAMA_VULKAN=0 GGML_VK_VISIBLE_DEVICES=-1 CUDA_VISIBLE_DEVICES=-1 \
+    ROCR_VISIBLE_DEVICES=-1 \
+    ollama serve >/dev/null 2>&1 &)
   for _ in $(seq 1 40); do
     curl -s --max-time 1 http://127.0.0.1:11434/api/tags >/dev/null 2>&1 && break
     sleep 0.5
@@ -60,7 +59,7 @@ fi
 # ── 4 · Launch ────────────────────────────────────────────────
 say "Starting the app…"
 echo
-.venv/bin/python run-tauri.py "$@"
+ASEPSIS_OLLAMA_CPU_ONLY=1 uv run --frozen python run-tauri.py "$@"
 status=$?
 if [ $status -ne 0 ]; then
   printf 'The app exited with an error (%s). Press Enter to close… ' "$status"

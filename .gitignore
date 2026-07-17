@@ -32,3 +32,4 @@ tauri-app/src-tauri/Cargo.lock
 /.betteringest_out/
 /.ocr_cache/
 /.betteringest.json
+/.ingest_reviews/

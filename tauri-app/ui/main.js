@@ -85,7 +85,10 @@ async function apiPost(path, body) {
   });
   if (!r.ok) {
     let detail = '';
-    try { detail = (await r.json()).error || ''; } catch { /* not json */ }
+    try {
+      const payload = await r.json();
+      detail = payload.message || payload.detail || payload.error || '';
+    } catch { /* not json */ }
     throw new Error(detail || `${r.status} ${r.statusText}`);
   }
   return r.json();
@@ -178,7 +181,8 @@ function initWorkflow() {
 }
 
 function anyOverlayOpen() {
-  return !document.getElementById('doc-modal').hidden ||
+  return document.getElementById('ingest-review-dialog')?.open ||
+    !document.getElementById('doc-modal').hidden ||
     document.getElementById('source-popover')?.style.display === 'flex' ||
     document.getElementById('doc-explain-popover')?.style.display === 'block' ||
     !document.getElementById('settings-popover').hidden ||
@@ -638,6 +642,19 @@ function initLibrary(docs) {
   window.addEventListener('resize', debounce(async () => {
     if (state.view === 'library' && _docsCache) renderTreemap(_docsCache);
   }, 200));
+
+  window.addEventListener('asepsis-library-published', async () => {
+    _docsCache = null;
+    try {
+      const refreshed = await getDocs();
+      renderTreemap(refreshed);
+      updateLibraryCount(refreshed);
+      closeSetupCard();
+      toast(`Reviewed library generation published — ${refreshed.length} document(s) ready.`, 'ok');
+    } catch (error) {
+      toast(`Published, but the library view could not refresh: ${error.message}`, 'warn', 8000);
+    }
+  });
 }
 
 function updateLibraryCount(docs) {
@@ -719,12 +736,23 @@ function initLibraryAdd() {
       const pct = p.total ? Math.round((p.done / p.total) * 100) : 0;
       fill.style.width = `${p.phase === 'index' || p.state === 'done' ? 100 : pct}%`;
       msg.textContent = p.message || p.phase || '';
-      if (p.state !== 'done' && p.state !== 'error') return;
+      if (p.state !== 'done' && p.state !== 'error' && p.state !== 'review') return;
 
       clearInterval(poll);
       runBtn.disabled = false;
       if (p.state === 'error') {
         toast(`Add failed: ${p.message}`, 'err', 9000);
+        return;
+      }
+      if (p.state === 'review') {
+        progWrap.hidden = true;
+        document.getElementById('add-popover').hidden = true;
+        input.value = '';
+        try {
+          await window.AsepsisReview.open(p.review_id);
+        } catch (error) {
+          toast(`Could not open ingest review: ${error.message}`, 'err', 9000);
+        }
         return;
       }
       for (const w of p.warnings || []) toast(w, 'warn', 7000);
@@ -1459,10 +1487,7 @@ async function openDocViewer(stem, targetTitle = null) {
     return;
   }
 
-  const html = (typeof marked !== 'undefined')
-    ? (marked.parse ? marked.parse(doc.markdown) : marked(doc.markdown))
-    : `<pre>${escHtml(doc.markdown)}</pre>`;
-  bodyEl.innerHTML = html;
+  bodyEl.innerHTML = window.AsepsisMarkdown.render(doc.markdown);
 
   // Provenance pins → chips; the header checkbox is the single toggle.
   const pinCount = decoratePinBlocks(bodyEl, stem);
@@ -1940,13 +1965,22 @@ async function runIngest() {
     const pct = p.total ? Math.round((p.done / p.total) * 100) : 0;
     fill.style.width = `${p.phase === 'index' || p.state === 'done' ? 100 : pct}%`;
     msg.textContent = p.message || p.phase || '';
-    if (p.state !== 'done' && p.state !== 'error') return;
+    if (p.state !== 'done' && p.state !== 'error' && p.state !== 'review') return;
 
     clearInterval(poll);
     runBtn.disabled = false;
     if (p.state === 'error') {
       warnEl.innerHTML = `<div class="warn">✗ ${escHtml(p.message)}</div>`;
       toast(`Ingest failed: ${p.message}`, 'err', 8000);
+      return;
+    }
+    if (p.state === 'review') {
+      msg.textContent = 'Reconstruction complete — review figures and tables before publishing.';
+      try {
+        await window.AsepsisReview.open(p.review_id);
+      } catch (error) {
+        warnEl.innerHTML = `<div class="warn">✗ ${escHtml(error.message)}</div>`;
+      }
       return;
     }
     for (const w of p.warnings || []) {

@@ -5,6 +5,7 @@ explainer instance. Retrieval clients themselves live in pageindex.
 """
 
 import atexit
+import json
 import os
 import shutil
 import subprocess
@@ -23,6 +24,47 @@ from pageindex.settings import MAX_OLLAMA_INSTANCES, MIN_OLLAMA_INSTANCES
 
 
 BASE_PORT = 11434
+
+
+def _env_flag(name: str, default: bool) -> bool:
+    raw = os.environ.get(name)
+    if raw is None:
+        return default
+    return raw.strip().lower() not in ("0", "false", "no", "off", "")
+
+
+CPU_ONLY = _env_flag("ASEPSIS_OLLAMA_CPU_ONLY", True)
+
+
+def ollama_process_env(*, host: str) -> dict[str, str]:
+    """Environment for every Ollama process ASEPSIS itself owns."""
+    env = {**os.environ, "OLLAMA_HOST": host}
+    if CPU_ONLY:
+        env.update({
+            "OLLAMA_VULKAN": "0",
+            "GGML_VK_VISIBLE_DEVICES": "-1",
+            "CUDA_VISIBLE_DEVICES": "-1",
+            "ROCR_VISIBLE_DEVICES": "-1",
+        })
+    return env
+
+
+def processor_status(url: str) -> dict:
+    """Report whether loaded models prove the requested CPU-only profile."""
+    status = {"cpu_only_requested": CPU_ONLY, "verified": None, "models": []}
+    try:
+        with urllib.request.urlopen(f"{url}/api/ps", timeout=2.0) as response:
+            payload = json.loads(response.read())
+        models = payload.get("models", [])
+        status["models"] = [{
+            "name": model.get("name", ""),
+            "size_vram": int(model.get("size_vram", 0)),
+        } for model in models]
+        if models:
+            status["verified"] = all(model["size_vram"] == 0 for model in status["models"])
+    except Exception as exc:
+        status["error"] = str(exc)
+    return status
 
 # Instances we started, in port order from BASE_PORT+1. A None entry marks a
 # port that was already serving: it is counted, but not ours to stop.
@@ -81,7 +123,7 @@ def set_ollama_instances(n: int) -> dict:
             # Already running externally — don't adopt it, just note it
             _extra_procs.append(None)  # placeholder
         elif bin_path:
-            env  = {**os.environ, "OLLAMA_HOST": f"127.0.0.1:{port}"}
+            env = ollama_process_env(host=f"127.0.0.1:{port}")
             proc = subprocess.Popen(
                 [bin_path, "serve"],
                 env=env,
@@ -133,7 +175,7 @@ def ensure_explainer() -> Optional[str]:
         if not bin_path:
             base = f"http://127.0.0.1:{BASE_PORT}"
             return base if _probe(base) else None
-        env = {**os.environ, "OLLAMA_HOST": f"127.0.0.1:{EXPLAINER_PORT}"}
+        env = ollama_process_env(host=f"127.0.0.1:{EXPLAINER_PORT}")
         proc = subprocess.Popen(
             [bin_path, "serve"], env=env,
             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,

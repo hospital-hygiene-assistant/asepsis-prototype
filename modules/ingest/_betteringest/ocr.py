@@ -65,7 +65,9 @@ def _load_models():
     if _recognizer is None:
         from paddleocr import PaddleOCR  # type: ignore[import-untyped]
         _recognizer = PaddleOCR(
-            use_textline_orientation=False, lang="en",
+            use_textline_orientation=False, lang="latin",
+            text_recognition_model_name="latin_PP-OCRv5_mobile_rec",
+            device="cpu",
             use_doc_orientation_classify=False, use_doc_unwarping=False)
     return _layout, _recognizer
 

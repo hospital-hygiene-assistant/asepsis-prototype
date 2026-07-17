@@ -26,3 +26,6 @@ ASSETS_DIR = KB_DIR / "assets"
 
 SOURCES_MANIFEST = KB_DIR / ".sources.json"
 """Versioned source candidates written by ingest and consumed at publication."""
+
+REVIEW_DIR = ROOT / ".ingest_reviews"
+"""Private, expiring operator-review candidates awaiting publication."""

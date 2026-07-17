@@ -29,9 +29,11 @@ The debug console has **two tabs that share one backend run state**:
 Asking in the Chatbot animates the Retrieval tab's treemap live, and the finished
 run is immediately inspectable there — the two tabs are two lenses on one run.
 
-**One-click start (macOS):** double-click **`run_tauri.command`** — it creates a
-private `.venv`, installs any missing Python dependencies, starts Ollama and pulls
-`gemma4:e2b-it-q4_K_M` if needed, then launches the app.
+**One-click start (macOS):** install Python 3.12, `uv`, and Ollama, then
+double-click **`run_tauri.command`**. It reproduces the locked Python environment,
+starts Ollama with GPU visibility disabled when needed, pulls the configured model
+if needed, and launches the app. PDF OCR/table review dependencies are installed
+separately with `uv sync --frozen --group ocr` because Paddle is large.
 
 This README walks through a full session as a **timeline**. At each timestamp `t`
 the same moment is described from two angles:
@@ -49,6 +51,7 @@ the same moment is described from two angles:
   - [t0 — Launch](#t0--launch)
   - [t1 — App ready (welcome screen)](#t1--app-ready-welcome-screen)
   - [t2 — Browsing the corpus (before any query)](#t2--browsing-the-corpus-before-any-query)
+  - [PDF ingest review](#pdf-ingest-review)
   - [t3 — Asking a question](#t3--asking-a-question)
   - [t4 — Retrieval in progress](#t4--retrieval-in-progress)
   - [t5 — Results arrive](#t5--results-arrive)
@@ -108,11 +111,15 @@ Both phases run in parallel across the configured Ollama instances.
 ### t0 — Launch
 
 🖥️ **Frontend**
-- **Action available:** run `python3 run-tauri.py` (optionally `--ollama-instances N`).
+- **Action available:** run `uv run --frozen python run-tauri.py` (optionally
+  `--ollama-instances N`).
 - **Outcome:** a desktop window titled *Asepsis Prototype* opens (or the system browser, if Tauri's CLI isn't installed). Nothing is interactive yet — the UI is loading.
 
 ⚙️ **Backend**
-- `run-tauri.py` installs Python deps if missing, then **runs the pipeline only if needed**: ingest (`docs/ → knowledge_base/`) if the knowledge base is stale, and publication (`knowledge_base/ → library/`) if the Expected library is absent or stale.
+- `run-tauri.py` verifies its dependencies and opens the current valid Expected
+  library. It never replaces an operator-reviewed generation from stale staging
+  files. Set `ASEPSIS_REBUILD_LIBRARY=1` only for an intentional one-time rebuild
+  from `docs/` and `knowledge_base/`.
 - Starts FastAPI on `127.0.0.1:8765` and waits until it responds, then opens the window pointing at it.
 - **Outcome:** the server is up; one immutable Expected library generation binds every document tree to its canonical Markdown and available source evidence. No LLM work yet.
 - *Note:* every response is sent `Cache-Control: no-store`, and asset URLs are versioned by file mtime, so the webview never serves a stale UI across launches.
@@ -141,6 +148,29 @@ Both phases run in parallel across the configured Ollama instances.
 
 ⚙️ **Backend**
 - The `/api/documents` listing supplies a generation-scoped `full_href`; it returns canonical Markdown from the same immutable generation as the displayed tree. The console renders it with the vendored `marked.js` and derives the TOC from the headings.
+
+---
+
+### PDF ingest review
+
+🖥️ **Operator console**
+
+- Select the BetterIngest PDF adapter and a local PDF or folder. OCR proposes
+  figure and table rectangles, then the ingest pauses in a modal review.
+- Add, move, resize, or delete rectangles. Mark new rectangles as figures or
+  tables. Undo and redo are local to the annotation tool.
+- Every table must either produce focused structured recognition or have its
+  recognition failure explicitly acknowledged. **Publish** is disabled until
+  the complete review is ready.
+
+⚙️ **Backend**
+
+- The review is persisted for 24 hours with an opaque identity and revision.
+  A stale browser cannot overwrite a newer edit, and HTTP responses expose no
+  source filesystem paths.
+- Confirmation publishes the entire reviewed batch through the immutable
+  Expected library interface. If validation fails, the previous generation
+  remains current.
 
 ---
 
@@ -255,6 +285,11 @@ Both phases run in parallel across the configured Ollama instances.
 | `GET` | `/api/library/{generation}/documents/{document}/pdf` | Source PDF bound to that generation |
 | `GET` | `/api/library/{generation}/documents/{document}/assets/{asset}` | Provenance asset bound to that generation |
 | `GET` | `/api/status` | Ollama instance activity |
+| `POST` | `/api/ingest/run` · `/api/ingest/add` | Prepare an ingest batch; review-required adapters stop before publication |
+| `GET` | `/api/ingest/reviews/{review}` | Resume one revisioned operator review |
+| `PUT` | `/api/ingest/reviews/{review}/documents/{document}/regions` | Replace reviewed geometry at an expected revision |
+| `POST` | `/api/ingest/reviews/{review}/documents/{document}/regions/{region}/recognize-table` | Recognize one confirmed table crop |
+| `POST` | `/api/ingest/reviews/{review}/confirm` | Atomically publish one ready review |
 | `GET` | `/api/runs/{run_id}` | Progress and verdict state for one retrieval run |
 | `POST` | `/api/run` | Run retrieval for a query/test |
 | `POST` | `/api/chat` | Versioned grounded answer, search-coverage facts, and verified sources |
@@ -267,20 +302,25 @@ Indexing, whole-library retrieval, and question answering each have one direct
 implementation; they are not configurable plugin stages.
 
 The former `index/` layout is not read. After upgrading an existing checkout,
-run `python3 pipeline.py ingest` and `python3 pipeline.py index` to publish the
+run `uv run python pipeline.py ingest` and `uv run python pipeline.py index` to publish the
 first Expected library generation. If that checkout has a pre-version-2
 `knowledge_base/.sources.json`, remove that staging manifest before ingest; a
 legacy manifest is rejected rather than trusted as source evidence.
 
-| Default adapter | Role |
-|-----------------|------|
-| `basic_markdown` | Copy `docs/*.md` into `knowledge_base/` |
+| Adapter | Role |
+|---------|------|
+| `basic_markdown` | Copy prepared `docs/*.md` into staging for direct publication |
+| `betteringest_pdf` | Reconstruct PDFs, then require operator review of every proposed figure and table before publication |
 
 ### Ollama instances
 
 - **Retrieval pool:** ports `11434, 11435, …`, sized by the sidebar stepper / `--ollama-instances`. Used round-robin for the two-phase retrieval.
 - **Explainer:** port `11500`, dedicated to `/api/explain`, started lazily and kept warm — isolated so on-demand explanations never disturb a running query.
 - Model: `gemma4:e2b-it-q4_K_M` (Gemma 4 E2B instruction model, Q4_K_M).
+- Processes started by ASEPSIS request CPU-only execution by default. `/api/config`
+  reports whether loaded models actually have zero VRAM allocation. A separately
+  started Ollama process remains outside ASEPSIS control. See
+  [`docs/runtime-models.md`](docs/runtime-models.md).
 
 ### Verdict color scheme
 
@@ -301,6 +341,7 @@ astepsis/
 ├── docs/                     # Source documents (.md)
 ├── knowledge_base/           # Ingested markdown  (ingest output)
 ├── library/                  # Immutable indexes, Markdown, source bindings, and content-addressed objects
+├── .ingest_reviews/          # Private, expiring operator review state (ignored)
 ├── paths.py                  # Where the data lives — one definition, imported everywhere
 ├── pageindex/                # The retrieval engine
 │   ├── nodes.py · build.py   #   heading tree; writing it (deterministic, no model)
@@ -311,7 +352,7 @@ astepsis/
 ├── pipeline.py               # CLI: ingest → immutable index generation → grounded query
 ├── run-tauri.py              # One-command launcher (pipeline + server + window)
 ├── run_tauri.command         # Double-clickable macOS launcher (installs deps, starts Ollama)
-├── modules/                  # real ingest adapters and their registry
+├── modules/                  # ingest adapters; review lifecycle and focused table recognition
 ├── tauri-app/
 │   ├── server.py             # Entrypoint: assembles the app
 │   ├── api/                  # One router per concern, plus what no single route owns
@@ -323,17 +364,23 @@ astepsis/
 ## Running the tests
 
 ```bash
-ruff check . --select F,E9
-pytest -q --cov --cov-report=term --cov-fail-under=80
-pytest tests/test_retrieval.py -v        # live quality cases; requires Ollama
+uv sync --frozen
+uv run ruff check . --select F,E9
+uv run pytest -q --cov --cov-report=term --cov-fail-under=80
+uv run pytest tests/test_retrieval.py -v  # live quality cases; requires Ollama
 ```
+
+The deterministic gate installs Chromium with `uv run playwright install
+chromium`. Install the optional local PDF models with `uv sync --frozen --group
+ocr`; CI exercises their adapters with fakes and does not download Paddle
+weights.
 
 The v3 chat examples are generated by the backend and consumed in both
 repositories. Verify that neither copy has drifted from the authoritative
 producer before handoff:
 
 ```bash
-PYTHONPATH=.:tauri-app python -m api.chat_contract_fixtures --check \
+PYTHONPATH=.:tauri-app uv run python -m api.chat_contract_fixtures --check \
   tests/contracts/chat_v3 \
   ../frontend/src/lib/api/__fixtures__/chat_v3
 ```

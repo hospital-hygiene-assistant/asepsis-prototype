@@ -10,7 +10,7 @@ from modules.registry import discover as _discover_modules, defaults as _module_
 from pageindex.settings import MAX_OLLAMA_INSTANCES, MIN_OLLAMA_INSTANCES
 from retrieval_cases import RETRIEVAL_CASES
 
-from ..ollama_pool import ollama_bin, set_ollama_instances
+from ..ollama_pool import ollama_bin, processor_status, set_ollama_instances
 from ..runs import registry
 
 router = APIRouter()
@@ -55,6 +55,7 @@ def get_config():
         "ollama_bin_available": ollama_bin() is not None,
         "retrieval_model": _pi.settings.model,
         "synthesis_model": _pi.settings.synthesis_model,
+        "processor": processor_status(_pi.OLLAMA_URLS[0]),
     })
 
 

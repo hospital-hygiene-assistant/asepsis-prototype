@@ -30,12 +30,12 @@ MODULE_INFO = {
     "description": (
         "Ingests a folder of PDFs via the BetterIngester pipeline: layout OCR "
         "(PP-DocLayoutV3), deterministic heading hierarchy, figure/table crops "
-        "with captions, and provenance pins (page + bbox) on every section and "
-        "asset. Local and deterministic; asset captioning uses a local Ollama "
-        "vision model by default."),
+        "and provenance geometry. Figures and tables require local operator "
+        "review before one atomic Expected-library publication."),
     # Tells the frontend this module needs a source folder of PDFs picked
     # before it can run (triggers the folder-picker popup).
     "source": "pdf_folder",
+    "review_required": True,
 }
 
 from paths import KB_DIR, ROOT, SOURCES_MANIFEST
@@ -116,33 +116,80 @@ def run_paths(paths: list[str], progress=None,
     return _ingest_pdfs(pdfs, progress, caption_backend, caption_model)
 
 
-def _ingest_pdfs(pdfs: list[Path], progress=None,
-                 caption_backend: str | None = None,
-                 caption_model: str | None = None) -> dict:
-    import os
+def prepare_review(source_dir: str | None = None, progress=None):
+    """Reconstruct a folder into private candidates without publishing it."""
+    src = Path(source_dir or get_source_dir() or "")
+    if not src or not src.is_dir():
+        raise FileNotFoundError(
+            f"BetterIngest source folder not set or missing: '{src}'."
+        )
+    pdfs = sorted(src.glob("*.pdf"))
+    if not pdfs:
+        raise FileNotFoundError(f"No PDF files found in {src}/")
+    _ingester, documents = _prepare_pdfs(pdfs, progress)
+    return documents
 
-    # Pre-flight: the layout model needs the Paddle engine.  Fail with a clear,
-    # actionable message instead of a deep stack trace (flagged, not silently
-    # downgraded — there is no non-OCR fallback worth having).
+
+def prepare_review_paths(paths: list[str], progress=None):
+    """Reconstruct explicit PDFs into one unpublished review batch."""
+    pdfs: list[Path] = []
+    for raw in paths:
+        path = Path(raw).expanduser()
+        if path.is_file() and path.suffix.lower() == ".pdf":
+            pdfs.append(path)
+        elif path.is_dir():
+            pdfs.extend(sorted(path.glob("*.pdf")))
+        else:
+            raise FileNotFoundError(f"Not a PDF file or folder: {path}")
+    if not pdfs:
+        raise FileNotFoundError("No PDF files found in the given path(s).")
+    _ingester, documents = _prepare_pdfs(pdfs, progress)
+    return documents
+
+
+def _require_ocr_dependencies() -> None:
     try:
         import paddle  # noqa: F401
         import paddlex  # noqa: F401
     except ImportError as exc:
         raise RuntimeError(
-            "betteringest_pdf needs paddlepaddle + paddlex (PP-DocLayoutV3 "
-            f"layout model), missing from this Python ({sys.executable}): {exc}. "
-            "Launch the app with the Python env that has them (pyenv 3.12.9 on "
-            "this machine — see .python-version) or `pip install paddlepaddle "
-            "paddlex paddleocr`.") from exc
+            "betteringest_pdf needs the locked OCR dependency group, missing "
+            f"from this Python ({sys.executable}): {exc}. Run `uv sync --group ocr`."
+        ) from exc
 
+
+def _prepare_pdfs(pdfs: list[Path], progress=None):
+    """Run deterministic reconstruction and return unpublished documents."""
+    _require_ocr_dependencies()
     from modules.ingest._betteringest import BetterIngest
+
+    ingester = BetterIngest(out_dir=OUT_DIR, cache_dir=OCR_CACHE_DIR)
+    documents = []
+    for index, pdf in enumerate(pdfs):
+        if progress:
+            progress({
+                "phase": "ocr",
+                "doc": pdf.stem,
+                "done": index,
+                "total": len(pdfs),
+                "message": f"Reconstructing {pdf.name} (layout OCR + hierarchy)…",
+            })
+        documents.append(ingester.ingest(pdf))
+    return ingester, documents
+
+
+def _ingest_pdfs(pdfs: list[Path], progress=None,
+                 caption_backend: str | None = None,
+                 caption_model: str | None = None) -> dict:
+    import os
+
     from modules.ingest._captioning import CaptioningUnavailable, caption_assets
     from modules.ingest._massage import massage
 
     backend = caption_backend or os.environ.get("BETTERINGEST_CAPTION_BACKEND",
                                                 "ollama")
     KB_DIR.mkdir(exist_ok=True)
-    bi = BetterIngest(out_dir=OUT_DIR, cache_dir=OCR_CACHE_DIR)
+    bi, documents = _prepare_pdfs(pdfs, progress)
     sources = _load_sources()
     warnings: list[str] = []
     done_stems: list[str] = []
@@ -153,11 +200,8 @@ def _ingest_pdfs(pdfs: list[Path], progress=None,
         if progress:
             progress(info)
 
-    for i, pdf in enumerate(pdfs):
+    for i, (pdf, doc) in enumerate(zip(pdfs, documents)):
         stem = pdf.stem
-        report("ocr", stem, i, f"Reconstructing {pdf.name} (layout OCR + hierarchy)…")
-        doc = bi.ingest(pdf)
-
         report("captions", stem, i, f"Captioning {len(doc.assets)} asset(s) of {pdf.name}…")
         try:
             caption_assets(bi, doc, backend=backend, model=caption_model,

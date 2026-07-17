@@ -367,9 +367,7 @@ function chatOnStatus(status) {
 
 // Escape + linebreaks + [n] → clickable citation chips.
 function renderRichText(text, sources, answerId) {
-  let html = (typeof marked !== 'undefined')
-    ? (marked.parse ? marked.parse(text || '') : marked(text || ''))
-    : escHtml(text || '').replace(/\n/g, '<br>');
+  let html = window.AsepsisMarkdown.render(text || '');
 
   html = html.replace(/\[(\d+)\]/g, (whole, n) => {
     const num = parseInt(n, 10);
