@@ -22,7 +22,7 @@ The debug console has **two tabs that share one backend run state**:
   the **original PDF page with the passage's bounding box highlighted** (for
   PDF-ingested documents), a live **retrieval-reasoning trace** (every kept / pruned /
   rejected / retrieved decision as it happens), and buttons into the annotated reader
-  and the Retrieval tab. A right-docked **evidence library** groups all sources by answer.
+  and the Retrieval tab. Verified sources stay inline with the answer they support.
 - **⊟ Retrieval** — the original explorer: Library → Ask → Review workflow, live
   treemap, graph/boxes verdict views, snippets, reader, and "why not?" explanations.
 
@@ -167,7 +167,7 @@ Both phases run in parallel across the configured Ollama instances.
 - **Action available mid-run:** click a box to open the **document viewer while the run is happening**. The markdown is annotated **in real time** — sections gain their verdict color the moment the model decides, and **hovering a paragraph shows the model's live decision** (status + reason), marked `· live`.
 - The frontend polls `/api/status` every **250 ms** to drive all of the above.
 
-⚙️ **Backend** — two-phase retrieval (`pageindex.retrieve_with_metadata`):
+⚙️ **Backend** — two-phase retrieval (`pageindex.search_document`):
 1. **Top-down pruning** (`_check_section_relevant`): BFS over the heading tree; each section is judged (from its full descendant outline) as possibly-relevant or not. Pruned branches are skipped entirely — their leaves are counted as "done" but never read. *Errs toward inclusion to avoid false negatives.*
 2. **Per-leaf evaluation** (`_evaluate_leaf`): every surviving leaf gets one focused LLM call returning `{relevant, reason, quote}`; the `quote` must be verbatim from the content.
 - Both phases run via a `ThreadPoolExecutor`, **round-robin across the Ollama pool** (each leaf is assigned to exactly one instance — no duplicated work).
@@ -184,7 +184,7 @@ Both phases run in parallel across the configured Ollama instances.
 - **Snippets panel:** every retrieved leaf as a card — document/section tags, the model's reason, and the full content with the **deciding quote highlighted**.
 
 ⚙️ **Backend**
-- The `/api/run` response contains, per document: the raw tree, `retrieved_ids`, the full `node_meta` (`{status, reason, quote}` per node), and the retrieved leaf nodes with content. For test cases it also returns the pass/fail evaluation (`missing` / `any_missing` against the test's `expected` / `expected_any`).
+- The `/api/run` debug adapter derives, per document, the raw tree, `retrieved_ids`, `node_meta` (`{status, reason, quote}` per node), and retrieved leaf content from the typed search result and exact immutable generation. For test cases it also returns the pass/fail evaluation (`missing` / `any_missing` against the test's `expected` / `expected_any`).
 
 ---
 
@@ -200,7 +200,7 @@ Both phases run in parallel across the configured Ollama instances.
 - **Graph controls** (top-right): adjust card size, node spacing, and hide/show the snippets panel.
 
 ⚙️ **Backend**
-- No new work — everything here is rendered from the `node_meta` already returned by `/api/run` and generation-scoped canonical Markdown.
+- No second retrieval path — everything here is rendered by the debug adapter from typed passage decisions and generation-scoped canonical Markdown.
 
 ---
 
