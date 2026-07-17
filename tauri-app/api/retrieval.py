@@ -7,9 +7,9 @@ return the same shape.
 from dataclasses import dataclass
 from enum import StrEnum
 import re
-from typing import Any
 
 import pageindex as _pi
+from pageindex.question_run import PassageDecision, PassageDecisionKind
 from pageindex.library import (
     ExpectedLibraryCorrupt,
     ExpectedLibraryNotBuilt,
@@ -106,21 +106,117 @@ class VerifiedEvidence:
 @dataclass(frozen=True)
 class DocumentSearch:
     document: str
-    status: DocumentStatus
-    tree: tuple[dict, ...]
-    node_meta: dict[str, dict]
+    decisions: tuple[PassageDecision, ...]
     evidence: tuple[VerifiedEvidence, ...]
     diagnostics: tuple[SearchDiagnostic, ...]
+
+    @classmethod
+    def from_verified_evidence(
+        cls,
+        document: str,
+        evidence: tuple[VerifiedEvidence, ...],
+    ) -> "DocumentSearch":
+        """Build canonical searched facts for deterministic adapters/fixtures."""
+        return cls(
+            document=document,
+            decisions=tuple(
+                PassageDecision(
+                    item.node.node_id,
+                    PassageDecisionKind.PASSAGE_RETRIEVED,
+                    item.reason,
+                    item.quote,
+                    document_id=document,
+                )
+                for item in evidence
+            ),
+            evidence=evidence,
+            diagnostics=(),
+        )
+
+    def __post_init__(self) -> None:
+        if not self.document:
+            raise ValueError("document search requires a document identity")
+        decisions_by_node = {decision.node_id: decision for decision in self.decisions}
+        if len(decisions_by_node) != len(self.decisions):
+            raise ValueError("document search contains duplicate node decisions")
+        if any(decision.document_id != self.document for decision in self.decisions):
+            raise ValueError("passage decision belongs to a different document")
+        evidence_by_node = {item.node.node_id: item for item in self.evidence}
+        if len(evidence_by_node) != len(self.evidence):
+            raise ValueError("document search contains duplicate evidence")
+        for node_id, item in evidence_by_node.items():
+            decision = decisions_by_node.get(node_id)
+            if item.document != self.document:
+                raise ValueError("verified evidence belongs to a different document")
+            if (
+                decision is None
+                or decision.kind is not PassageDecisionKind.PASSAGE_RETRIEVED
+                or decision.quote != item.quote
+                or decision.reason != item.reason
+            ):
+                raise ValueError("verified evidence contradicts its passage decision")
+        diagnosed_nodes = {
+            item.node_id for item in self.diagnostics if item.node_id is not None
+        }
+        if any(
+            decision.kind is PassageDecisionKind.PASSAGE_RETRIEVED
+            and decision.node_id not in evidence_by_node
+            and decision.node_id not in diagnosed_nodes
+            for decision in self.decisions
+        ):
+            raise ValueError("retrieved passage is missing evidence or a diagnostic")
+        if self.status is DocumentStatus.UNAVAILABLE:
+            if self.evidence or self.decisions:
+                raise ValueError("unavailable document cannot carry search facts")
+
+    @property
+    def status(self) -> DocumentStatus:
+        if any(
+            diagnostic.code == "document_unavailable"
+            and diagnostic.node_id is None
+            for diagnostic in self.diagnostics
+        ):
+            return DocumentStatus.UNAVAILABLE
+        if self.diagnostics:
+            return DocumentStatus.INCOMPLETE
+        return DocumentStatus.SEARCHED
 
 
 @dataclass(frozen=True)
 class LibrarySearchResult:
     query: str
     generation_id: str | None
-    status: LibraryStatus
     documents: tuple[DocumentSearch, ...]
-    evidence: tuple[VerifiedEvidence, ...]
-    diagnostics: tuple[SearchDiagnostic, ...]
+    availability_diagnostics: tuple[SearchDiagnostic, ...] = ()
+
+    def __post_init__(self) -> None:
+        if self.generation_id is None and self.documents:
+            raise ValueError("unavailable library cannot carry document results")
+        if self.generation_id is not None and not self.documents:
+            raise ValueError("opened library requires a non-empty document result")
+        identities = tuple(document.document for document in self.documents)
+        if len(set(identities)) != len(identities):
+            raise ValueError("library search contains duplicate documents")
+
+    @property
+    def evidence(self) -> tuple[VerifiedEvidence, ...]:
+        return tuple(item for document in self.documents for item in document.evidence)
+
+    @property
+    def diagnostics(self) -> tuple[SearchDiagnostic, ...]:
+        return self.availability_diagnostics + tuple(
+            item for document in self.documents for item in document.diagnostics
+        )
+
+    @property
+    def status(self) -> LibraryStatus:
+        if self.generation_id is None or not self.documents or all(
+            document.status is DocumentStatus.UNAVAILABLE for document in self.documents
+        ):
+            return LibraryStatus.UNAVAILABLE
+        if self.diagnostics:
+            return LibraryStatus.PARTIAL
+        return LibraryStatus.COMPLETE
 
     @property
     def coverage(self) -> SearchCoverage:
@@ -137,46 +233,6 @@ class LibrarySearchResult:
 
     def document(self, name: str) -> DocumentSearch | None:
         return next((document for document in self.documents if document.document == name), None)
-
-    def to_debug_results(self) -> dict[str, dict]:
-        """Adapter for the retrieval explorer's tree-oriented representation."""
-        results: dict[str, dict] = {}
-        for document in self.documents:
-            node_meta = {
-                node_id: dict(meta) for node_id, meta in document.node_meta.items()
-            }
-            for position, diagnostic in enumerate(document.diagnostics):
-                node_id = diagnostic.node_id or f"__document__:{position}"
-                node_meta[node_id] = {
-                    "status": "error",
-                    "reason": diagnostic.message,
-                    "quote": "",
-                    "code": diagnostic.code,
-                }
-            results[document.document] = {
-                "tree": list(document.tree),
-                "retrieved_ids": [item.node.node_id for item in document.evidence],
-                "node_meta": node_meta,
-                "nodes": [_legacy_node(item) for item in document.evidence],
-            }
-        return results
-
-
-def _legacy_node(evidence: VerifiedEvidence) -> dict[str, Any]:
-    node = evidence.node
-    pin = node.pin.to_dict() if node.pin is not None else None
-    return {
-        "node_id": node.node_id,
-        "title": node.title,
-        "content": node.content or "",
-        "synthetic": node.synthetic,
-        "heading_level": node.heading_level,
-        "summary": node.summary,
-        "pin": pin,
-        "breadcrumb": evidence.breadcrumb,
-        "reason": evidence.reason,
-        "quote": evidence.quote,
-    }
 
 
 class WholeLibraryRetrieval:
@@ -212,10 +268,8 @@ class WholeLibraryRetrieval:
             return LibrarySearchResult(
                 query=query,
                 generation_id=None,
-                status=LibraryStatus.UNAVAILABLE,
                 documents=(),
-                evidence=(),
-                diagnostics=(diagnostic,),
+                availability_diagnostics=(diagnostic,),
             )
         return self._search_snapshot(query, run, snapshot, retrieval_model)
 
@@ -226,13 +280,10 @@ class WholeLibraryRetrieval:
         snapshot: ExpectedLibrarySnapshot,
         retrieval_model: str | None,
     ) -> LibrarySearchResult:
-        prepared: list[
-            tuple[LibraryDocument, tuple[dict, ...] | None, SearchDiagnostic | None]
-        ] = []
+        prepared: list[tuple[LibraryDocument, SearchDiagnostic | None]] = []
         for library_document in snapshot.documents:
             document = library_document.document_id
             try:
-                tree = tuple(library_document.index.debug_tree)
                 if library_document.index.leaf_count == 0:
                     raise ValueError("document index has no searchable leaves")
             except Exception as exc:
@@ -241,24 +292,22 @@ class WholeLibraryRetrieval:
                     code="document_unavailable",
                     message=str(exc),
                 )
-                prepared.append((library_document, None, diagnostic))
+                prepared.append((library_document, diagnostic))
                 continue
-            prepared.append((library_document, tree, None))
+            prepared.append((library_document, None))
 
         run.set_total(sum(
             document.index.leaf_count
-            for document, tree, _ in prepared if tree is not None
+            for document, diagnostic in prepared if diagnostic is None
         ))
         documents: list[DocumentSearch] = []
-        for library_document, tree, read_diagnostic in prepared:
+        for library_document, read_diagnostic in prepared:
             document = library_document.document_id
-            if tree is None:
+            if read_diagnostic is not None:
                 assert read_diagnostic is not None
                 documents.append(DocumentSearch(
                     document=document,
-                    status=DocumentStatus.UNAVAILABLE,
-                    tree=(),
-                    node_meta={},
+                    decisions=(),
                     evidence=(),
                     diagnostics=(read_diagnostic,),
                 ))
@@ -267,7 +316,7 @@ class WholeLibraryRetrieval:
                 retrieval_options = {"model": retrieval_model}
                 if self._instances is not None:
                     retrieval_options["instances"] = self._instances
-                nodes, node_meta = self._engine.retrieve_with_metadata(
+                retrieval = self._engine.search_document(
                     document,
                     query,
                     run,
@@ -283,9 +332,7 @@ class WholeLibraryRetrieval:
                 documents.append(
                     DocumentSearch(
                         document=document,
-                        status=DocumentStatus.UNAVAILABLE,
-                        tree=tree,
-                        node_meta={},
+                        decisions=(),
                         evidence=(),
                         diagnostics=(diagnostic,),
                     )
@@ -293,19 +340,31 @@ class WholeLibraryRetrieval:
                 continue
 
             evidence: list[VerifiedEvidence] = []
+            decisions = tuple(retrieval.decisions)
             diagnostics = [
                 SearchDiagnostic(
                     document=document,
-                    node_id=node_id,
-                    code=str(meta.get("code") or "unevaluated_node"),
-                    message=str(meta.get("reason") or "The node was not evaluated."),
+                    node_id=decision.node_id,
+                    code=decision.code or "unevaluated_node",
+                    message=decision.reason or "The node was not evaluated.",
                 )
-                for node_id, meta in node_meta.items()
-                if meta.get("status") == "error"
+                for decision in decisions
+                if decision.kind.audit_status == "error"
             ]
-            for node in nodes:
-                meta = node_meta.get(node.node_id) or {}
-                quote = str(meta.get("quote") or "").strip()
+            for decision in decisions:
+                if decision.kind is not PassageDecisionKind.PASSAGE_RETRIEVED:
+                    continue
+                try:
+                    node = library_document.index.node(decision.node_id)
+                except KeyError:
+                    diagnostics.append(SearchDiagnostic(
+                        document=document,
+                        node_id=decision.node_id,
+                        code="unknown_retrieved_node",
+                        message="The retrieved decision named no indexed passage.",
+                    ))
+                    continue
+                quote = decision.quote.strip()
                 if not quote or quote not in (node.content or ""):
                     diagnostics.append(
                         SearchDiagnostic(
@@ -320,7 +379,7 @@ class WholeLibraryRetrieval:
                     document=document,
                     node=node,
                     breadcrumb=library_document.index.breadcrumb(node.node_id),
-                    reason=str(meta.get("reason") or ""),
+                    reason=decision.reason,
                     quote=quote,
                 ))
             node_order = library_document.index.node_order()
@@ -330,35 +389,14 @@ class WholeLibraryRetrieval:
             documents.append(
                 DocumentSearch(
                     document=document,
-                    status=(
-                        DocumentStatus.INCOMPLETE
-                        if diagnostics
-                        else DocumentStatus.SEARCHED
-                    ),
-                    tree=tree,
-                    node_meta=node_meta,
+                    decisions=decisions,
                     evidence=tuple(evidence),
                     diagnostics=tuple(diagnostics),
                 )
             )
 
-        all_evidence = tuple(item for document in documents for item in document.evidence)
-        all_diagnostics = tuple(
-            item for document in documents for item in document.diagnostics
-        )
-        if not documents or all(
-            document.status is DocumentStatus.UNAVAILABLE for document in documents
-        ):
-            status = LibraryStatus.UNAVAILABLE
-        elif all_diagnostics:
-            status = LibraryStatus.PARTIAL
-        else:
-            status = LibraryStatus.COMPLETE
         return LibrarySearchResult(
             query=query,
             generation_id=snapshot.generation_id,
-            status=status,
             documents=tuple(documents),
-            evidence=all_evidence,
-            diagnostics=all_diagnostics,
         )

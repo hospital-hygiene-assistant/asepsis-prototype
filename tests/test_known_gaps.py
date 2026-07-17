@@ -31,19 +31,27 @@ class TestC1QuoteVerification:
     def test_a_retrieved_leaf_quotes_its_own_text(self):
         fabricated = ('{"relevant": true, "reason": "states the rule", '
                       '"quote": "Isolate in a negative-pressure room for 14 days"}')
+        run = QuestionRun()
+        run.set_total(1)
         with patch.object(pi_search, "_chat", return_value=fabricated):
-            _, result = pi_search._evaluate_leaf(LEAF, "q", "doc", "crumb", "parent", run=QuestionRun())
+            decision = pi_search._evaluate_leaf(
+                LEAF, "q", "doc", "crumb", "parent", run=run
+            )
         # Neutral on the fix: drop the leaf, or mark it unverified and stop
         # claiming it — either way, nothing still called "retrieved" may carry a
         # quote that is not in the passage it points at.
-        if result["status"] == "retrieved":
-            assert result["quote"] in LEAF.content
+        if decision.kind.audit_status == "retrieved":
+            assert decision.quote in LEAF.content
 
     def test_a_leaf_with_no_quote_is_not_called_retrieved(self):
+        run = QuestionRun()
+        run.set_total(1)
         with patch.object(pi_search, "_chat",
                           return_value='{"relevant": true, "reason": "trust me"}'):
-            _, result = pi_search._evaluate_leaf(LEAF, "q", "doc", "crumb", "parent", run=QuestionRun())
-        assert result["status"] != "retrieved" or result["quote"]
+            decision = pi_search._evaluate_leaf(
+                LEAF, "q", "doc", "crumb", "parent", run=run
+            )
+        assert decision.kind.audit_status != "retrieved" or decision.quote
 
 
 class TestSectionWithoutAVerdictFailsOpen:
@@ -54,10 +62,10 @@ class TestSectionWithoutAVerdictFailsOpen:
                         summary="s", children=[LEAF])
         index = DocumentIndex.from_nodes((node,))
         with patch.object(pi_search, "_chat", return_value='["not", "a", "verdict"]'):
-            verdict, _ = pi_search._check_section_relevant(
+            decision = pi_search._check_section_relevant(
                 node, "q", "crumb", index, run=QuestionRun()
             )
-        assert verdict is True, "nothing was judged, so nothing may be pruned"
+        assert decision.kind.relevant is True, "nothing was judged, so nothing may be pruned"
 
 
 class TestM2UnavailableDocumentRemainsVisible:
@@ -73,12 +81,12 @@ class TestM2UnavailableDocumentRemainsVisible:
         })
 
         class OneDocVanishes:
-            def retrieve_with_metadata(
+            def search_document(
                 self, doc_name, query, run, index, **_options
             ):
                 if doc_name == "vanished":
                     raise FileNotFoundError("index deleted mid-run")
-                return [], {}
+                return pi_search.DocumentRetrieval(())
 
         run = RunRegistry().create("probe")
         results = api_retrieval.WholeLibraryRetrieval(

@@ -3,6 +3,75 @@
 import threading
 import time
 import uuid
+from dataclasses import dataclass
+from enum import StrEnum
+
+
+class PassageDecisionKind(StrEnum):
+    """One truthful retrieval decision, including conservative fail-open cases."""
+
+    SECTION_KEPT = "section_kept"
+    SECTION_PRUNED = "section_pruned"
+    SECTION_CHECK_FAILED = "section_check_failed"
+    PASSAGE_RETRIEVED = "passage_retrieved"
+    PASSAGE_REJECTED = "passage_rejected"
+    PASSAGE_CHECK_FAILED = "passage_check_failed"
+    PASSAGE_PRUNED = "passage_pruned"
+
+    @property
+    def completes_leaf(self) -> bool:
+        return self in (
+            self.PASSAGE_RETRIEVED,
+            self.PASSAGE_REJECTED,
+            self.PASSAGE_CHECK_FAILED,
+            self.PASSAGE_PRUNED,
+        )
+
+    @property
+    def live_group(self) -> str:
+        return {
+            self.SECTION_KEPT: "kept",
+            self.SECTION_PRUNED: "pruned",
+            self.SECTION_CHECK_FAILED: "kept",
+            self.PASSAGE_RETRIEVED: "retrieved",
+            self.PASSAGE_REJECTED: "rejected",
+            self.PASSAGE_CHECK_FAILED: "errored",
+            self.PASSAGE_PRUNED: "pruned",
+        }[self]
+
+    @property
+    def audit_status(self) -> str:
+        if self in (self.SECTION_CHECK_FAILED, self.PASSAGE_CHECK_FAILED):
+            return "error"
+        return self.live_group
+
+    @property
+    def relevant(self) -> bool:
+        return self in (
+            self.SECTION_KEPT,
+            self.SECTION_CHECK_FAILED,
+            self.PASSAGE_RETRIEVED,
+        )
+
+
+@dataclass(frozen=True)
+class PassageDecision:
+    node_id: str
+    kind: PassageDecisionKind
+    reason: str = ""
+    quote: str = ""
+    code: str | None = None
+    document_id: str = ""
+
+    def __post_init__(self) -> None:
+        if not self.node_id:
+            raise ValueError("passage decision requires a node identity")
+        if self.quote and self.kind is not PassageDecisionKind.PASSAGE_RETRIEVED:
+            raise ValueError("only retrieved passages may carry a quote")
+
+    @property
+    def identity(self) -> tuple[str, str]:
+        return (self.document_id, self.node_id)
 
 
 class QuestionRun:
@@ -16,12 +85,7 @@ class QuestionRun:
         self._detail = ""
         self._total = 0
         self._done = 0
-        self._pruned: set[str] = set()
-        self._retrieved: set[str] = set()
-        self._kept: set[str] = set()
-        self._rejected: set[str] = set()
-        self._errored: set[str] = set()
-        self._meta: dict[str, dict] = {}
+        self._decisions: dict[tuple[str, str], PassageDecision] = {}
 
     @property
     def phase(self) -> str:
@@ -37,50 +101,21 @@ class QuestionRun:
         with self._lock:
             self._total = total_leaves
             self._done = 0
-            for group in (
-                self._pruned,
-                self._retrieved,
-                self._kept,
-                self._rejected,
-                self._errored,
-            ):
-                group.clear()
-            self._meta.clear()
+            self._decisions.clear()
 
-    def mark(self, status: str, node_id: str) -> None:
-        groups = {
-            "pruned": self._pruned,
-            "retrieved": self._retrieved,
-            "kept": self._kept,
-            "rejected": self._rejected,
-            "errored": self._errored,
-        }
-        try:
-            group = groups[status]
-        except KeyError as exc:
-            raise ValueError(f"unknown retrieval verdict: {status}") from exc
+    def record_decision(self, decision: PassageDecision) -> None:
+        """Record one passage decision and its progress as one locked change."""
         with self._lock:
-            group.add(node_id)
-
-    def record(
-        self,
-        node_id: str,
-        status: str,
-        reason: str = "",
-        quote: str = "",
-    ) -> None:
-        with self._lock:
-            self._meta[node_id] = {
-                "status": status,
-                "reason": reason,
-                "quote": quote,
-            }
-
-    def leaf_complete(self) -> None:
-        with self._lock:
-            if self._done >= self._total:
-                raise RuntimeError("retrieval completed more leaves than declared")
-            self._done += 1
+            if decision.identity in self._decisions:
+                raise RuntimeError(
+                    f"retrieval decided passage '{decision.node_id}' twice"
+                )
+            if decision.kind.completes_leaf:
+                if self._done >= self._total:
+                    raise RuntimeError("retrieval completed more leaves than declared")
+            self._decisions[decision.identity] = decision
+            if decision.kind.completes_leaf:
+                self._done += 1
 
     def begin_synthesis(self, detail: str = "") -> None:
         self._set_phase("synthesis", detail)
@@ -110,13 +145,44 @@ class QuestionRun:
             }
 
     def _events_unlocked(self) -> dict:
+        groups = {
+            "pruned": [],
+            "retrieved": [],
+            "kept": [],
+            "rejected": [],
+            "errored": [],
+        }
+        metadata: dict[str, dict] = {}
+        audit: list[dict] = []
+        for decision in self._decisions.values():
+            key = (
+                f"{decision.document_id}::{decision.node_id}"
+                if decision.document_id
+                else decision.node_id
+            )
+            groups[decision.kind.live_group].append(key)
+            item = {
+                "document_id": decision.document_id,
+                "node_id": decision.node_id,
+                "kind": decision.kind.value,
+                "status": decision.kind.audit_status,
+                "group": decision.kind.live_group,
+                "reason": decision.reason,
+                "quote": decision.quote,
+                "code": decision.code,
+            }
+            metadata[key] = {
+                "status": item["status"],
+                "reason": decision.reason,
+                "quote": decision.quote,
+            }
+            if decision.code is not None:
+                metadata[key]["code"] = decision.code
+            audit.append(item)
         return {
-            "pruned": list(self._pruned),
-            "retrieved": list(self._retrieved),
-            "kept": list(self._kept),
-            "rejected": list(self._rejected),
-            "errored": list(self._errored),
-            "meta": {key: dict(value) for key, value in self._meta.items()},
+            **groups,
+            "meta": metadata,
+            "decisions": audit,
         }
 
     def _set_phase(self, phase: str, detail: str) -> None:

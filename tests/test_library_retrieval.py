@@ -2,8 +2,12 @@
 
 from types import SimpleNamespace
 
-from api.retrieval import LibraryStatus, WholeLibraryRetrieval
+import pytest
+
+from api.retrieval import DocumentSearch, LibraryStatus, WholeLibraryRetrieval
+from api.routers.retrieval import _debug_results
 from api.runs import RunRegistry
+from pageindex import DocumentRetrieval, PassageDecision, PassageDecisionKind
 from pageindex.library import ExpectedLibraryStore, LibraryCandidate
 from pageindex.nodes import PageNode
 
@@ -35,10 +39,34 @@ class ScriptedIndex:
     def __init__(self, results: dict):
         self.results = results
 
-    def retrieve_with_metadata(
+    def search_document(
         self, document, query, state, path, model=None
     ):
-        return self.results[document]
+        _nodes, metadata = self.results[document]
+        return scripted_retrieval(document, metadata)
+
+
+def scripted_retrieval(document, metadata):
+    kinds = {
+        "retrieved": PassageDecisionKind.PASSAGE_RETRIEVED,
+        "rejected": PassageDecisionKind.PASSAGE_REJECTED,
+        "error": PassageDecisionKind.SECTION_CHECK_FAILED,
+        "kept": PassageDecisionKind.SECTION_KEPT,
+        "pruned": PassageDecisionKind.PASSAGE_PRUNED,
+    }
+    return DocumentRetrieval(
+        tuple(
+            PassageDecision(
+                node_id,
+                kinds[meta["status"]],
+                str(meta.get("reason") or ""),
+                str(meta.get("quote") or ""),
+                meta.get("code"),
+                document_id=document,
+            )
+            for node_id, meta in metadata.items()
+        ),
+    )
 
 
 def test_a_fully_searched_library_exposes_only_exactly_quoted_evidence(tmp_path):
@@ -68,6 +96,30 @@ def test_a_fully_searched_library_exposes_only_exactly_quoted_evidence(tmp_path)
         ("hygiene", "isolation", "require a single room")
     ]
     assert result.evidence[0].breadcrumb == "Guideline > Isolation"
+
+
+def test_a_retrieved_decision_cannot_disappear_from_evidence():
+    decision = PassageDecision(
+        "isolation",
+        PassageDecisionKind.PASSAGE_RETRIEVED,
+        "states the measure",
+        "single room",
+        document_id="hygiene",
+    )
+
+    with pytest.raises(ValueError, match="missing evidence or a diagnostic"):
+        DocumentSearch("hygiene", (decision,), (), ())
+
+
+def test_a_passage_decision_cannot_cross_document_searches():
+    decision = PassageDecision(
+        "isolation",
+        PassageDecisionKind.PASSAGE_REJECTED,
+        document_id="other-guide",
+    )
+
+    with pytest.raises(ValueError, match="different document"):
+        DocumentSearch("hygiene", (decision,), (), ())
 
 
 def test_an_invalid_quote_is_excluded_and_makes_coverage_partial(tmp_path):
@@ -108,18 +160,18 @@ def test_a_document_lost_during_search_remains_named_as_partial_coverage(tmp_pat
     })
 
     class OneDocumentVanishes:
-        def retrieve_with_metadata(
+        def search_document(
             self, document, query, state, path, model=None
         ):
             if document == "b_vanished":
                 raise FileNotFoundError("index deleted during retrieval")
-            return [present], {
+            return scripted_retrieval(document, {
                 "present": {
                     "status": "retrieved",
                     "reason": "states hygiene",
                     "quote": "hand disinfectant",
                 }
-            }
+            })
 
     result = WholeLibraryRetrieval(
         OneDocumentVanishes(), library_store=library
@@ -196,12 +248,12 @@ def test_one_run_uses_one_retrieval_model_across_every_document(tmp_path):
         def __init__(self):
             self.seen = []
 
-        def retrieve_with_metadata(
+        def search_document(
             self, document, query, state, path, model=None
         ):
             self.seen.append(model)
             self.settings.model = "model-b"
-            return [], {}
+            return scripted_retrieval([], {})
 
     engine = ModelChangingEngine()
 
@@ -225,9 +277,10 @@ def test_debug_adapter_preserves_verified_reason_quote_and_content(tmp_path):
         }),
     })
 
-    result = WholeLibraryRetrieval(engine, library_store=library).search(
+    search = WholeLibraryRetrieval(engine, library_store=library).search(
         "q", RunRegistry().create("probe")
-    ).to_debug_results()
+    )
+    result = _debug_results(search, library)
 
     node = result["hygiene"]["nodes"][0]
     assert node["reason"] == "states isolation"

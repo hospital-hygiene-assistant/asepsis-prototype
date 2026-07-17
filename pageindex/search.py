@@ -12,11 +12,12 @@ checked" is not "irrelevant".
 import re
 import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from dataclasses import dataclass
 from typing import Optional
 
 import ollama
 
-from .question_run import QuestionRun
+from .question_run import PassageDecision, PassageDecisionKind, QuestionRun
 from .document_index import DocumentIndex
 from .clients import acquire, pool, release
 from .llm import _chat, _parse_json_response
@@ -32,6 +33,21 @@ from .settings import settings
 # Per-leaf evaluation
 # ---------------------------------------------------------------------------
 
+@dataclass(frozen=True)
+class DocumentRetrieval:
+    """One document's complete typed retrieval audit."""
+
+    decisions: tuple[PassageDecision, ...]
+
+    @property
+    def retrieved_node_ids(self) -> tuple[str, ...]:
+        return tuple(
+            decision.node_id
+            for decision in self.decisions
+            if decision.kind is PassageDecisionKind.PASSAGE_RETRIEVED
+        )
+
+
 def _evaluate_leaf(
     leaf: "PageNode",
     query: str,
@@ -43,8 +59,8 @@ def _evaluate_leaf(
     model: str | None = None,
     *,
     run: QuestionRun,
-) -> tuple[str, dict]:
-    """Evaluate one leaf. Returns (node_id, {relevant, reason, quote, status})."""
+) -> PassageDecision:
+    """Evaluate one leaf and atomically record its truthful decision."""
     prompt = (
         LEAF_EVAL_PROMPT
         .replace("QUERY_PLACEHOLDER", query)
@@ -54,6 +70,8 @@ def _evaluate_leaf(
         .replace("CONTENT_PLACEHOLDER", leaf.content or "(no content)")
     )
     failure_code = "evaluation_error"
+    decision: PassageDecision | None = None
+    failure = "the model returned no usable verdict"
     acquire(client_url)
     try:
         raw = _chat(prompt, client, client_url, model)
@@ -72,30 +90,29 @@ def _evaluate_leaf(
                     )
                     failure_code = "invalid_quote"
                 else:
-                    run.mark("retrieved", leaf.node_id)
-                    run.record(leaf.node_id, "retrieved", reason, quote)
-                    return leaf.node_id, {
-                        "relevant": True,
-                        "reason": reason,
-                        "quote": quote,
-                        "status": "retrieved"
-                    }
+                    decision = PassageDecision(
+                        leaf.node_id,
+                        PassageDecisionKind.PASSAGE_RETRIEVED,
+                        reason,
+                        quote,
+                        document_id=doc_name,
+                    )
             else:
-                run.mark("rejected", leaf.node_id)
-                run.record(leaf.node_id, "rejected", reason)
-                return leaf.node_id, {
-                    "relevant": False,
-                    "reason": reason,
-                    "quote": "",
-                    "status": "rejected"
-                }
-        else:
-            failure = "the model returned no usable verdict"
+                decision = PassageDecision(
+                    leaf.node_id,
+                    PassageDecisionKind.PASSAGE_REJECTED,
+                    reason,
+                    document_id=doc_name,
+                )
     except Exception as exc:
         print(f"    [warn] leaf eval failed for {leaf.node_id}: {exc}", file=sys.stderr)
         failure = str(exc)
     finally:
         release(client_url)
+
+    if decision is not None:
+        run.record_decision(decision)
+        return decision
 
     # Reached only when the model could not be consulted, or answered with
     # something unparseable. That is not a judgement that the passage is
@@ -103,15 +120,15 @@ def _evaluate_leaf(
     # "rejected" would report "nothing relevant was found" to a clinician when
     # the truth is that nothing was actually checked. Mirrors the section
     # check, which already refuses to prune on error.
-    run.mark("errored", leaf.node_id)
-    run.record(leaf.node_id, "error", failure)
-    return leaf.node_id, {
-        "relevant": False,
-        "reason": failure,
-        "quote": "",
-        "status": "error",
-        "code": failure_code,
-    }
+    decision = PassageDecision(
+        leaf.node_id,
+        PassageDecisionKind.PASSAGE_CHECK_FAILED,
+        failure,
+        code=failure_code,
+        document_id=doc_name,
+    )
+    run.record_decision(decision)
+    return decision
 
 
 # ---------------------------------------------------------------------------
@@ -153,7 +170,8 @@ def _check_section_relevant(
     model: str | None = None,
     *,
     run: QuestionRun,
-) -> tuple[bool, str]:
+    document_id: str = "",
+) -> PassageDecision:
     """Lightweight LLM call: can this section contain a direct answer?"""
     query_terms = _terms(query)
     direct_matches = sorted(query_terms & _heading_terms(node, index))
@@ -162,14 +180,17 @@ def _check_section_relevant(
             "Kept because the query directly matches descendant heading term(s): "
             + ", ".join(direct_matches)
         )
-        run.mark("kept", node.node_id)
-        run.record(node.node_id, "kept", reason)
+        decision = PassageDecision(
+            node.node_id, PassageDecisionKind.SECTION_KEPT, reason,
+            document_id=document_id,
+        )
+        run.record_decision(decision)
         print(
             f"    [prune-check] {node.node_id}: KEEP (heading match: "
             f"{', '.join(direct_matches)})",
             file=sys.stderr,
         )
-        return True, reason
+        return decision
 
     descendants = _format_descendant_outline(node) or "(no subsections)"
     prompt = (
@@ -188,16 +209,30 @@ def _check_section_relevant(
         reason = str(result.get("reason") or "").strip()
 
         if verdict:
-            run.mark("kept", node.node_id)
-            run.record(node.node_id, "kept", reason)
+            decision = PassageDecision(
+                node.node_id, PassageDecisionKind.SECTION_KEPT, reason,
+                document_id=document_id,
+            )
+        else:
+            decision = PassageDecision(
+                node.node_id, PassageDecisionKind.SECTION_PRUNED, reason,
+                document_id=document_id,
+            )
+        run.record_decision(decision)
 
         print(f"    [prune-check] {node.node_id}: {'KEEP' if verdict else 'PRUNE'} (raw={raw!r:.120})", file=sys.stderr)
-        return verdict, reason
+        return decision
     except Exception as exc:
-        run.mark("kept", node.node_id)
-        run.record(node.node_id, "error", str(exc))
+        decision = PassageDecision(
+            node.node_id,
+            PassageDecisionKind.SECTION_CHECK_FAILED,
+            f"Error checking section: {exc}",
+            code="section_check_failed",
+            document_id=document_id,
+        )
+        run.record_decision(decision)
         print(f"    [prune-check] {node.node_id}: ERROR ({exc}) — keeping", file=sys.stderr)
-        return True, f"Error checking section: {exc}"  # conservative: never prune on error
+        return decision  # conservative: never prune on error
     finally:
         release(client_url)
 
@@ -250,9 +285,10 @@ def _prune_and_collect(
     query: str,
     index: DocumentIndex,
     node_assignment: dict[str, tuple],
-    node_meta: dict[str, dict],
+    decisions: dict[str, PassageDecision],
     run: QuestionRun,
     model: str | None = None,
+    document_id: str = "",
 ) -> list["PageNode"]:
     """
     BFS top-down pruning. At each level, check all internal nodes in parallel;
@@ -281,64 +317,51 @@ def _prune_and_collect(
                     *node_assignment.get(node.node_id, default_instance),
                     model,
                     run=run,
+                    document_id=document_id,
                 ): node
                 for node in sections
             }
             next_frontier: list["PageNode"] = []
             for future in as_completed(futures):
                 node = futures[future]
-                verdict, reason = future.result()
-                recorded = run.events()["meta"].get(node.node_id, {})
-                status = "error" if recorded.get("status") == "error" else (
-                    "kept" if verdict else "pruned"
-                )
-                node_meta[node.node_id] = {
-                    "relevant": verdict,
-                    "reason": reason,
-                    "status": status,
-                }
+                decision = future.result()
+                decisions[node.node_id] = decision
 
-                if verdict:
+                if decision.kind.relevant:
                     next_frontier.extend(node.children)
                 else:
                     # Pruned: count all leaf descendants toward "done" so the
                     # progress counter reaches total. They won't be evaluated again.
                     _prune_reason = f"Pruned because ancestor section '{node.title}' was pruned."
-                    run.record(node.node_id, "pruned", reason or _prune_reason)
-                    for leaf in index.leaves_under(node.node_id):
-                        run.leaf_complete()
-                        run.mark("pruned", leaf.node_id)
-                        run.record(leaf.node_id, "pruned", _prune_reason)
-                        node_meta[leaf.node_id] = {
-                            "relevant": False,
-                            "reason": _prune_reason,
-                            "status": "pruned"
-                        }
                     for descendant in index.descendants(
-                        node.node_id, include_self=True
+                        node.node_id
                     ):
-                        run.mark("pruned", descendant.node_id)
-                        if descendant.node_id != node.node_id:
-                            run.record(descendant.node_id, "pruned", _prune_reason)
-                            node_meta[descendant.node_id] = {
-                                "relevant": False,
-                                "reason": _prune_reason,
-                                "status": "pruned"
-                            }
+                        descendant_decision = PassageDecision(
+                            descendant.node_id,
+                            (
+                                PassageDecisionKind.PASSAGE_PRUNED
+                                if descendant.is_leaf
+                                else PassageDecisionKind.SECTION_PRUNED
+                            ),
+                            _prune_reason,
+                            document_id=document_id,
+                        )
+                        run.record_decision(descendant_decision)
+                        decisions[descendant.node_id] = descendant_decision
 
         frontier = next_frontier
 
     return candidate_leaves
 
 
-def retrieve_with_metadata(
+def search_document(
     doc_name: str,
     query: str,
     run: Optional[QuestionRun],
     index: DocumentIndex,
     model: str | None = None,
     instances=None,
-) -> tuple[list[PageNode], dict[str, dict]]:
+) -> DocumentRetrieval:
     """Two-phase retrieval with top-down pruning.
 
     Phase 1: BFS section checks — prune branches whose sections are irrelevant.
@@ -347,7 +370,8 @@ def retrieve_with_metadata(
     Records into `run` as it goes, so a client can watch. Without one, the
     verdicts are still returned; only the live view is skipped.
 
-    Returns (selected_leaves_in_doc_order, {node_id: {reason, quote}}).
+    Returns typed passage decisions in document order. Selected evidence is
+    derived from retrieved decisions by the Whole-library search module.
     """
     run = run or QuestionRun()
     retrieval_model = model or settings.model
@@ -355,7 +379,7 @@ def retrieve_with_metadata(
     leaves = list(index.leaves)
 
     if not leaves:
-        return [], {}
+        return DocumentRetrieval(())
     if run.progress()["total"] == 0:
         run.set_total(len(leaves))
 
@@ -373,18 +397,23 @@ def retrieve_with_metadata(
     for node in index.all_nodes:
         node_assignment.setdefault(node.node_id, instances[0])
 
-    node_meta: dict[str, dict] = {}
-    if nodes:
-        node_meta[nodes[0].node_id] = {
-            "relevant": True,
-            "reason": f"Document root '{nodes[0].title}' — starting point for retrieval.",
-            "status": "kept"
-        }
+    decisions: dict[str, PassageDecision] = {}
+    if len(nodes) == 1 and nodes[0].children:
+        root = nodes[0]
+        root_decision = PassageDecision(
+            root.node_id,
+            PassageDecisionKind.SECTION_KEPT,
+            f"Document root '{root.title}' — starting point for retrieval.",
+            document_id=doc_name,
+        )
+        decisions[root.node_id] = root_decision
+        run.record_decision(root_decision)
 
     # Phase 1 — top-down pruning
     top = nodes[0].children if (len(nodes) == 1 and nodes[0].children) else nodes
     surviving = _prune_and_collect(
-        top, query, index, node_assignment, node_meta, run, retrieval_model
+        top, query, index, node_assignment, decisions, run, retrieval_model,
+        document_id=doc_name,
     )
     print(
         f"  [prune] {doc_name}: {len(surviving)}/{len(leaves)} leaves after pruning",
@@ -409,10 +438,12 @@ def retrieve_with_metadata(
                 for leaf in surviving
             }
             for future in as_completed(futures):
-                node_id, meta = future.result()
-                node_meta[node_id] = meta
-                run.leaf_complete()
+                decision = future.result()
+                decisions[decision.node_id] = decision
 
     # Preserve original document order
-    selected = [l for l in leaves if node_meta.get(l.node_id, {}).get("relevant")]
-    return selected, node_meta
+    order = index.node_order()
+    ordered_decisions = tuple(sorted(
+        decisions.values(), key=lambda item: order.get(item.node_id, len(order))
+    ))
+    return DocumentRetrieval(ordered_decisions)

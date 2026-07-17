@@ -15,7 +15,19 @@ from fastapi.testclient import TestClient
 
 import server
 from api.runs import RunRegistry
-from pageindex import QuestionRun
+from pageindex import PassageDecision, PassageDecisionKind, QuestionRun
+
+
+def retrieved(
+    node_id: str, reason: str = "", quote: str = "", document_id: str = ""
+):
+    return PassageDecision(
+        node_id,
+        PassageDecisionKind.PASSAGE_RETRIEVED,
+        reason,
+        quote,
+        document_id=document_id,
+    )
 
 
 @pytest.fixture
@@ -24,26 +36,76 @@ def client():
 
 
 class TestQuestionRunIsolation:
+    def test_a_passage_decision_updates_audit_and_progress_atomically(self):
+        run = QuestionRun()
+        run.set_total(1)
+        run.record_decision(retrieved("p", "exact", "verbatim"))
+
+        assert run.progress() == {"total": 1, "done": 1}
+        assert run.events()["meta"]["p"] == {
+            "status": "retrieved",
+            "reason": "exact",
+            "quote": "verbatim",
+        }
+
+    def test_a_failed_section_check_is_kept_but_audited_as_error(self):
+        run = QuestionRun()
+        run.record_decision(PassageDecision(
+            "section",
+            PassageDecisionKind.SECTION_CHECK_FAILED,
+            "model unavailable",
+        ))
+
+        assert run.events()["kept"] == ["section"]
+        assert run.events()["meta"]["section"]["status"] == "error"
+
+    def test_a_passage_cannot_complete_twice(self):
+        run = QuestionRun()
+        run.set_total(1)
+        run.record_decision(retrieved("p", "first", "quote"))
+
+        with pytest.raises(RuntimeError, match="twice"):
+            run.record_decision(retrieved("p", "second", "replacement"))
+
+        assert run.progress() == {"total": 1, "done": 1}
+        assert run.events()["meta"]["p"]["reason"] == "first"
+
+    def test_the_same_node_identity_can_complete_in_two_documents(self):
+        run = QuestionRun()
+        run.set_total(2)
+        run.record_decision(retrieved("ppe", document_id="guide-a"))
+        run.record_decision(retrieved("ppe", document_id="guide-b"))
+
+        assert run.progress() == {"total": 2, "done": 2}
+        assert [
+            (item["document_id"], item["node_id"])
+            for item in run.events()["decisions"]
+        ] == [("guide-a", "ppe"), ("guide-b", "ppe")]
+        assert set(run.events()["meta"]) == {"guide-a::ppe", "guide-b::ppe"}
+
     def test_two_runs_keep_their_own_progress(self):
         a, b = QuestionRun(), QuestionRun()
         a.set_total(10)
         b.set_total(3)
-        a.leaf_complete()
+        a.record_decision(retrieved("a"))
         assert a.progress() == {"total": 10, "done": 1}
         assert b.progress() == {"total": 3, "done": 0}
 
     def test_starting_one_run_does_not_reset_another(self):
         a = QuestionRun()
         a.set_total(5)
-        a.leaf_complete()
+        a.record_decision(retrieved("a"))
         QuestionRun().set_total(99)   # a second client arrives mid-run
         assert a.progress() == {"total": 5, "done": 1}
 
     def test_verdicts_do_not_leak_between_runs(self):
         a, b = QuestionRun(), QuestionRun()
-        a.mark("retrieved", "a-node")
-        a.record("a-node", "retrieved", "because of A's question", quote="A's quote")
-        b.mark("rejected", "b-node")
+        a.set_total(1)
+        b.set_total(1)
+        a.record_decision(retrieved("a-node", "because of A's question", "A's quote"))
+        b.record_decision(PassageDecision(
+            "b-node", PassageDecisionKind.PASSAGE_REJECTED
+        ))
 
         assert a.events()["retrieved"] == ["a-node"]
         assert b.events()["retrieved"] == []
@@ -56,8 +118,7 @@ class TestQuestionRunIsolation:
 
         def worker(offset: int):
             for i in range(100):
-                run.mark("retrieved", f"n{offset + i}")
-                run.leaf_complete()
+                run.record_decision(retrieved(f"n{offset + i}"))
 
         threads = [threading.Thread(target=worker, args=(o,)) for o in (0, 1000)]
         for t in threads:
@@ -110,7 +171,7 @@ class TestRunsEndpoint:
         run = registry.create("probe")
         run.begin_retrieval("Reading…")
         run.set_total(7)
-        run.leaf_complete()
+        run.record_decision(retrieved("passage"))
 
         body = client.get("/api/runs/probe").json()
         assert body["run_id"] == "probe"

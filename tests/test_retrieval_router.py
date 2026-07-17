@@ -36,10 +36,6 @@ def test_debug_results_carry_generation_scoped_reader_links(monkeypatch):
         status = type("Status", (), {"value": "complete"})()
         diagnostics = ()
 
-        @staticmethod
-        def to_debug_results():
-            return {"hygiene guide": {"tree": []}}
-
     Search.generation_id = generation_id
 
     class Retrieval:
@@ -51,6 +47,11 @@ def test_debug_results_carry_generation_scoped_reader_links(monkeypatch):
         retrieval_router,
         "build_whole_library_retrieval",
         lambda: Retrieval(),
+    )
+    monkeypatch.setattr(
+        retrieval_router,
+        "_debug_results",
+        lambda _search: {"hygiene guide": {"tree": [], "nodes": []}},
     )
 
     response = retrieval_router.run_query(

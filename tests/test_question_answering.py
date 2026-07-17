@@ -15,7 +15,6 @@ from api.question_answering import (
 )
 from api.retrieval import (
     DocumentSearch,
-    DocumentStatus,
     LibrarySearchResult,
     LibraryStatus,
     SearchCoverage,
@@ -86,33 +85,19 @@ def test_question_answering_requires_a_citation_factory():
 
 
 def searched_document(evidence=()) -> DocumentSearch:
-    return DocumentSearch(
-        document="hygiene",
-        status=DocumentStatus.SEARCHED,
-        tree=(),
-        node_meta={},
-        evidence=tuple(evidence),
-        diagnostics=(),
+    return DocumentSearch.from_verified_evidence("hygiene", tuple(evidence))
+
+
+def complete_search(evidence=()) -> LibrarySearchResult:
+    return LibrarySearchResult(
+        "Welche Maßnahmen bei MRSA?",
+        GENERATION_ID,
+        (searched_document(evidence),),
     )
 
 
 def test_a_complete_search_without_evidence_is_an_honest_negative():
-    document = DocumentSearch(
-        document="hygiene",
-        status=DocumentStatus.SEARCHED,
-        tree=(),
-        node_meta={},
-        evidence=(),
-        diagnostics=(),
-    )
-    search = LibrarySearchResult(
-        query="Welche Maßnahmen bei MRSA?",
-        generation_id=GENERATION_ID,
-        status=LibraryStatus.COMPLETE,
-        documents=(document,),
-        evidence=(),
-        diagnostics=(),
-    )
+    search = complete_search()
     answering = QuestionAnswering(
         StubSearch(search), SynthesisMustNotRun(), citation_factory()
     )
@@ -132,91 +117,39 @@ def test_a_complete_search_without_evidence_is_an_honest_negative():
 
 
 def test_an_outcome_rejects_impossible_complete_coverage():
-    search = LibrarySearchResult(
-        query="Welche Maßnahmen bei MRSA?",
-        generation_id=GENERATION_ID,
-        status=LibraryStatus.COMPLETE,
-        documents=(),
-        evidence=(),
-        diagnostics=(),
-    )
-
-    with pytest.raises(ValueError, match="non-empty expected library"):
-        AnswerOutcome.insufficient_evidence(search)
+    with pytest.raises(ValueError, match="non-empty document result"):
+        LibrarySearchResult("q", GENERATION_ID, ())
 
 
 def test_an_outcome_rejects_a_noncanonical_generation_identity():
     search = LibrarySearchResult(
         query="q",
         generation_id="generation-test",
-        status=LibraryStatus.UNAVAILABLE,
-        documents=(),
-        evidence=(),
-        diagnostics=(),
+        documents=(searched_document(),),
     )
 
     with pytest.raises(ValueError, match="64 lowercase hexadecimal"):
         AnswerOutcome.retrieval_unavailable(search)
 
 
-@pytest.mark.parametrize(
-    ("status", "documents", "diagnostics"),
-    [
-        (LibraryStatus.PARTIAL, (), ()),
-        (LibraryStatus.PARTIAL, (
-            DocumentSearch(
-                "hygiene", DocumentStatus.SEARCHED, (), {}, (), ()
-            ),
-        ), ()),
-        (LibraryStatus.PARTIAL, (
-            DocumentSearch(
-                "hygiene", DocumentStatus.UNAVAILABLE, (), {}, (), ()
-            ),
-        ), (SearchDiagnostic("hygiene", "unavailable", "technical"),)),
-        (LibraryStatus.UNAVAILABLE, (
-            DocumentSearch(
-                "hygiene", DocumentStatus.SEARCHED, (), {}, (), ()
-            ),
-        ), ()),
-    ],
-)
-def test_an_outcome_rejects_contradictory_incomplete_coverage(
-    status, documents, diagnostics
-):
-    search = LibrarySearchResult(
-        query="Welche Maßnahmen bei MRSA?",
-        generation_id=GENERATION_ID,
-        status=status,
-        documents=documents,
-        evidence=(),
-        diagnostics=diagnostics,
-    )
+def test_document_search_derives_incomplete_status_from_diagnostics():
+    diagnostic = SearchDiagnostic("hygiene", "failed", "technical")
+    search = DocumentSearch("hygiene", (), (), (diagnostic,))
 
-    with pytest.raises(ValueError, match="coverage"):
-        AnswerOutcome.synthesis_unavailable(search, ())
+    assert search.status.value == "incomplete"
 
 
 def test_outcome_kinds_reject_contradictory_search_facts():
-    searched = DocumentSearch(
-        "hygiene", DocumentStatus.SEARCHED, (), {}, (), ()
-    )
-    unavailable = DocumentSearch(
-        "isolation", DocumentStatus.UNAVAILABLE, (), {}, (), ()
-    )
+    searched = searched_document()
     diagnostic = SearchDiagnostic(
         "isolation", "document_unavailable", "technical"
     )
-    complete = LibrarySearchResult(
-        "q", GENERATION_ID, LibraryStatus.COMPLETE,
-        (searched,), (), (),
+    unavailable = DocumentSearch(
+        "isolation", (), (), (diagnostic,)
     )
-    partial = LibrarySearchResult(
-        "q", GENERATION_ID, LibraryStatus.PARTIAL,
-        (searched, unavailable), (), (diagnostic,),
-    )
-    unavailable_search = LibrarySearchResult(
-        "q", None, LibraryStatus.UNAVAILABLE, (), (), (),
-    )
+    complete = LibrarySearchResult("q", GENERATION_ID, (searched,))
+    partial = LibrarySearchResult("q", GENERATION_ID, (searched, unavailable))
+    unavailable_search = LibrarySearchResult("q", None, ())
 
     contradictions = (
         (AnswerOutcome.insufficient_evidence, (partial,)),
@@ -234,9 +167,7 @@ def test_outcome_kinds_reject_contradictory_search_facts():
 
 
 def test_a_future_outcome_kind_must_be_handled_explicitly():
-    search = LibrarySearchResult(
-        "q", None, LibraryStatus.UNAVAILABLE, (), (), (),
-    )
+    search = LibrarySearchResult("q", None, ())
 
     with pytest.raises(AssertionError, match="unhandled answer kind"):
         AnswerOutcome._create("future", search)  # type: ignore[arg-type]
@@ -257,14 +188,7 @@ def test_an_outcome_rejects_a_citation_bound_to_different_evidence():
         "exact",
         "Wear gloves.",
     )
-    search = LibrarySearchResult(
-        "q",
-        GENERATION_ID,
-        LibraryStatus.COMPLETE,
-        (searched_document((evidence,)),),
-        (evidence,),
-        (),
-    )
+    search = complete_search((evidence,))
     citation = EvidenceCitation(
         "s1",
         1,
@@ -292,22 +216,14 @@ def test_an_incomplete_search_without_evidence_is_not_a_document_finding():
         "isolation", "document_unavailable", "technical"
     )
     search = LibrarySearchResult(
-        query="Welche Maßnahmen bei MRSA?",
-        generation_id=GENERATION_ID,
-        status=LibraryStatus.PARTIAL,
-        documents=(
+        "Welche Maßnahmen bei MRSA?",
+        GENERATION_ID,
+        (
             searched_document(),
             DocumentSearch(
-                "isolation",
-                DocumentStatus.UNAVAILABLE,
-                (),
-                {},
-                (),
-                (diagnostic,),
+                "isolation", (), (), (diagnostic,)
             ),
         ),
-        evidence=(),
-        diagnostics=(diagnostic,),
     )
     answering = QuestionAnswering(
         StubSearch(search), SynthesisMustNotRun(), citation_factory()
@@ -335,14 +251,7 @@ def test_verified_evidence_is_the_only_input_to_answer_synthesis():
         reason="nennt die Maßnahme",
         quote="erfordert ein Einzelzimmer",
     )
-    search = LibrarySearchResult(
-        query="Welche Maßnahmen bei MRSA?",
-        generation_id=GENERATION_ID,
-        status=LibraryStatus.COMPLETE,
-        documents=(searched_document((evidence,)),),
-        evidence=(evidence,),
-        diagnostics=(),
-    )
+    search = complete_search((evidence,))
     synthesis = RecordingSynthesis()
     answering = QuestionAnswering(StubSearch(search), synthesis, citation_factory())
 
@@ -377,14 +286,7 @@ def test_a_synthesis_outage_is_a_visible_technical_outcome():
         reason="nennt die Maßnahme",
         quote="erfordert ein Einzelzimmer",
     )
-    search = LibrarySearchResult(
-        query="Welche Maßnahmen bei MRSA?",
-        generation_id=GENERATION_ID,
-        status=LibraryStatus.COMPLETE,
-        documents=(searched_document((evidence,)),),
-        evidence=(evidence,),
-        diagnostics=(),
-    )
+    search = complete_search((evidence,))
 
     outcome = QuestionAnswering(
         StubSearch(search), UnavailableSynthesis(), citation_factory()
@@ -450,14 +352,7 @@ def test_an_answer_with_an_out_of_range_citation_is_unavailable():
         reason="nennt die Maßnahme",
         quote="erfordert ein Einzelzimmer",
     )
-    search = LibrarySearchResult(
-        query="Welche Maßnahmen bei MRSA?",
-        generation_id=GENERATION_ID,
-        status=LibraryStatus.COMPLETE,
-        documents=(searched_document((evidence,)),),
-        evidence=(evidence,),
-        diagnostics=(),
-    )
+    search = complete_search((evidence,))
 
     outcome = QuestionAnswering(
         StubSearch(search), InvalidCitationSynthesis(), citation_factory()
@@ -484,14 +379,7 @@ def test_an_answer_without_any_inline_citation_is_unavailable():
         reason="nennt die Maßnahme",
         quote="erfordert ein Einzelzimmer",
     )
-    search = LibrarySearchResult(
-        query="Welche Maßnahmen bei MRSA?",
-        generation_id=GENERATION_ID,
-        status=LibraryStatus.COMPLETE,
-        documents=(searched_document((evidence,)),),
-        evidence=(evidence,),
-        diagnostics=(),
-    )
+    search = complete_search((evidence,))
 
     outcome = QuestionAnswering(
         StubSearch(search), MissingCitationSynthesis(), citation_factory()

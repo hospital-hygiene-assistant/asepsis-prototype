@@ -9,9 +9,7 @@ from api.chat_wire import ChatResponseV3, RegionV3, encode_outcome
 from api.question_answering import AnswerOutcome, EvidenceCitation, GroundedAnswer
 from api.retrieval import (
     DocumentSearch,
-    DocumentStatus,
     LibrarySearchResult,
-    LibraryStatus,
     SearchDiagnostic,
     VerifiedEvidence,
 )
@@ -41,16 +39,11 @@ def answered_outcome(*, exact: bool = False) -> AnswerOutcome:
         reason="nennt die Maßnahme",
         quote="Handschuhe tragen.",
     )
-    document = DocumentSearch(
-        "hygiene", DocumentStatus.SEARCHED, (), {}, (evidence,), ()
-    )
+    document = DocumentSearch.from_verified_evidence("hygiene", (evidence,))
     search = LibrarySearchResult(
         "Welche Maßnahmen bei MRSA?",
         GENERATION_ID,
-        LibraryStatus.COMPLETE,
         (document,),
-        (evidence,),
-        (),
     )
     citation = EvidenceCitation(
         id="s1",
@@ -87,13 +80,12 @@ def partial_search(answered: AnswerOutcome) -> LibrarySearchResult:
         "isolation", "document_unavailable", "technical state"
     )
     unavailable = DocumentSearch(
-        "isolation", DocumentStatus.UNAVAILABLE, (), {}, (), (diagnostic,)
+        "isolation", (), (), (diagnostic,)
     )
-    return replace(
-        answered.search,
-        status=LibraryStatus.PARTIAL,
-        documents=(*answered.search.documents, unavailable),
-        diagnostics=(diagnostic,),
+    return LibrarySearchResult(
+        answered.search.query,
+        answered.search.generation_id,
+        (*answered.search.documents, unavailable),
     )
 
 
@@ -141,9 +133,6 @@ def test_retrieval_unavailable_before_a_snapshot_has_null_generation():
     search = LibrarySearchResult(
         "Welche Maßnahmen bei MRSA?",
         None,
-        LibraryStatus.UNAVAILABLE,
-        (),
-        (),
         (),
     )
 

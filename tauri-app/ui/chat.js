@@ -332,16 +332,21 @@ function chatOnStatus(status) {
     }
   }
 
-  const meta = status.live?.meta || {};
+  const audit = status.live?.decisions;
+  const entries = Array.isArray(audit)
+    ? audit.map(item => [`${item.document_id}::${item.node_id}`, item])
+    : Object.entries(status.live?.meta || {});
   let added = false;
-  for (const [nodeId, m] of Object.entries(meta)) {
-    if (p.seen.has(nodeId)) continue;
-    p.seen.add(nodeId);
+  for (const [identity, m] of entries) {
+    if (p.seen.has(identity)) continue;
+    p.seen.add(identity);
+    const nodeId = m.node_id || identity;
     const [ico, word] = TRACE_META[m.status] || ['·', m.status];
     const line = el('div', `trace-line ${m.status}`);
     const info = chatState.nodeInfo[nodeId] || {};
     const label = info.title || nodeId;
-    const docTag = info.doc ? ` <span class="trace-doc">· ${escHtml(prettyDoc(info.doc))}</span>` : '';
+    const documentId = m.document_id || info.doc;
+    const docTag = documentId ? ` <span class="trace-doc">· ${escHtml(prettyDoc(documentId))}</span>` : '';
     line.innerHTML = `<span class="trace-ico">${ico}</span><span>` +
       `<span class="trace-what">${word} — ${escHtml(label)}</span>${docTag}` +
       (m.reason ? ` <span class="trace-why">${escHtml(m.reason)}</span>` : '') +

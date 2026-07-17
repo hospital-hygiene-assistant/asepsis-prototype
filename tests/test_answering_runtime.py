@@ -8,6 +8,7 @@ from api.answering_runtime import (
 )
 from api.question_answering import AnswerKind, Question
 from api.runs import RunRegistry
+from pageindex import DocumentRetrieval, PassageDecision, PassageDecisionKind
 from pageindex.library import ExpectedLibraryStore, LibraryCandidate
 from pageindex.nodes import PageNode
 
@@ -38,7 +39,7 @@ def test_one_question_snapshots_models_and_pool_once_for_every_document(tmp_path
         def __init__(self):
             self.calls = []
 
-        def retrieve_with_metadata(
+        def search_document(
             self, document, query, state, path, model=None, instances=None
         ):
             self.calls.append((document, model, instances))
@@ -46,12 +47,14 @@ def test_one_question_snapshots_models_and_pool_once_for_every_document(tmp_path
             self.settings.synthesis_model = "synthesis-b"
             node = nodes[document]
             if document == "a":
-                return [node], {node.node_id: {
-                    "status": "retrieved",
-                    "reason": "exact",
-                    "quote": node.content,
-                }}
-            return [], {}
+                return DocumentRetrieval((PassageDecision(
+                    node.node_id,
+                    PassageDecisionKind.PASSAGE_RETRIEVED,
+                    "exact",
+                    node.content,
+                    document_id=document,
+                ),))
+            return DocumentRetrieval(())
 
     class Client:
         def __init__(self):
@@ -105,11 +108,11 @@ def test_debug_retrieval_uses_the_same_frozen_runtime_seam(tmp_path):
         def __init__(self):
             self.call = None
 
-        def retrieve_with_metadata(
+        def search_document(
             self, document, query, state, path, model=None, instances=None
         ):
             self.call = (model, instances)
-            return [], {}
+            return DocumentRetrieval(())
 
     engine = Engine()
     instances = ((object(), "http://ollama-a"),)

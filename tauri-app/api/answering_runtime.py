@@ -17,7 +17,6 @@ from .question_answering import (
 )
 from .retrieval import (
     LibrarySearchResult,
-    LibraryStatus,
     SearchDiagnostic,
     WholeLibraryRetrieval,
 )
@@ -112,10 +111,8 @@ def answer_question(
         search = LibrarySearchResult(
             query=question.text.strip(),
             generation_id=None,
-            status=LibraryStatus.UNAVAILABLE,
             documents=(),
-            evidence=(),
-            diagnostics=(diagnostic,),
+            availability_diagnostics=(diagnostic,),
         )
         return AnswerOutcome.retrieval_unavailable(search)
     return answering.answer(question, run)

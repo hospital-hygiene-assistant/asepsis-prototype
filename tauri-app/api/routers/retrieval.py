@@ -24,6 +24,67 @@ from ..scoring import eval_case
 router = APIRouter()
 
 
+def _legacy_node(evidence) -> dict:
+    node = evidence.node
+    return {
+        "node_id": node.node_id,
+        "title": node.title,
+        "content": node.content or "",
+        "synthetic": node.synthetic,
+        "heading_level": node.heading_level,
+        "summary": node.summary,
+        "pin": node.pin.to_dict() if node.pin is not None else None,
+        "breadcrumb": evidence.breadcrumb,
+        "reason": evidence.reason,
+        "quote": evidence.quote,
+    }
+
+
+def _legacy_decision_metadata(decision) -> dict:
+    """Project one typed decision into the retrieval explorer's old shape."""
+    metadata = {
+        "relevant": decision.kind.relevant,
+        "reason": decision.reason,
+        "quote": decision.quote,
+        "status": decision.kind.audit_status,
+    }
+    if decision.code is not None:
+        metadata["code"] = decision.code
+    return metadata
+
+
+def _debug_results(search, library_store=None) -> dict[str, dict]:
+    """Render the retrieval explorer's legacy shape at its adapter."""
+    if search.generation_id is None:
+        return {}
+    store = library_store or ExpectedLibraryStore(LIBRARY_DIR)
+    snapshot = store.open_generation(
+        search.generation_id
+    )
+    results: dict[str, dict] = {}
+    for document in search.documents:
+        node_meta = {
+            decision.node_id: _legacy_decision_metadata(decision)
+            for decision in document.decisions
+        }
+        for position, diagnostic in enumerate(document.diagnostics):
+            node_id = diagnostic.node_id or f"__document__:{position}"
+            node_meta[node_id] = {
+                "status": "error",
+                "reason": diagnostic.message,
+                "quote": "",
+                "code": diagnostic.code,
+            }
+        index = snapshot.document(document.document).index
+        results[document.document] = {
+            "tree": list(index.debug_tree),
+            "retrieved_ids": [item.node.node_id for item in document.evidence],
+            "node_meta": node_meta,
+            "nodes": [_legacy_node(item) for item in document.evidence],
+        }
+    return results
+
+
 def _document_href(generation_id: str, document_id: str) -> str:
     return (
         f"/api/library/{generation_id}/documents/"
@@ -133,7 +194,7 @@ def run_query(req: RunRequest):
         run.fail()
         raise
     run.complete()
-    results = search.to_debug_results()
+    results = _debug_results(search)
     if search.generation_id is not None:
         for document_id, result in results.items():
             base_href = _document_href(search.generation_id, document_id)

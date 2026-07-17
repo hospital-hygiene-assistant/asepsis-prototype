@@ -15,9 +15,7 @@ from .question_answering import (
 )
 from .retrieval import (
     DocumentSearch,
-    DocumentStatus,
     LibrarySearchResult,
-    LibraryStatus,
     SearchDiagnostic,
     VerifiedEvidence,
 )
@@ -82,42 +80,22 @@ def _answer() -> GroundedAnswer:
 
 
 def _complete(evidence: tuple[VerifiedEvidence, ...]) -> LibrarySearchResult:
-    document = DocumentSearch(
-        "hygiene", DocumentStatus.SEARCHED, (), {}, evidence, ()
-    )
-    return LibrarySearchResult(
-        QUERY,
-        GENERATION_ID,
-        LibraryStatus.COMPLETE,
-        (document,),
-        evidence,
-        (),
-    )
+    document = DocumentSearch.from_verified_evidence("hygiene", evidence)
+    return LibrarySearchResult(QUERY, GENERATION_ID, (document,))
 
 
 def _partial(evidence: tuple[VerifiedEvidence, ...]) -> LibrarySearchResult:
     diagnostic = SearchDiagnostic(
         "isolation", "document_unavailable", "technical state"
     )
-    searched = DocumentSearch(
-        "hygiene", DocumentStatus.SEARCHED, (), {}, evidence, ()
-    )
+    searched = DocumentSearch.from_verified_evidence("hygiene", evidence)
     unavailable = DocumentSearch(
         "isolation",
-        DocumentStatus.UNAVAILABLE,
         (),
-        {},
         (),
         (diagnostic,),
     )
-    return LibrarySearchResult(
-        QUERY,
-        GENERATION_ID,
-        LibraryStatus.PARTIAL,
-        (searched, unavailable),
-        evidence,
-        (diagnostic,),
-    )
+    return LibrarySearchResult(QUERY, GENERATION_ID, (searched, unavailable))
 
 
 def fixture_payloads() -> dict[str, str]:
@@ -138,9 +116,7 @@ def fixture_payloads() -> dict[str, str]:
             _partial(())
         ),
         "retrieval_unavailable.json": AnswerOutcome.retrieval_unavailable(
-            LibrarySearchResult(
-                QUERY, None, LibraryStatus.UNAVAILABLE, (), (), ()
-            ),
+            LibrarySearchResult(QUERY, None, ()),
         ),
         "synthesis_unavailable_complete.json": AnswerOutcome.synthesis_unavailable(
             _complete(evidence),

@@ -17,7 +17,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 
-from pageindex import QuestionRun
+from pageindex import PassageDecisionKind, QuestionRun
 from pageindex import search as pi_search
 from pageindex.nodes import PageNode
 import server
@@ -25,7 +25,6 @@ from api.routers import chat as chat_router
 from api.question_answering import AnswerKind, AnswerOutcome
 from api.retrieval import (
     DocumentSearch,
-    DocumentStatus,
     LibrarySearchResult,
     LibraryStatus,
 )
@@ -45,25 +44,34 @@ def leaf(node_id="glycaemic-targets"):
     )
 
 
+def evaluate(target=None):
+    target = target or leaf()
+    run = QuestionRun()
+    run.set_total(1)
+    return pi_search._evaluate_leaf(
+        target, "q", "doc", "crumb", "parent", run=run
+    )
+
+
 class TestUnevaluatedLeafIsNotRejected:
     def test_model_failure_yields_error_not_rejected(self):
         with patch.object(pi_search, "_chat", side_effect=RuntimeError("llama runner died")):
-            _, result = pi_search._evaluate_leaf(leaf(), "q", "doc", "crumb", "parent", run=QuestionRun())
+            result = evaluate()
         # "rejected" would assert the passage is clinically irrelevant.
-        assert result["status"] == "error"
-        assert result["relevant"] is False
+        assert result.kind.audit_status == "error"
+        assert result.kind.relevant is False
 
     def test_failure_reason_is_carried_not_silently_dropped(self):
         with patch.object(pi_search, "_chat", side_effect=RuntimeError("llama runner died")):
-            _, result = pi_search._evaluate_leaf(leaf(), "q", "doc", "crumb", "parent", run=QuestionRun())
-        assert "llama runner died" in result["reason"]
+            result = evaluate()
+        assert "llama runner died" in result.reason
 
     def test_unparseable_verdict_is_also_an_error(self):
         # The model answered, but with nothing usable. Still not a judgement.
         with patch.object(pi_search, "_chat", return_value="I'm afraid I can't do that"):
             with patch.object(pi_search, "_parse_json_response", return_value=None):
-                _, result = pi_search._evaluate_leaf(leaf(), "q", "doc", "crumb", "parent", run=QuestionRun())
-        assert result["status"] == "error"
+                result = evaluate()
+        assert result.kind.audit_status == "error"
 
     def test_errored_leaves_are_tracked_apart_from_rejected(self):
         run = QuestionRun()
@@ -71,15 +79,15 @@ class TestUnevaluatedLeafIsNotRejected:
         with patch.object(pi_search, "_chat", side_effect=RuntimeError("down")):
             pi_search._evaluate_leaf(leaf("n1"), "q", "doc", "crumb", "parent", run=run)
         events = run.events()
-        assert "n1" in events["errored"]
-        assert "n1" not in events["rejected"]
+        assert "doc::n1" in events["errored"]
+        assert "doc::n1" not in events["rejected"]
 
     def test_a_real_rejection_still_rejects(self):
         # The honest negative must survive: this is a genuine model verdict.
         with patch.object(pi_search, "_chat", return_value='{"relevant": false, "reason": "off topic"}'):
-            _, result = pi_search._evaluate_leaf(leaf(), "q", "doc", "crumb", "parent", run=QuestionRun())
-        assert result["status"] == "rejected"
-        assert result["reason"] == "off topic"
+            result = evaluate()
+        assert result.kind is PassageDecisionKind.PASSAGE_REJECTED
+        assert result.reason == "off topic"
 
     def test_a_real_hit_still_retrieves(self):
         # The quote is copied verbatim out of leaf().content on purpose: the
@@ -90,10 +98,10 @@ class TestUnevaluatedLeafIsNotRejected:
             return_value='{"relevant": true, "reason": "states the target", '
                          '"quote": "HbA1c target is <53"}',
         ):
-            _, result = pi_search._evaluate_leaf(leaf(), "q", "doc", "crumb", "parent", run=QuestionRun())
-        assert result["status"] == "retrieved"
-        assert result["quote"] == "HbA1c target is <53"
-        assert result["quote"] in leaf().content
+            result = evaluate()
+        assert result.kind is PassageDecisionKind.PASSAGE_RETRIEVED
+        assert result.quote == "HbA1c target is <53"
+        assert result.quote in leaf().content
 
 
 class TestChatEndpointRefusesToFakeAFinding:
@@ -107,14 +115,11 @@ class TestChatEndpointRefusesToFakeAFinding:
         return LibrarySearchResult(
             query="What PPE for MRSA?",
             generation_id=GENERATION_ID if complete else None,
-            status=status,
             documents=(
                 DocumentSearch(
-                    "hygiene", DocumentStatus.SEARCHED, (), {}, (), ()
+                    "hygiene", (), (), ()
                 ),
             ) if complete else (),
-            evidence=(),
-            diagnostics=(),
         )
 
     def test_total_failure_is_503_not_insufficient_evidence(self, client, monkeypatch):

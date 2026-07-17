@@ -617,6 +617,13 @@ async function executeRun(body, message) {
 
 let _tmNodeById = {};
 
+function treemapNodeKey(d) {
+  let documentNode = d;
+  while (documentNode && !documentNode.data.isDoc) documentNode = documentNode.parent;
+  const documentId = documentNode?.data.name || '';
+  return d.data.nodeId ? `${documentId}::${d.data.nodeId}` : '';
+}
+
 function initLibrary(docs) {
   renderTreemap(docs);
   updateLibraryCount(docs);
@@ -776,12 +783,13 @@ function renderTreemap(docs) {
     .style('cursor', 'pointer')
     .each(function (d) {
       this.__d = d;
-      if (d.data.nodeId) _tmNodeById[d.data.nodeId] = this;
+      const key = treemapNodeKey(d);
+      if (key) _tmNodeById[key] = this;
     })
     .on('mouseover', (event, d) => {
       const id = d.data.nodeId;
       if (!id || id === '_root') return;
-      const elx = _tmNodeById[id];
+      const elx = _tmNodeById[treemapNodeKey(d)];
       let statusLabel = 'Pending evaluation', statusClass = 'tt-muted';
       if (elx) {
         if (elx.classList.contains('tm-retrieved')) { statusLabel = '✓ Retrieved'; statusClass = 'tt-selected'; }
@@ -829,6 +837,12 @@ function fitLabel(label, w, h) {
 function applyTreemapEvents(status) {
   if (!status || !status.live) return;
   const live = status.live;
+  const decisionByIdentity = new Map(
+    (live.decisions || []).map(item => [
+      `${item.document_id}::${item.node_id}`,
+      item.status,
+    ]),
+  );
   const prunedSet = new Set(live.pruned || []);
   const rejectedSet = new Set(live.rejected || []);
   const retrievedSet = new Set(live.retrieved || []);
@@ -839,9 +853,17 @@ function applyTreemapEvents(status) {
     for (let curr = elx.__d; curr; curr = curr.parent) {
       const id = curr.data.nodeId;
       if (!id) continue;
-      if (retrievedSet.has(id)) { cls = 'tm-retrieved'; break; }
-      if (rejectedSet.has(id)) cls = 'tm-rejected';
-      else if (prunedSet.has(id) && cls === 'tm-pending') cls = 'tm-pruned';
+      const identity = treemapNodeKey(curr);
+      const status = decisionByIdentity.get(identity);
+      if (status === 'retrieved' || retrievedSet.has(identity) || retrievedSet.has(id)) {
+        cls = 'tm-retrieved'; break;
+      }
+      if (status === 'rejected' || rejectedSet.has(identity) || rejectedSet.has(id)) {
+        cls = 'tm-rejected';
+      } else if (
+        (status === 'pruned' || prunedSet.has(identity) || prunedSet.has(id))
+        && cls === 'tm-pending'
+      ) cls = 'tm-pruned';
     }
     const isLeaf = elx.classList.contains('tm-leaf');
     elx.setAttribute('class', `tm-rect ${isLeaf ? 'tm-leaf' : ''} ${cls}`);
@@ -1386,6 +1408,15 @@ function getDocVerdicts(stem) {
   if (viewerGeneration && resultGeneration && viewerGeneration !== resultGeneration) return null;
   if (res) return { retrieved: new Set(res.retrieved_ids || []), meta: res.node_meta || {}, live: false };
   const live = state.liveStatus?.live;
+  if (Array.isArray(live?.decisions)) {
+    const decisions = live.decisions.filter(item => item.document_id === stem);
+    const meta = Object.fromEntries(decisions.map(item => [item.node_id, item]));
+    return {
+      retrieved: new Set(decisions.filter(item => item.status === 'retrieved').map(item => item.node_id)),
+      meta,
+      live: true,
+    };
+  }
   if (live && (live.meta || live.retrieved)) {
     const meta = { ...(live.meta || {}) };
     const ensure = (ids, status) => (ids || []).forEach(id => { if (!meta[id]) meta[id] = { status }; });

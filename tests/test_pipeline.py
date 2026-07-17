@@ -13,7 +13,6 @@ from api.question_answering import (
 )
 from api.retrieval import (
     DocumentSearch,
-    DocumentStatus,
     LibrarySearchResult,
     LibraryStatus,
     SearchDiagnostic,
@@ -56,44 +55,33 @@ def library_dir(tmp_path, monkeypatch):
 
 
 def search(status=LibraryStatus.COMPLETE, evidence=()):
+    searched_document = evidence[0].document if evidence else "ready"
     if status is LibraryStatus.UNAVAILABLE:
         documents = ()
-        diagnostics = ()
         generation_id = None
     elif status is LibraryStatus.PARTIAL:
         diagnostic = SearchDiagnostic(
             "unavailable", "document_unavailable", "technical"
         )
         documents = (
-            DocumentSearch(
-                "ready", DocumentStatus.SEARCHED, (), {}, tuple(evidence), ()
-            ),
+            DocumentSearch.from_verified_evidence(searched_document, tuple(evidence)),
             DocumentSearch(
                 "unavailable",
-                DocumentStatus.UNAVAILABLE,
                 (),
-                {},
                 (),
                 (diagnostic,),
             ),
         )
-        diagnostics = (diagnostic,)
         generation_id = GENERATION_ID
     else:
         documents = (
-            DocumentSearch(
-                "ready", DocumentStatus.SEARCHED, (), {}, tuple(evidence), ()
-            ),
+            DocumentSearch.from_verified_evidence(searched_document, tuple(evidence)),
         )
-        diagnostics = ()
         generation_id = GENERATION_ID
     return LibrarySearchResult(
         query="q",
         generation_id=generation_id,
-        status=status,
         documents=documents,
-        evidence=evidence,
-        diagnostics=diagnostics,
     )
 
 
@@ -186,7 +174,7 @@ class TestQuery:
         )
         outcome = AnswerOutcome.retrieval_unavailable(
             LibrarySearchResult(
-                "q", None, LibraryStatus.UNAVAILABLE, (), (), (diagnostic,)
+                "q", None, (), (diagnostic,)
             ),
         )
         calls = []
