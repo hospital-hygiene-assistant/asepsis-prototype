@@ -8,7 +8,7 @@ import server
 from api.routers import reviews as reviews_router
 from modules.ingest._betteringest.betteringest import Asset, IngestedDoc
 from modules.ingest._betteringest.ocr import Block
-from modules.ingest.review import ReviewStore
+from modules.ingest.review import ReviewStore, TableState
 
 pdfium = pytest.importorskip("pypdfium2")
 
@@ -62,6 +62,31 @@ def test_session_view_exposes_opaque_links_not_paths(review_client):
     assert "pdf_filename" not in payload["documents"][0]
     assert "markdown" not in payload["documents"][0]
     assert "/tmp/" not in response.text
+
+
+def test_active_review_can_be_rediscovered(review_client):
+    client, session = review_client
+    response = client.get("/api/ingest/review-active")
+    assert response.status_code == 200
+    assert response.json() == {"review_id": session.session_id}
+
+
+def test_region_view_omits_raw_paddle_payload_and_redacts_errors(review_client):
+    client, session = review_client
+    region = session.documents[0].regions[0]
+    region.kind = "table"
+    region.table_state = TableState.FAILED
+    region.table_payload = {"input": "/tmp/private/table.png"}
+    region.table_error = "failed reading /tmp/private/table.png"
+    reviews_router.review_store._write(session)
+
+    response = client.get(f"/api/ingest/reviews/{session.session_id}")
+
+    assert response.status_code == 200
+    payload = response.json()["documents"][0]["regions"][0]
+    assert "table_payload" not in payload
+    assert "/tmp/" not in response.text
+    assert payload["table_error"] == "Local table recognition did not produce structure."
 
 
 def test_review_page_is_session_scoped_png(review_client):

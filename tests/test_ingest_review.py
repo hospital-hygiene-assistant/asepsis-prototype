@@ -82,6 +82,12 @@ def test_figure_only_session_is_ready_and_persists(store, tmp_path):
     assert (store.root / session.session_id / "guide" / "source.pdf").is_file()
 
 
+def test_active_review_is_rediscovered_by_a_new_store_instance(store, tmp_path):
+    session = store.create([_doc(tmp_path)])
+    reopened = ReviewStore(store.root, store.library.root)
+    assert reopened.active().session_id == session.session_id
+
+
 def test_table_requires_recognition_or_explicit_failure_acknowledgement(store, tmp_path):
     session = store.create([_doc(tmp_path, "table")])
     assert session.state is SessionState.DRAFT
@@ -167,6 +173,38 @@ def test_stale_revision_cannot_overwrite_newer_geometry(store, tmp_path):
         store.replace_regions(
             session.session_id, "guide", session.revision, [region]
         )
+
+
+def test_crop_revision_does_not_move_when_session_commit_fails(
+    store, tmp_path, monkeypatch
+):
+    session = store.create([_doc(tmp_path)])
+    original = session.documents[0]
+    old_crop_path = (
+        store.root / session.session_id / "guide"
+        / f"assets-r{original.asset_revision}" / "figure_1.png"
+    )
+    old_crop = old_crop_path.read_bytes()
+    edit = RegionEdit.model_validate(original.regions[0].model_dump(include={
+        "region_id", "kind", "page", "box", "caption",
+        "asset_filename", "deleted",
+    }))
+    edit = edit.model_copy(update={
+        "box": NormalizedBox(x=0.2, y=0.2, width=0.3, height=0.3),
+    })
+
+    def fail_write(_session):
+        raise OSError("injected session write failure")
+
+    monkeypatch.setattr(store, "_write", fail_write)
+    with pytest.raises(OSError, match="injected"):
+        store.replace_regions(session.session_id, "guide", session.revision, [edit])
+
+    persisted = store.get(session.session_id)
+    assert persisted.revision == session.revision
+    assert persisted.documents[0].asset_revision == original.asset_revision
+    assert old_crop_path.read_bytes() == old_crop
+    assert not (store.root / session.session_id / "guide" / "assets-r2").exists()
 
 
 def test_rectangle_validation_is_strict_and_contained():

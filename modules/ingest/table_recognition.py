@@ -32,6 +32,7 @@ def _load_pipeline():
             ) from exc
         _pipeline = TableRecognitionPipelineV2(
             device="cpu",
+            text_recognition_model_name="latin_PP-OCRv5_mobile_rec",
             use_doc_orientation_classify=False,
             use_doc_unwarping=False,
             use_layout_detection=False,

@@ -397,5 +397,12 @@
     ui.dialog.showModal();
   }
 
-  global.AsepsisReview = Object.freeze({ open });
+  async function resumeActive() {
+    const active = await request('/api/ingest/review-active');
+    if (!active.review_id) return false;
+    await open(active.review_id);
+    return true;
+  }
+
+  global.AsepsisReview = Object.freeze({ open, resumeActive });
 })(window);

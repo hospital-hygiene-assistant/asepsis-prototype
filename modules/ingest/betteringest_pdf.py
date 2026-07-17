@@ -74,46 +74,21 @@ def _load_sources() -> dict[str, SourceCandidate]:
 def run(source_dir: str | None = None, progress=None,
         caption_backend: str | None = None,
         caption_model: str | None = None) -> dict:
-    """Ingest every *.pdf in the source folder into knowledge_base/.
-
-    `progress(info: dict)` (optional) receives {phase, doc, done, total,
-    message} updates — the server threads this into /api/ingest/progress.
-    Returns {"docs": [stems], "warnings": [str]}.
-    """
-    src = Path(source_dir or get_source_dir() or "")
-    if not src or not src.is_dir():
-        raise FileNotFoundError(
-            f"BetterIngest source folder not set or missing: '{src}'. Pick a "
-            "folder of PDFs in the app (or pass source_dir).")
-    if source_dir:
-        set_source_dir(str(src))
-
-    pdfs = sorted(src.glob("*.pdf"))
-    if not pdfs:
-        raise FileNotFoundError(f"No PDF files found in {src}/")
-
-    return _ingest_pdfs(pdfs, progress, caption_backend, caption_model)
+    """Refuse the former publication path that bypasses operator review."""
+    raise RuntimeError(
+        "BetterIngest PDF requires figure/table review in the local operator "
+        "console; start it through the ingest controls instead of the CLI."
+    )
 
 
 def run_paths(paths: list[str], progress=None,
               caption_backend: str | None = None,
               caption_model: str | None = None) -> dict:
-    """Additive ingest: process an explicit list of PDF files and/or folders
-    ON TOP of whatever is already in knowledge_base/ (existing documents are
-    untouched; a re-ingested stem is overwritten). Powers the Library's
-    “＋ Add PDFs” affordance."""
-    pdfs: list[Path] = []
-    for raw in paths:
-        p = Path(raw).expanduser()
-        if p.is_file() and p.suffix.lower() == ".pdf":
-            pdfs.append(p)
-        elif p.is_dir():
-            pdfs.extend(sorted(p.glob("*.pdf")))
-        else:
-            raise FileNotFoundError(f"Not a PDF file or folder: {p}")
-    if not pdfs:
-        raise FileNotFoundError("No PDF files found in the given path(s).")
-    return _ingest_pdfs(pdfs, progress, caption_backend, caption_model)
+    """Refuse additive publication that bypasses operator review."""
+    raise RuntimeError(
+        "BetterIngest PDF requires figure/table review in the local operator "
+        "console; use Add to library there instead of the direct adapter."
+    )
 
 
 def prepare_review(source_dir: str | None = None, progress=None):

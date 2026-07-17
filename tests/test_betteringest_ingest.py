@@ -4,6 +4,7 @@ the massager (pins, asset leaves, id join) and pageindex's pin handling.
 No OCR, no Ollama, no PDFs — blocks and markdown are synthesised.
 """
 
+import pytest
 
 from pageindex import nodes as pi  # tree-building internals
 from modules.ingest._betteringest.betteringest import Asset, IngestedDoc
@@ -11,6 +12,15 @@ from modules.ingest._betteringest.ocr import Block
 from modules.ingest._massage import massage
 from modules.registry import discover
 from pageindex.library import read_source_candidates
+
+
+def test_public_pdf_adapter_cannot_bypass_operator_review():
+    from modules.ingest import betteringest_pdf
+
+    with pytest.raises(RuntimeError, match="requires figure/table review"):
+        betteringest_pdf.run(source_dir="/unused")
+    with pytest.raises(RuntimeError, match="requires figure/table review"):
+        betteringest_pdf.run_paths(["/unused"])
 
 
 def _fake_doc(tmp_path) -> IngestedDoc:

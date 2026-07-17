@@ -125,6 +125,9 @@ async function init() {
   initDocViewer();
   initSetupCard(docs);
   setView('library');
+  window.AsepsisReview.resumeActive().catch(error => {
+    toast(`Could not resume ingest review: ${error.message}`, 'err', 9000);
+  });
 }
 
 /* ── 4 · Workflow: views + topbar ──────────────────────────── */

@@ -166,6 +166,7 @@ Both phases run in parallel across the configured Ollama instances.
 ⚙️ **Backend**
 
 - The review is persisted for 24 hours with an opaque identity and revision.
+  The console resumes the one active review after a refresh or backend restart.
   A stale browser cannot overwrite a newer edit, and HTTP responses expose no
   source filesystem paths.
 - Confirmation publishes the entire reviewed batch through the immutable
@@ -287,6 +288,7 @@ Both phases run in parallel across the configured Ollama instances.
 | `GET` | `/api/status` | Ollama instance activity |
 | `POST` | `/api/ingest/run` · `/api/ingest/add` | Prepare an ingest batch; review-required adapters stop before publication |
 | `GET` | `/api/ingest/reviews/{review}` | Resume one revisioned operator review |
+| `GET` | `/api/ingest/review-active` | Rediscover the single resumable review after refresh/restart |
 | `PUT` | `/api/ingest/reviews/{review}/documents/{document}/regions` | Replace reviewed geometry at an expected revision |
 | `POST` | `/api/ingest/reviews/{review}/documents/{document}/regions/{region}/recognize-table` | Recognize one confirmed table crop |
 | `POST` | `/api/ingest/reviews/{review}/confirm` | Atomically publish one ready review |

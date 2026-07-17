@@ -40,6 +40,19 @@ _REGION_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]{0,95}$")
 _ASSET_LINK = re.compile(r"^!\[(figure|table) (\d+)\]\(assets/([^)]+)\)\s*$")
 
 
+def _valid_region_id(value: str) -> str:
+    if not _REGION_ID.fullmatch(value):
+        raise ValueError("invalid region identity")
+    return value
+
+
+def _valid_asset_filename(value: str) -> str:
+    validate_library_segment(value, "asset filename")
+    if Path(value).suffix.lower() != ".png":
+        raise ValueError("review assets must be PNG files")
+    return value
+
+
 class ReviewError(RuntimeError):
     status_code = 400
     code = "invalid_review"
@@ -120,17 +133,12 @@ class ReviewRegion(BaseModel):
     @field_validator("region_id")
     @classmethod
     def valid_region_id(cls, value: str) -> str:
-        if not _REGION_ID.fullmatch(value):
-            raise ValueError("invalid region identity")
-        return value
+        return _valid_region_id(value)
 
     @field_validator("asset_filename")
     @classmethod
     def valid_filename(cls, value: str) -> str:
-        validate_library_segment(value, "asset filename")
-        if Path(value).suffix.lower() != ".png":
-            raise ValueError("review assets must be PNG files")
-        return value
+        return _valid_asset_filename(value)
 
     @model_validator(mode="after")
     def table_fields_match_kind(self):
@@ -163,17 +171,12 @@ class RegionEdit(BaseModel):
     @field_validator("region_id")
     @classmethod
     def valid_region_id(cls, value: str) -> str:
-        if not _REGION_ID.fullmatch(value):
-            raise ValueError("invalid region identity")
-        return value
+        return _valid_region_id(value)
 
     @field_validator("asset_filename")
     @classmethod
     def valid_filename(cls, value: str) -> str:
-        validate_library_segment(value, "asset filename")
-        if Path(value).suffix.lower() != ".png":
-            raise ValueError("review assets must be PNG files")
-        return value
+        return _valid_asset_filename(value)
 
 
 class ReviewBlock(BaseModel):
@@ -192,6 +195,7 @@ class ReviewDocument(BaseModel):
     title: str
     pdf_filename: str
     page_count: int = Field(ge=1)
+    asset_revision: int = Field(default=1, ge=1)
     ocr_scale: float = Field(gt=0)
     markdown: str
     blocks: list[ReviewBlock]
@@ -269,6 +273,15 @@ class ReviewStore:
     def _state_path(self, session_id: str) -> Path:
         return self._session_dir(session_id) / "session.json"
 
+    def _assets_dir(
+        self, session_id: str, document: ReviewDocument
+    ) -> Path:
+        return (
+            self._session_dir(session_id)
+            / document.document_id
+            / f"assets-r{document.asset_revision}"
+        )
+
     def _write(self, session: ReviewSession) -> None:
         directory = self._session_dir(session.session_id)
         directory.mkdir(parents=True, exist_ok=True, mode=0o700)
@@ -321,13 +334,7 @@ class ReviewStore:
             if not prepared:
                 raise ReviewError("cannot review an empty ingest batch")
             self.root.mkdir(parents=True, exist_ok=True, mode=0o700)
-            if any(
-                child.is_dir()
-                and (self._read(child.name, allow_terminal=True).state
-                     not in (SessionState.PUBLISHED, SessionState.CANCELLED, SessionState.EXPIRED))
-                for child in self.root.iterdir()
-                if _SESSION_ID.fullmatch(child.name)
-            ):
+            if self.active() is not None:
                 raise ReviewConflict("an ingest review is already active")
 
             session_id = secrets.token_hex(16)
@@ -338,7 +345,7 @@ class ReviewStore:
                 for doc in prepared:
                     document_id = validate_library_segment(doc.doc_name, "document identity")
                     document_dir = directory / document_id
-                    assets_dir = document_dir / "assets"
+                    assets_dir = document_dir / "assets-r1"
                     assets_dir.mkdir(parents=True, mode=0o700)
                     source = Path(doc.pdf_path)
                     pdf_filename = "source.pdf"
@@ -418,6 +425,23 @@ class ReviewStore:
         with self._lock:
             return self._read(session_id, allow_terminal=allow_terminal)
 
+    def active(self) -> ReviewSession | None:
+        """Return the single resumable review, if one exists."""
+        with self._lock:
+            if not self.root.is_dir():
+                return None
+            for child in sorted(self.root.iterdir()):
+                if not child.is_dir() or not _SESSION_ID.fullmatch(child.name):
+                    continue
+                session = self._read(child.name, allow_terminal=True)
+                if session.state not in (
+                    SessionState.PUBLISHED,
+                    SessionState.CANCELLED,
+                    SessionState.EXPIRED,
+                ):
+                    return session
+            return None
+
     def _assert_revision(self, session: ReviewSession, expected: int) -> None:
         if session.revision != expected:
             raise ReviewConflict(
@@ -490,17 +514,38 @@ class ReviewStore:
                         ),
                     }
                 region = ReviewRegion(**edit.model_dump(), **retained)
-                self._write_crop(session, document, region)
                 updated_regions.append(region)
-            document.regions = updated_regions
-            session.revision += 1
-            session.updated_at = self.clock()
-            self._refresh_state(session)
-            self._write(session)
-            return session
+
+            next_revision = session.revision + 1
+            document_dir = self._session_dir(session_id) / document.document_id
+            staged = document_dir / f".assets-r{next_revision}-{secrets.token_hex(8)}"
+            final = document_dir / f"assets-r{next_revision}"
+            # A process crash may leave this unreferenced directory after its
+            # atomic rename but before session.json moved to the new revision.
+            shutil.rmtree(final, ignore_errors=True)
+            staged.mkdir(mode=0o700)
+            try:
+                for region in updated_regions:
+                    self._write_crop(session, document, region, staged)
+                os.replace(staged, final)
+                document.regions = updated_regions
+                document.asset_revision = next_revision
+                session.revision = next_revision
+                session.updated_at = self.clock()
+                self._refresh_state(session)
+                self._write(session)
+                return session
+            except Exception:
+                shutil.rmtree(staged, ignore_errors=True)
+                shutil.rmtree(final, ignore_errors=True)
+                raise
 
     def _write_crop(
-        self, session: ReviewSession, document: ReviewDocument, region: ReviewRegion
+        self,
+        session: ReviewSession,
+        document: ReviewDocument,
+        region: ReviewRegion,
+        destination_dir: Path,
     ) -> None:
         if region.deleted:
             return
@@ -521,12 +566,7 @@ class ReviewStore:
         bottom = round((region.box.y + region.box.height) * image.height)
         if right <= left or bottom <= top:
             raise ReviewError("review rectangle produces an empty crop")
-        destination = (
-            self._session_dir(session.session_id)
-            / document.document_id
-            / "assets"
-            / region.asset_filename
-        )
+        destination = destination_dir / region.asset_filename
         temporary = destination.with_name(f".{secrets.token_hex(8)}.png")
         image.crop((left, top, right, bottom)).save(temporary, format="PNG")
         os.replace(temporary, destination)
@@ -552,8 +592,7 @@ class ReviewStore:
             if region.kind != "table" or region.deleted:
                 raise ReviewError("only active table regions can be recognized")
             path = (
-                self._session_dir(session_id) / document_id / "assets"
-                / region.asset_filename
+                self._assets_dir(session_id, document) / region.asset_filename
             )
             try:
                 result = (recognizer or recognize_table)(path)
@@ -608,6 +647,7 @@ class ReviewStore:
         self, session: ReviewSession, document: ReviewDocument
     ) -> LibraryCandidate:
         directory = self._session_dir(session.session_id) / document.document_id
+        assets_dir = self._assets_dir(session.session_id, document)
         active = [region for region in document.regions if not region.deleted]
         active_names = {region.asset_filename for region in active}
         markdown_lines = [
@@ -644,7 +684,7 @@ class ReviewStore:
                 number=index,
                 caption=region.caption,
                 page=region.page,
-                image=str(directory / "assets" / region.asset_filename),
+                image=str(assets_dir / region.asset_filename),
                 description=region.table_markdown or "",
                 bbox=[
                     region.box.x * width,
@@ -681,7 +721,7 @@ class ReviewStore:
                 ocr_scale=document.ocr_scale,
                 assets=tuple(SourceAssetCandidate(
                     asset_id=region.region_id,
-                    path=directory / "assets" / region.asset_filename,
+                    path=assets_dir / region.asset_filename,
                     media_type=(
                         mimetypes.guess_type(region.asset_filename)[0]
                         or "image/png"
@@ -689,27 +729,6 @@ class ReviewStore:
                 ) for region in active),
             ),
         )
-
-    @staticmethod
-    def _snapshot_candidates(snapshot: ExpectedLibrarySnapshot) -> dict[str, LibraryCandidate]:
-        candidates = {}
-        for document in snapshot.documents:
-            source = None
-            if document.source is not None:
-                source = SourceCandidate(
-                    pdf_path=document.source._pdf_path,
-                    ocr_scale=document.source.ocr_scale,
-                    assets=tuple(SourceAssetCandidate(
-                        asset_id=asset.asset_id,
-                        path=asset._path,
-                        media_type=asset.media_type,
-                    ) for asset in document.source.assets),
-                )
-            candidates[document.document_id] = LibraryCandidate(
-                canonical_markdown=document.canonical_markdown,
-                source=source,
-            )
-        return candidates
 
     def publish(
         self, session_id: str, expected_revision: int
@@ -723,7 +742,7 @@ class ReviewStore:
                     "every active table must be recognized or have its failure acknowledged"
                 )
             try:
-                candidates = self._snapshot_candidates(self.library.open_current())
+                candidates = self.library.open_current().publication_candidates()
             except ExpectedLibraryNotBuilt:
                 candidates = {}
             for document in session.documents:

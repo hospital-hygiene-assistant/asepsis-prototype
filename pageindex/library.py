@@ -162,6 +162,35 @@ class ExpectedLibrarySnapshot:
         except StopIteration as exc:
             raise KeyError(document_id) from exc
 
+    def publication_candidates(self) -> dict[str, LibraryCandidate]:
+        """Return digest-pinned candidates for an atomic document-set update."""
+        candidates = {}
+        for document in self.documents:
+            source_candidate = None
+            if document.source is not None:
+                assets = []
+                for asset in document.source.assets:
+                    candidate = SourceAssetCandidate(
+                        asset_id=asset.asset_id,
+                        path=asset._path,
+                        media_type=asset.media_type,
+                    )
+                    object.__setattr__(candidate, "_expected_sha256", asset.sha256)
+                    assets.append(candidate)
+                source_candidate = SourceCandidate(
+                    pdf_path=document.source._pdf_path,
+                    ocr_scale=document.source.ocr_scale,
+                    assets=tuple(assets),
+                )
+                object.__setattr__(
+                    source_candidate, "_expected_sha256", document.source.sha256
+                )
+            candidates[document.document_id] = LibraryCandidate(
+                canonical_markdown=document.canonical_markdown,
+                source=source_candidate,
+            )
+        return candidates
+
 
 class ExpectedLibraryStore:
     """Publish and open complete immutable Expected library generations."""
