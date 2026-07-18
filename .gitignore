@@ -12,7 +12,21 @@ venv/
 
 # Rust / Tauri build output
 tauri-app/src-tauri/target/
+tauri-app/src-tauri/gen/*
 tauri-app/src-tauri/Cargo.lock
+
+# Frontend / package manager output
+node_modules/
+dist/
+build/
+coverage/
+.vite/
+
+# Python test and type-check caches
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+htmlcov/
 
 # macOS
 .DS_Store
