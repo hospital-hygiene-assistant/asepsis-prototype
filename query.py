@@ -12,9 +12,13 @@ import argparse
 import sys
 from pathlib import Path
 
-import ollama
+from dotenv import load_dotenv
 
-from pageindex import retrieve, PageNode, INDEX_DIR, MODEL as DEFAULT_MODEL
+from pageindex import retrieve, PageNode, INDEX_DIR
+from pageindex import SYNTHESIS_MODEL as DEFAULT_SYNTHESIS_MODEL
+from pageindex import OLLAMA_URLS, make_client
+
+load_dotenv(Path(__file__).resolve().parent / ".env", override=False)
 
 SYNTHESIS_PROMPT_TEMPLATE = """\
 You are a medical knowledge assistant. Answer the following query using ONLY the
@@ -32,7 +36,7 @@ Instructions:
 - If the passages do not contain enough information to answer fully, say so.
 """
 
-MODEL = DEFAULT_MODEL
+MODEL = DEFAULT_SYNTHESIS_MODEL
 
 
 def _format_node(node: PageNode, doc_name: str) -> str:
@@ -54,7 +58,8 @@ def _synthesise(query: str, nodes_by_doc: dict[str, list[PageNode]]) -> str:
     prompt = SYNTHESIS_PROMPT_TEMPLATE.replace("QUERY_PLACEHOLDER", query).replace(
         "PASSAGES_PLACEHOLDER", "\n\n".join(passages)
     )
-    response = ollama.chat(
+    client = make_client(OLLAMA_URLS[0])
+    response = client.chat(
         model=MODEL,
         messages=[{"role": "user", "content": prompt}],
         options={"temperature": 0},
@@ -62,7 +67,7 @@ def _synthesise(query: str, nodes_by_doc: dict[str, list[PageNode]]) -> str:
     return response["message"]["content"]
 
 
-def run_query(query: str, model: str = DEFAULT_MODEL) -> None:
+def run_query(query: str, model: str = DEFAULT_SYNTHESIS_MODEL) -> None:
     global MODEL
     MODEL = model
 
@@ -114,7 +119,7 @@ def run_query(query: str, model: str = DEFAULT_MODEL) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description="Query the PageIndex knowledge base.")
     parser.add_argument("query", nargs="?", help="Query string (interactive if omitted).")
-    parser.add_argument("--model", default=DEFAULT_MODEL)
+    parser.add_argument("--model", default=DEFAULT_SYNTHESIS_MODEL)
     args = parser.parse_args()
 
     query = args.query or input("Enter your query: ").strip()
