@@ -9,6 +9,7 @@ import sys
 import threading
 import time
 import urllib.request
+from urllib.parse import urlparse
 from pathlib import Path
 from typing import Optional
 
@@ -58,16 +59,24 @@ def _ollama_bin() -> Optional[str]:
     return shutil.which("ollama")
 
 
+def _is_local_url(url: str) -> bool:
+    host = (urlparse(url).hostname or "").lower()
+    return host in {"localhost", "127.0.0.1", "::1"}
+
+
+## TODO: if one of the URLs is nonlocal, then this does not work.
+## because local ollama servers are assumed here. 
 def set_ollama_instances(n: int) -> dict:
     """Start/stop Ollama instances so exactly n are running. Returns status dict."""
     global _extra_procs
-    if _pi.get_backend() == "schlaubox":
-        _pi.reconfigure_clients([])
+    configured_urls = list(_pi.OLLAMA_URLS) or [f"http://127.0.0.1:{BASE_PORT}"]
+    if not all(_is_local_url(url) for url in configured_urls):
+        _pi.reconfigure_clients(configured_urls)
         return {
-            "requested": 1,
-            "live": len(_pi.OLLAMA_URLS),
-            "urls": _pi.OLLAMA_URLS,
-            "errors": ["LLM_BACKEND=schlaubox uses the configured remote host; local Ollama instances are disabled"],
+            "requested": n,
+            "live": len(configured_urls),
+            "urls": configured_urls,
+            "errors": ["Configured OLLAMA_URLS points to a remote Ollama-compatible host; local instance scaling is disabled."],
         }
 
     n = max(1, n)
@@ -137,8 +146,8 @@ def ensure_explainer() -> Optional[str]:
     """
     url = f"http://127.0.0.1:{EXPLAINER_PORT}"
     with _explainer_lock:
-        if _pi.get_backend() == "schlaubox":
-            return _pi.OLLAMA_URLS[0] if _pi.OLLAMA_URLS else None
+        if _pi.OLLAMA_URLS and not all(_is_local_url(u) for u in _pi.OLLAMA_URLS):
+            return _pi.OLLAMA_URLS[0]
         if _probe(url):
             return url
         bin_path = _ollama_bin()
@@ -171,12 +180,11 @@ atexit.register(_shutdown_explainer)
 
 
 # Initialise from env on startup
-if _pi.get_backend() == "ollama":
-    _initial_n = int(os.environ.get("OLLAMA_INSTANCES", "1"))
-    if _initial_n > 1:
-        set_ollama_instances(_initial_n)
+_initial_n = int(os.environ.get("OLLAMA_INSTANCES", "1"))
+if _initial_n > 1 and all(_is_local_url(url) for url in _pi.OLLAMA_URLS):
+    set_ollama_instances(_initial_n)
 else:
-    _pi.reconfigure_clients([])
+    _pi.reconfigure_clients(_pi.OLLAMA_URLS)
 
 app = FastAPI(title="Asepsis Prototype")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
@@ -329,7 +337,7 @@ def get_status():
 @app.get("/api/config")
 def get_config():
     return JSONResponse({
-        "llm_backend": _pi.get_backend(),
+        "llm_backend": "ollama-compatible",
         "ollama_instances": len(_pi.OLLAMA_URLS),
         "ollama_urls": _pi.OLLAMA_URLS,
         "ollama_bin_available": _ollama_bin() is not None,

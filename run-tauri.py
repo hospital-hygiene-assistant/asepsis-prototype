@@ -100,22 +100,16 @@ def _has_tauri() -> bool:
 
 # ── main ──────────────────────────────────────────────────────
 def _print_ollama_tip():
-    backend = os.environ.get("LLM_BACKEND", "ollama").strip().lower()
-    if backend == "schlaubox":
-        model = os.environ.get("LLM_MODEL_SCHLAUBOX") or os.environ.get("LLM_MODEL") or "llama3.3:70b"
-        url = os.environ.get("SCHLAUBOX_URL", "http://intern.schlaubox.de:11434")
-        print(f"  Schlaubox   → {url} (model: {model})")
+    model = os.environ.get("LLM_MODEL_OLLAMA") or os.environ.get("LLM_MODEL") or "gemma3:1b"
+    urls = os.environ.get("OLLAMA_URLS", "")
+    n = len([u for u in urls.split(",") if u.strip()]) if urls else 1
+    if n > 1:
+        print(f"  Ollama pool  → {n} instances ({urls}) (model: {model})")
     else:
-        model = os.environ.get("LLM_MODEL_OLLAMA") or os.environ.get("LLM_MODEL") or "gemma3:1b"
-        urls = os.environ.get("OLLAMA_URLS", "")
-        n = len([u for u in urls.split(",") if u.strip()]) if urls else 1
-        if n > 1:
-            print(f"  Ollama pool  → {n} instances ({urls}) (model: {model})")
-        else:
-            print(f"  Ollama tip   → model: {model}")
-            print("                 For faster retrieval run multiple Ollama instances and set:")
-            print("                   OLLAMA_URLS=http://localhost:11434,http://localhost:11435")
-            print("                 Start extras with:  OLLAMA_HOST=0.0.0.0:11435 ollama serve")
+        print(f"  Ollama tip   → model: {model}")
+        print("                 For faster retrieval run multiple Ollama instances and set:")
+        print("                   OLLAMA_URLS=http://localhost:11434,http://localhost:11435")
+        print("                 Start extras with:  OLLAMA_HOST=0.0.0.0:11435 ollama serve")
 
 
 def main():

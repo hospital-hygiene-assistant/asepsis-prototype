@@ -32,38 +32,9 @@ KB_DIR = ROOT / "knowledge_base"
 INDEX_DIR = ROOT / "index"
 
 
-def _normalize_backend(value: Optional[str]) -> str:
-    backend = (value or "ollama").strip().lower()
-    return backend if backend in {"ollama", "schlaubox"} else "ollama"
-
-
-LLM_BACKEND = _normalize_backend(os.getenv("LLM_BACKEND"))
-DEFAULT_MODELS = {
-    "ollama": "gemma3:1b",
-    "schlaubox": "llama3.3:70b",
-}
-
-
-def _resolve_model(backend: str) -> str:
-    if backend == "schlaubox":
-        return (
-            os.getenv("LLM_MODEL_SCHLAUBOX")
-            or os.getenv("LLM_MODEL")
-            or DEFAULT_MODELS[backend]
-        )
-    return (
-        os.getenv("LLM_MODEL_OLLAMA")
-        or os.getenv("LLM_MODEL")
-        or DEFAULT_MODELS[backend]
-    )
-
-
-DEFAULT_MODEL = _resolve_model(LLM_BACKEND)
+DEFAULT_MODEL = os.getenv("LLM_MODEL_OLLAMA") or os.getenv("LLM_MODEL") or "gemma3:1b"
 MODEL = DEFAULT_MODEL
 SYNTHESIS_MODEL = DEFAULT_MODEL
-
-SCHLAUBOX_URL = os.getenv("SCHLAUBOX_URL", "http://intern.schlaubox.de:11434")
-SCHLAUBOX_TIMEOUT = int(os.getenv("SCHLAUBOX_TIMEOUT", "500"))
 
 # ---------------------------------------------------------------------------
 # Ollama instance pool — set OLLAMA_URLS=url1,url2,... for parallelism
@@ -71,8 +42,6 @@ SCHLAUBOX_TIMEOUT = int(os.getenv("SCHLAUBOX_TIMEOUT", "500"))
 # round-robin so N instances process N branches simultaneously.
 # ---------------------------------------------------------------------------
 def _configured_urls() -> list[str]:
-    if LLM_BACKEND == "schlaubox":
-        return [SCHLAUBOX_URL]
     urls = [
         u.strip()
         for u in os.getenv("OLLAMA_URLS", "http://localhost:11434").split(",")
@@ -82,8 +51,6 @@ def _configured_urls() -> list[str]:
 
 
 def _make_client(url: str) -> ollama.Client:
-    if LLM_BACKEND == "schlaubox":
-        return ollama.Client(host=url, timeout=SCHLAUBOX_TIMEOUT)
     return ollama.Client(host=url)
 
 
@@ -201,9 +168,7 @@ def _round_robin_client() -> tuple[ollama.Client, str]:
 def reconfigure_clients(urls: list[str]) -> None:
     """Hot-swap the Ollama client pool. Called by the server when instance count changes."""
     global OLLAMA_URLS, _clients, _rr_index
-    if LLM_BACKEND == "schlaubox":
-        urls = [SCHLAUBOX_URL]
-    elif not urls:
+    if not urls:
         urls = ["http://localhost:11434"]
     with _rr_lock:
         OLLAMA_URLS = urls
@@ -214,9 +179,6 @@ def reconfigure_clients(urls: list[str]) -> None:
         for u in urls:
             _activity[u] = 0
 
-
-def get_backend() -> str:
-    return LLM_BACKEND
 
 HEADING_RE = re.compile(r"^(#{1,6})\s+(.+)$")
 

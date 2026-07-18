@@ -96,13 +96,9 @@ backend owns the document index, the LLM calls, and all run state.
 
 The app reads a root-level `.env` file automatically through `python-dotenv`.
 
-- `LLM_BACKEND=ollama|schlaubox` selects the inference host.
-- `LLM_MODEL_OLLAMA=<name>` sets the Ollama model; default: `gemma3:1b`.
-- `LLM_MODEL_SCHLAUBOX=<name>` sets the Schlaubox model; default: `llama3.3:70b`.
-- `LLM_MODEL=<name>` remains a compatibility fallback if you already use a single shared model variable.
-- `OLLAMA_URLS=http://127.0.0.1:11434,...` configures the local Ollama pool.
-- `SCHLAUBOX_URL=http://intern.schlaubox.de:11434` configures the remote Schlaubox endpoint.
-- Defaults are backend-specific and reproducible through `.env`: `gemma3:1b` for local Ollama and `llama3.3:70b` for Schlaubox.
+- `OLLAMA_URLS=http://127.0.0.1:11434,...` configures one or more Ollama-compatible endpoints.
+- `OLLAMA_URLS` can point at Schlaubox, because Schlaubox exposes the Ollama API.
+- `LLM_MODEL_OLLAMA=<name>` or `LLM_MODEL=<name>` sets the model used by the configured endpoint(s); default: `gemma3:1b`.
 
 The following models are available: 
 llama3.3:70b (default), llama3:70b,
