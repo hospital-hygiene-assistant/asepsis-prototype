@@ -41,10 +41,19 @@ def get_status():
 @router.get("/api/runs/{run_id}")
 def get_run(run_id: str):
     """One retrieval run: how far it has got, and every verdict so far."""
-    run = registry.get(run_id)
-    if run is None:
+    snapshot = registry.snapshot(run_id)
+    if snapshot is None:
         return JSONResponse({"error": f"unknown run '{run_id}'"}, status_code=404)
-    return JSONResponse(run.snapshot())
+    return JSONResponse(snapshot)
+
+
+@router.delete("/api/runs/{run_id}")
+def cancel_run(run_id: str):
+    """Idempotently request a cooperative stop for one owned run."""
+    snapshot = registry.cancel(run_id)
+    if snapshot is None:
+        return JSONResponse({"error": f"unknown run '{run_id}'"}, status_code=404)
+    return JSONResponse(snapshot)
 
 
 @router.get("/api/config")

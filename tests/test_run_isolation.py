@@ -14,7 +14,7 @@ from fastapi.testclient import TestClient
 
 
 import server
-from api.runs import RunRegistry
+from api.runs import RunQueueFull, RunRegistry
 from pageindex import PassageDecision, PassageDecisionKind, QuestionRun
 
 
@@ -131,52 +131,138 @@ class TestQuestionRunIsolation:
 
 
 class TestRegistry:
-    def test_a_run_is_found_by_its_id(self):
-        registry = RunRegistry()
-        run = registry.create("mine")
-        assert registry.get("mine") is run
-
-    def test_unknown_ids_are_not_invented(self):
-        assert RunRegistry().get("nope") is None
-
     def test_ids_are_generated_when_the_client_offers_none(self):
         registry = RunRegistry()
-        first, second = registry.create(), registry.create()
-        assert first.id and second.id and first.id != second.id
+        first = registry.submit("chat", lambda _run: {}, None)["run_id"]
+        second = registry.submit("chat", lambda _run: {}, None)["run_id"]
+        assert first and second and first != second
+        registry.shutdown()
 
     def test_expired_runs_are_dropped(self):
-        registry = RunRegistry(ttl=0.05)
-        registry.create("old")
-        time.sleep(0.06)
-        registry.create("new")
-        assert registry.get("old") is None
-        assert registry.get("new") is not None
+        registry = RunRegistry(ttl=0.01)
+        registry.submit("chat", lambda _run: {}, "old")
+        deadline = time.monotonic() + 1
+        while registry.snapshot("old")["phase"] != "completed":
+            assert time.monotonic() < deadline
+            time.sleep(0.005)
+        time.sleep(0.02)
+        registry.submit("chat", lambda _run: {}, "new")
+        assert registry.snapshot("old") is None
+        assert registry.snapshot("new") is not None
+        registry.shutdown()
 
-    def test_the_registry_is_bounded(self):
-        registry = RunRegistry(max_runs=4)
-        for i in range(20):
-            registry.create(f"run-{i}")
-        assert len(registry._runs) <= 4
+    def test_jobs_execute_in_fifo_order_one_at_a_time(self):
+        registry = RunRegistry(deadline=1)
+        order = []
+        release = threading.Event()
 
-    def test_the_newest_run_survives_eviction(self):
-        registry = RunRegistry(max_runs=3)
-        for i in range(10):
-            registry.create(f"run-{i}")
-        assert registry.get("run-9") is not None
+        def first(run):
+            run.begin_retrieval()
+            order.append("first-start")
+            release.wait(1)
+            order.append("first-end")
+            return {"answer": 1}
+
+        def second(run):
+            run.begin_retrieval()
+            order.append("second")
+            return {"answer": 2}
+
+        registry.submit("chat", first, "first")
+        registry.submit("chat", second, "second")
+        time.sleep(0.02)
+        assert registry.snapshot("second")["phase"] == "queued"
+        release.set()
+        deadline = time.monotonic() + 1
+        while registry.snapshot("second")["phase"] != "completed":
+            assert time.monotonic() < deadline
+            time.sleep(0.005)
+        assert order == ["first-start", "first-end", "second"]
+        assert registry.snapshot("second")["result"] == {"answer": 2}
+        registry.shutdown()
+
+    def test_a_queued_job_can_be_cancelled_without_running(self):
+        registry = RunRegistry(deadline=1)
+        release = threading.Event()
+        ran = []
+        registry.submit("chat", lambda _run: release.wait(1) or {}, "active")
+        registry.submit("chat", lambda _run: ran.append(True) or {}, "queued")
+
+        assert registry.cancel("queued")["phase"] == "cancelled"
+        release.set()
+        time.sleep(0.03)
+        assert ran == []
+        registry.shutdown()
+
+    def test_the_waiting_queue_is_bounded(self):
+        registry = RunRegistry(max_queued=1, deadline=1)
+        release = threading.Event()
+        started = threading.Event()
+
+        def active(_run):
+            started.set()
+            release.wait(1)
+            return {}
+
+        registry.submit("chat", active, "active")
+        assert started.wait(1)
+        registry.submit("chat", lambda _run: {}, "waiting")
+        with pytest.raises(RunQueueFull):
+            registry.submit("chat", lambda _run: {}, "overflow")
+        release.set()
+        registry.shutdown()
+
+    def test_an_active_job_stops_at_its_backend_deadline(self):
+        registry = RunRegistry(deadline=0.02)
+
+        def work(run):
+            while True:
+                time.sleep(0.005)
+                run.checkpoint()
+
+        registry.submit("chat", work, "deadline")
+        deadline = time.monotonic() + 1
+        while (snapshot := registry.snapshot("deadline"))["phase"] != "timed_out":
+            assert time.monotonic() < deadline
+            time.sleep(0.005)
+        assert snapshot["result"] is None
+        assert snapshot["error"] == {"code": "deadline_exceeded"}
+        registry.shutdown()
 
 
 class TestRunsEndpoint:
     def test_a_run_reports_its_own_progress(self, client):
         from api.runs import registry
-        run = registry.create("probe")
-        run.begin_retrieval("Reading…")
-        run.set_total(7)
-        run.record_decision(retrieved("passage"))
+        release = threading.Event()
+        started = threading.Event()
+
+        def work(run):
+            run.begin_retrieval("Reading…")
+            run.set_total(7)
+            run.record_decision(retrieved("passage"))
+            started.set()
+            release.wait(1)
+            return {}
+
+        registry.submit("chat", work, "probe")
+        assert started.wait(1)
 
         body = client.get("/api/runs/probe").json()
         assert body["run_id"] == "probe"
         assert body["phase"] == "retrieval"
         assert body["progress"] == {"total": 7, "done": 1}
+        release.set()
+
+    def test_a_run_can_be_cancelled_idempotently(self, client):
+        from api.runs import registry
+        release = threading.Event()
+        registry.submit("chat", lambda _run: release.wait(1) or {}, "cancel-me")
+        first = client.delete("/api/runs/cancel-me")
+        second = client.delete("/api/runs/cancel-me")
+        assert first.status_code == 200
+        assert second.status_code == 200
+        assert second.json()["phase"] == "cancelled"
+        release.set()
 
     def test_an_unknown_run_is_404(self, client):
         assert client.get("/api/runs/never-started").status_code == 404

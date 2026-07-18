@@ -10,6 +10,7 @@ from enum import StrEnum
 import re
 from typing import Any, Callable, Protocol
 
+from pageindex.question_run import QuestionCancelled, QuestionDeadlineExceeded
 from pageindex.pins import VisualLocation, locate_visual_citation
 
 from .prompts import CHAT_SYNTHESIS_PROMPT, _context_block, _parse_answer_sections
@@ -266,6 +267,8 @@ class PromptAnswerSynthesizer:
         )
         try:
             content = self._complete(prompt)
+        except (QuestionCancelled, QuestionDeadlineExceeded):
+            raise
         except Exception as exc:
             raise AnswerSynthesisUnavailable(str(exc)) from exc
         content = re.sub(r"<thought>.*?(</thought>|$)", "", content, flags=re.S).strip()

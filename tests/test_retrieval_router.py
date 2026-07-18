@@ -1,5 +1,7 @@
 """Debug retrieval routes read the immutable Expected library."""
 
+import time
+
 from api.routers import retrieval as retrieval_router
 from pageindex.library import ExpectedLibraryStore, LibraryCandidate
 
@@ -57,7 +59,13 @@ def test_debug_results_carry_generation_scoped_reader_links(monkeypatch):
     response = retrieval_router.run_query(
         retrieval_router.RunRequest(query="q")
     )
-    document = response.body.decode("utf-8")
+    run_id = response.body.decode("utf-8").split('"run_id":"', 1)[1].split('"', 1)[0]
+    from api.runs import registry
+    deadline = time.monotonic() + 1
+    while (snapshot := registry.snapshot(run_id))["phase"] != "completed":
+        assert time.monotonic() < deadline
+        time.sleep(0.005)
+    document = str(snapshot["result"])
 
     assert (
         f"/api/library/{generation_id}/documents/hygiene%20guide/full"

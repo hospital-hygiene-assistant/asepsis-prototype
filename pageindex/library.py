@@ -247,7 +247,11 @@ class ExpectedLibraryStore:
                 if not any(
                     node.is_leaf
                     and bool((node.content or "").strip())
-                    and (node.pin is None or node.pin.asset is None)
+                    and (
+                        node.pin is None
+                        or node.pin.asset is None
+                        or node.pin.asset.asset_type == "table"
+                    )
                     for node in _walk_nodes(nodes)
                 ):
                     raise ValueError(

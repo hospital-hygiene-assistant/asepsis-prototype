@@ -15,7 +15,6 @@ from unittest.mock import patch
 from pageindex import QuestionRun
 from pageindex.document_index import DocumentIndex
 from pageindex import search as pi_search
-from api.runs import RunRegistry
 from pageindex.library import ExpectedLibraryStore, LibraryCandidate
 from pageindex.nodes import PageNode
 
@@ -88,7 +87,7 @@ class TestM2UnavailableDocumentRemainsVisible:
                     raise FileNotFoundError("index deleted mid-run")
                 return pi_search.DocumentRetrieval(())
 
-        run = RunRegistry().create("probe")
+        run = QuestionRun("probe")
         results = api_retrieval.WholeLibraryRetrieval(
             OneDocVanishes(), library_store=library
         ).search("q", run)

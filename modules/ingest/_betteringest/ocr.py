@@ -63,20 +63,19 @@ def _load_models():
         from paddlex import create_model  # type: ignore[import-untyped]
         _layout = create_model("PP-DocLayoutV3")
     if _recognizer is None:
-        from paddleocr import PaddleOCR  # type: ignore[import-untyped]
-        _recognizer = PaddleOCR(
-            use_textline_orientation=False, lang="latin",
-            text_recognition_model_name="latin_PP-OCRv5_mobile_rec",
+        from paddleocr import TextRecognition  # type: ignore[import-untyped]
+        _recognizer = TextRecognition(
+            model_name="latin_PP-OCRv5_mobile_rec",
             device="cpu",
-            use_doc_orientation_classify=False, use_doc_unwarping=False)
+        )
     return _layout, _recognizer
 
 
 def _recognise(recognizer, pil_crop) -> str:
     import numpy as np
     r = recognizer.predict(np.array(pil_crop))
-    if r and r[0].get("rec_texts"):
-        return " ".join(r[0]["rec_texts"]).strip()
+    if r and r[0].get("rec_text"):
+        return r[0]["rec_text"].strip()
     return ""
 
 

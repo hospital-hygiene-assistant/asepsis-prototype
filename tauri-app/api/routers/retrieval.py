@@ -19,7 +19,7 @@ from retrieval_cases import RETRIEVAL_CASES
 
 from ..answering_runtime import build_whole_library_retrieval
 from ..ollama_pool import ensure_explainer
-from ..runs import registry
+from ..runs import DuplicateRunId, RunQueueFull, RunRegistryFull, registry
 from ..scoring import eval_case
 router = APIRouter()
 
@@ -179,54 +179,54 @@ def run_query(req: RunRequest):
     if not query:
         return JSONResponse({"error": "No query provided"}, status_code=400)
 
-    run = registry.create(req.run_id)
-    run.begin_retrieval()
-    try:
+    def retrieve(run):
+        run.begin_retrieval()
         retrieval = build_whole_library_retrieval()
-    except Exception:
-        run.fail()
-        return JSONResponse(
-            {"error": "retrieval runtime unavailable"}, status_code=503
-        )
-    try:
         search = retrieval.search(query, run)
-    except Exception:
-        run.fail()
-        raise
-    run.complete()
-    results = _debug_results(search)
-    if search.generation_id is not None:
-        for document_id, result in results.items():
-            base_href = _document_href(search.generation_id, document_id)
-            result.update({
-                "generation_id": search.generation_id,
-                "full_href": f"{base_href}/full",
-                "page_href": f"{base_href}/page/{{page}}",
-            })
-            _bind_tree_assets(result.get("tree", []), base_href)
-            for node in result.get("nodes", []):
-                node["pin"] = _bind_pin_asset(node.get("pin"), base_href)
+        results = _debug_results(search)
+        if search.generation_id is not None:
+            for document_id, result in results.items():
+                base_href = _document_href(search.generation_id, document_id)
+                result.update({
+                    "generation_id": search.generation_id,
+                    "full_href": f"{base_href}/full",
+                    "page_href": f"{base_href}/page/{{page}}",
+                })
+                _bind_tree_assets(result.get("tree", []), base_href)
+                for node in result.get("nodes", []):
+                    node["pin"] = _bind_pin_asset(node.get("pin"), base_href)
 
-    test_result = eval_case(test, results) if test else None
-    return JSONResponse({
-        "run_id": run.id,
-        "query": query,
-        "results": results,
-        "test_result": test_result,
-        "coverage": {
-            "status": search.status.value,
-            "generation_id": search.generation_id,
-            "diagnostics": [
-                {
-                    "document": item.document,
-                    "node_id": item.node_id,
-                    "code": item.code,
-                    "message": item.message,
-                }
-                for item in search.diagnostics
-            ],
-        },
-        "pipeline": {
-            "ingest": req.ingest_module or _module_defaults()["ingest"],
-        },
-    })
+        test_result = eval_case(test, results) if test else None
+        return {
+            "run_id": run.id,
+            "query": query,
+            "results": results,
+            "test_result": test_result,
+            "coverage": {
+                "status": search.status.value,
+                "generation_id": search.generation_id,
+                "diagnostics": [
+                    {
+                        "document": item.document,
+                        "node_id": item.node_id,
+                        "code": item.code,
+                        "message": item.message,
+                    }
+                    for item in search.diagnostics
+                ],
+            },
+            "pipeline": {
+                "ingest": req.ingest_module or _module_defaults()["ingest"],
+            },
+        }
+
+    try:
+        accepted = registry.submit("retrieval", retrieve, req.run_id)
+    except DuplicateRunId:
+        return JSONResponse({"error": "run id already exists"}, status_code=409)
+    except (RunQueueFull, RunRegistryFull):
+        return JSONResponse({"error": "question queue is full"}, status_code=429)
+    return JSONResponse(
+        {"run_id": accepted["run_id"], "state": "queued"},
+        status_code=202,
+    )

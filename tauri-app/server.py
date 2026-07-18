@@ -19,6 +19,7 @@ from api import console
 from api.config import CORS_ORIGINS, SERVE_UI
 from api.ollama_pool import shutdown_pool, start_configured_instances
 from api.routers import chat, documents, ingest, retrieval, reviews, status
+from api.runs import registry as run_registry
 
 PORT = 8765
 
@@ -33,6 +34,7 @@ async def lifespan(_app: FastAPI):
     start_configured_instances()
     reviews.review_store.cleanup()
     yield
+    run_registry.shutdown()
     shutdown_pool()
 
 

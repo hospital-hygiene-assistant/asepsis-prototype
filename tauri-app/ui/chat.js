@@ -244,14 +244,14 @@ async function sendChat(text) {
   chatState.nodeInfo = await buildNodeInfo();
   try { renderTreemap(await getDocs()); } catch { /* keep old canvas */ }
   state.runId = newRunId();
-  startStatusPolling();
   updateFlowSteps();
 
   try {
-    const data = await apiPost('/api/chat', {
+    const accepted = await apiPost('/api/chat', {
       query: text,
       run_id: state.runId,
     });
+    const data = await waitForRunResult(accepted.run_id);
     finalizeAnswerCard(pending, debugAnswerFromWire(data));
   } catch (e) {
     pending.card.querySelector('.answer-body').innerHTML =
@@ -261,7 +261,6 @@ async function sendChat(text) {
   } finally {
     state.running = false;
     setRunPill(null);
-    await stopStatusPolling();     // final status flush → last trace lines land
     chatState.pending = null;
     setSendEnabled(true);
     updateFlowSteps();

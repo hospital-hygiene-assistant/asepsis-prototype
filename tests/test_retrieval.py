@@ -15,7 +15,7 @@ import pytest
 import pageindex
 from pageindex import OLLAMA_URLS
 from api.retrieval import LibraryStatus, WholeLibraryRetrieval
-from api.runs import RunRegistry
+from pageindex import QuestionRun
 from retrieval_cases import RETRIEVAL_CASES
 
 
@@ -38,7 +38,7 @@ def _model_must_be_reachable():
 def _all_retrieved(query: str) -> dict[str, set[str]]:
     try:
         result = WholeLibraryRetrieval(pageindex).search(
-            query, RunRegistry().create()
+            query, QuestionRun()
         )
     except (FileNotFoundError, ValueError, KeyError):
         pytest.skip("Index generation unavailable — run 'pipeline.py index' first")

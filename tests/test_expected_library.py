@@ -265,6 +265,37 @@ def test_source_pdf_requires_searchable_body_guidance_before_promotion(tmp_path)
     assert store.open_current().generation_id == current.generation_id
 
 
+def test_source_pdf_accepts_reviewed_table_guidance(tmp_path):
+    pdf = tmp_path / "guide.pdf"
+    pdf.write_bytes(b"%PDF-1.7\nsource\n")
+    asset = tmp_path / "table.png"
+    asset.write_bytes(b"table")
+    pin = ProvenancePin(
+        version=2,
+        document="table-only",
+        node_id="reviewed-table",
+        spans=(SourceSpan(1, 0, 24, PixelBox(10, 20, 100, 80)),),
+        scale=2.0,
+        asset=AssetProvenance("table_1", "table", "/assets/table.png"),
+    )
+
+    snapshot = ExpectedLibraryStore(tmp_path / "library").publish({
+        "table-only": LibraryCandidate(
+            canonical_markdown=(
+                f"# Reviewed table\n\n{emit_pin(pin)}\n"
+                "Pathogen | Isolation | PPE"
+            ),
+            source=SourceCandidate(
+                pdf,
+                ocr_scale=2.0,
+                assets=(SourceAssetCandidate("table_1", asset, "image/png"),),
+            ),
+        )
+    })
+
+    assert snapshot.document("table-only").document_id == "table-only"
+
+
 def test_open_generation_normalizes_a_missing_manifest(tmp_path):
     store = ExpectedLibraryStore(tmp_path / "library")
 
@@ -456,9 +487,10 @@ def test_publish_rejects_nonportable_asset_identity(tmp_path, asset_id):
 def test_generation_identity_normalizes_integer_and_float_ocr_scale(tmp_path):
     pdf = tmp_path / "guide.pdf"
     pdf.write_bytes(b"%PDF-1.7\nsource\n")
-    candidate = lambda scale: LibraryCandidate(
-        "# Guide\n\nContent.", SourceCandidate(pdf, scale)
-    )
+    def candidate(scale):
+        return LibraryCandidate(
+            "# Guide\n\nContent.", SourceCandidate(pdf, scale)
+        )
 
     integer = ExpectedLibraryStore(tmp_path / "one").publish(
         {"guide": candidate(2)}

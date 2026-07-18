@@ -7,7 +7,7 @@ from api.answering_runtime import (
     build_whole_library_retrieval,
 )
 from api.question_answering import AnswerKind, Question
-from api.runs import RunRegistry
+from pageindex import QuestionRun
 from pageindex import DocumentRetrieval, PassageDecision, PassageDecisionKind
 from pageindex.library import ExpectedLibraryStore, LibraryCandidate
 from pageindex.nodes import PageNode
@@ -79,7 +79,7 @@ def test_one_question_snapshots_models_and_pool_once_for_every_document(tmp_path
         pool_calls.append("snapshot")
         return ((object(), "http://ollama-a"),)
 
-    run = RunRegistry().create("run-test")
+    run = QuestionRun("run-test")
     answering = build_question_answering(
         run,
         engine=engine,
@@ -123,7 +123,7 @@ def test_debug_retrieval_uses_the_same_frozen_runtime_seam(tmp_path):
         library_store=store,
         pool_provider=lambda: pool_calls.append("snapshot") or instances,
     )
-    retrieval.search("q", RunRegistry().create("debug-run"))
+    retrieval.search("q", QuestionRun("debug-run"))
 
     assert pool_calls == ["snapshot"]
     assert engine.call == ("retrieval-a", instances)

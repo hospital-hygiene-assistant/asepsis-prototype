@@ -40,6 +40,15 @@ _REGION_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_.-]{0,95}$")
 _ASSET_LINK = re.compile(r"^!\[(figure|table) (\d+)\]\(assets/([^)]+)\)\s*$")
 
 
+def _has_non_asset_body(markdown: str) -> bool:
+    return any(
+        line.strip()
+        and not line.lstrip().startswith("#")
+        and _ASSET_LINK.fullmatch(line) is None
+        for line in markdown.splitlines()
+    )
+
+
 def _valid_region_id(value: str) -> str:
     if not _REGION_ID.fullmatch(value):
         raise ValueError("invalid region identity")
@@ -321,6 +330,66 @@ class ReviewStore:
             raise ReviewError(f"page {page} is outside the source PDF")
         width, height = document[page - 1].get_size()
         return width * scale, height * scale
+
+    @staticmethod
+    def _embedded_region_text(
+        pdf_path: Path, page: int, box: NormalizedBox
+    ) -> str:
+        """Return authoritative embedded PDF text inside a reviewed region."""
+        import pypdfium2 as pdfium
+
+        document = pdfium.PdfDocument(str(pdf_path))
+        if page < 1 or page > len(document):
+            raise ReviewError(f"page {page} is outside the source PDF")
+        pdf_page = document[page - 1]
+        width, height = pdf_page.get_size()
+        left = box.x * width
+        right = (box.x + box.width) * width
+        top = (1 - box.y) * height
+        bottom = (1 - box.y - box.height) * height
+        text = pdf_page.get_textpage().get_text_bounded(
+            left, bottom, right, top
+        )
+        # PDFium uses U+0002 for a visible discretionary hyphen in some UKR
+        # documents. Preserve that meaning while normalizing line endings.
+        return ReviewStore._normalize_embedded_text(text)
+
+    @staticmethod
+    def _normalize_embedded_text(text: str) -> str:
+        return (
+            text.replace("\x02", "-")
+            .replace("\ufffe", "-")
+            .replace("\r\n", "\n")
+            .strip()
+        )
+
+    @staticmethod
+    def _embedded_document_guidance(
+        pdf_path: Path, scale: float
+    ) -> tuple[str, tuple[Block, ...]]:
+        """Recover exact text when layout found only visual regions."""
+        import pypdfium2 as pdfium
+
+        pdf = pdfium.PdfDocument(str(pdf_path))
+        texts: list[str] = []
+        blocks: list[Block] = [
+            Block("paragraph_title", "Source text", 0, (0, 0, 1, 1))
+        ]
+        for page_index, page in enumerate(pdf):
+            text = ReviewStore._normalize_embedded_text(
+                page.get_textpage().get_text_range()
+            )
+            if not text:
+                continue
+            width, height = page.get_size()
+            texts.append(text)
+            blocks.append(Block(
+                "text",
+                text,
+                page_index,
+                (0, 0, width * scale, height * scale),
+            ))
+        return "\n\n".join(texts), tuple(blocks)
 
     @staticmethod
     def _page_count(pdf_path: Path) -> int:
@@ -648,6 +717,7 @@ class ReviewStore:
     ) -> LibraryCandidate:
         directory = self._session_dir(session.session_id) / document.document_id
         assets_dir = self._assets_dir(session.session_id, document)
+        pdf_path = directory / document.pdf_filename
         active = [region for region in document.regions if not region.deleted]
         active_names = {region.asset_filename for region in active}
         markdown_lines = [
@@ -673,11 +743,31 @@ class ReviewStore:
                 )
                 linked.add(region.asset_filename)
 
+        blocks = [Block(
+            label=block.label,
+            text=block.text,
+            page=block.page,
+            bbox=block.bbox,
+        ) for block in document.blocks]
+        if not _has_non_asset_body("\n".join(markdown_lines)):
+            source_text, source_blocks = self._embedded_document_guidance(
+                pdf_path, document.ocr_scale
+            )
+            if source_text:
+                markdown_lines.extend(["", "## Source text", "", source_text])
+                blocks.extend(source_blocks)
+
         assets = []
         for index, region in enumerate(active, start=1):
             width, height = self._page_dimensions(
-                directory / document.pdf_filename, region.page, document.ocr_scale
+                pdf_path, region.page, document.ocr_scale
             )
+            description = region.table_markdown or ""
+            if region.kind == "table":
+                description = (
+                    self._embedded_region_text(pdf_path, region.page, region.box)
+                    or description
+                )
             assets.append(Asset(
                 asset_id=region.region_id,
                 type=region.kind,
@@ -685,7 +775,7 @@ class ReviewStore:
                 caption=region.caption,
                 page=region.page,
                 image=str(assets_dir / region.asset_filename),
-                description=region.table_markdown or "",
+                description=description,
                 bbox=[
                     region.box.x * width,
                     region.box.y * height,
@@ -701,12 +791,7 @@ class ReviewStore:
             markdown="\n".join(markdown_lines),
             assets=assets,
             tree=None,
-            blocks=[Block(
-                label=block.label,
-                text=block.text,
-                page=block.page,
-                bbox=block.bbox,
-            ) for block in document.blocks],
+            blocks=blocks,
             ladder_diag={},
             ocr_scale=document.ocr_scale,
         )

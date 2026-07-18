@@ -17,7 +17,13 @@ from typing import Optional
 
 import ollama
 
-from .question_run import PassageDecision, PassageDecisionKind, QuestionRun
+from .question_run import (
+    PassageDecision,
+    PassageDecisionKind,
+    QuestionCancelled,
+    QuestionDeadlineExceeded,
+    QuestionRun,
+)
 from .document_index import DocumentIndex
 from .clients import acquire, pool, release
 from .llm import _chat, _parse_json_response
@@ -72,9 +78,11 @@ def _evaluate_leaf(
     failure_code = "evaluation_error"
     decision: PassageDecision | None = None
     failure = "the model returned no usable verdict"
-    acquire(client_url)
+    run.checkpoint()
+    acquire(client_url, run.checkpoint)
     try:
         raw = _chat(prompt, client, client_url, model)
+        run.checkpoint()
         result = _parse_json_response(raw)
 
         if isinstance(result, dict):
@@ -104,6 +112,8 @@ def _evaluate_leaf(
                     reason,
                     document_id=doc_name,
                 )
+    except (QuestionCancelled, QuestionDeadlineExceeded):
+        raise
     except Exception as exc:
         print(f"    [warn] leaf eval failed for {leaf.node_id}: {exc}", file=sys.stderr)
         failure = str(exc)
@@ -176,6 +186,7 @@ def _check_section_relevant(
     query_terms = _terms(query)
     direct_matches = sorted(query_terms & _heading_terms(node, index))
     if direct_matches:
+        run.checkpoint()
         reason = (
             "Kept because the query directly matches descendant heading term(s): "
             + ", ".join(direct_matches)
@@ -199,9 +210,11 @@ def _check_section_relevant(
         .replace("BREADCRUMB_PLACEHOLDER", breadcrumb)
         .replace("DESCENDANTS_PLACEHOLDER", descendants)
     )
-    acquire(client_url)
+    run.checkpoint()
+    acquire(client_url, run.checkpoint)
     try:
         raw = _chat(prompt, client, client_url, model)
+        run.checkpoint()
         result = _parse_json_response(raw)
         if not isinstance(result, dict):
             raise ValueError("the model returned no usable section verdict")
@@ -222,6 +235,8 @@ def _check_section_relevant(
 
         print(f"    [prune-check] {node.node_id}: {'KEEP' if verdict else 'PRUNE'} (raw={raw!r:.120})", file=sys.stderr)
         return decision
+    except (QuestionCancelled, QuestionDeadlineExceeded):
+        raise
     except Exception as exc:
         decision = PassageDecision(
             node.node_id,
@@ -301,13 +316,19 @@ def _prune_and_collect(
     frontier = list(nodes)
 
     while frontier:
+        run.checkpoint()
         sections = [n for n in frontier if not n.is_leaf]
         candidate_leaves.extend(n for n in frontier if n.is_leaf)
 
         if not sections:
             break
 
-        with ThreadPoolExecutor(max_workers=len(sections)) as workers:
+        with ThreadPoolExecutor(
+            max_workers=min(
+                len(sections),
+                len({assignment[1] for assignment in node_assignment.values()}) or 1,
+            )
+        ) as workers:
             futures = {
                 workers.submit(
                     _check_section_relevant,
@@ -323,6 +344,7 @@ def _prune_and_collect(
             }
             next_frontier: list["PageNode"] = []
             for future in as_completed(futures):
+                run.checkpoint()
                 node = futures[future]
                 decision = future.result()
                 decisions[node.node_id] = decision
@@ -374,6 +396,7 @@ def search_document(
     derived from retrieved decisions by the Whole-library search module.
     """
     run = run or QuestionRun()
+    run.checkpoint()
     retrieval_model = model or settings.model
     nodes = list(index.nodes)
     leaves = list(index.leaves)
@@ -422,7 +445,9 @@ def search_document(
 
     # Phase 2 — full leaf evaluation on survivors
     if surviving:
-        with ThreadPoolExecutor(max_workers=len(surviving)) as workers:
+        with ThreadPoolExecutor(
+            max_workers=min(len(surviving), len(instances))
+        ) as workers:
             futures = {
                 workers.submit(
                     _evaluate_leaf,
@@ -438,6 +463,7 @@ def search_document(
                 for leaf in surviving
             }
             for future in as_completed(futures):
+                run.checkpoint()
                 decision = future.result()
                 decisions[decision.node_id] = decision
 

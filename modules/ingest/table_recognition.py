@@ -32,6 +32,10 @@ def _load_pipeline():
             ) from exc
         _pipeline = TableRecognitionPipelineV2(
             device="cpu",
+            # Paddle 3.3's oneDNN executor cannot convert attributes used by
+            # the current table models. The plain CPU predictor is slower but
+            # supported and, unlike the accelerated path, produces structure.
+            enable_mkldnn=False,
             text_recognition_model_name="latin_PP-OCRv5_mobile_rec",
             use_doc_orientation_classify=False,
             use_doc_unwarping=False,
@@ -55,7 +59,7 @@ def _plain_payload(value: Any) -> dict[str, Any]:
 def _find_markdown(value: Any) -> str:
     if isinstance(value, str):
         text = value.strip()
-        if "|" in text or text.startswith("<table"):
+        if "|" in text or ("<table" in text and "</table>" in text):
             return text
         return ""
     if isinstance(value, dict):

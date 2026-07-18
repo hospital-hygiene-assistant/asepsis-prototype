@@ -10,8 +10,8 @@ from pydantic import BaseModel
 from ..answering_runtime import answer_question
 from ..chat_wire import encode_outcome
 from ..prompts import CHAT_SYNTHESIS_PROMPT
-from ..question_answering import AnswerKind, Question
-from ..runs import registry
+from ..question_answering import Question
+from ..runs import DuplicateRunId, RunQueueFull, RunRegistryFull, registry
 
 router = APIRouter()
 
@@ -48,22 +48,18 @@ def chat(req: ChatRequest):
     if not query:
         return JSONResponse({"error": "No query provided"}, status_code=400)
 
-    run = registry.create(req.run_id)
-    run.begin_retrieval()
+    def answer(run):
+        run.begin_retrieval()
+        outcome = answer_question(Question(query, req.context), run)
+        return encode_outcome(outcome, run_id=run.id).model_dump(mode="json")
+
     try:
-        try:
-            outcome = answer_question(Question(query, req.context), run)
-            wire = encode_outcome(outcome, run_id=run.id)
-        except Exception:
-            run.fail()
-            raise
-        if outcome.kind in (
-            AnswerKind.RETRIEVAL_UNAVAILABLE,
-            AnswerKind.SYNTHESIS_UNAVAILABLE,
-        ):
-            run.fail()
-            return JSONResponse(wire.model_dump(mode="json"), status_code=503)
-        return JSONResponse(wire.model_dump(mode="json"))
-    finally:
-        if run.phase != "error":
-            run.complete()
+        accepted = registry.submit("chat", answer, req.run_id)
+    except DuplicateRunId:
+        return JSONResponse({"error": "run id already exists"}, status_code=409)
+    except (RunQueueFull, RunRegistryFull):
+        return JSONResponse({"error": "question queue is full"}, status_code=429)
+    return JSONResponse(
+        {"run_id": accepted["run_id"], "state": "queued"},
+        status_code=202,
+    )

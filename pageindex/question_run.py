@@ -7,6 +7,14 @@ from dataclasses import dataclass
 from enum import StrEnum
 
 
+class QuestionCancelled(RuntimeError):
+    """Cooperative stop requested by the client that owns the question."""
+
+
+class QuestionDeadlineExceeded(RuntimeError):
+    """The bounded execution time for a question has elapsed."""
+
+
 class PassageDecisionKind(StrEnum):
     """One truthful retrieval decision, including conservative fail-open cases."""
 
@@ -86,6 +94,8 @@ class QuestionRun:
         self._total = 0
         self._done = 0
         self._decisions: dict[tuple[str, str], PassageDecision] = {}
+        self._cancelled = threading.Event()
+        self._deadline: float | None = None
 
     @property
     def phase(self) -> str:
@@ -93,7 +103,19 @@ class QuestionRun:
             return self._phase
 
     def begin_retrieval(self, detail: str = "") -> None:
+        self.checkpoint()
         self._set_phase("retrieval", detail)
+
+    def queue(self, detail: str = "") -> None:
+        self._set_phase("queued", detail)
+
+    def begin_execution(self, deadline_seconds: float) -> None:
+        if deadline_seconds <= 0:
+            raise ValueError("question deadline must be positive")
+        with self._lock:
+            self._deadline = time.monotonic() + deadline_seconds
+        self.checkpoint()
+        self._set_phase("retrieval", "")
 
     def set_total(self, total_leaves: int) -> None:
         if total_leaves < 0:
@@ -105,6 +127,7 @@ class QuestionRun:
 
     def record_decision(self, decision: PassageDecision) -> None:
         """Record one passage decision and its progress as one locked change."""
+        self.checkpoint()
         with self._lock:
             if decision.identity in self._decisions:
                 raise RuntimeError(
@@ -118,13 +141,34 @@ class QuestionRun:
                 self._done += 1
 
     def begin_synthesis(self, detail: str = "") -> None:
+        self.checkpoint()
         self._set_phase("synthesis", detail)
 
     def complete(self, detail: str = "") -> None:
-        self._set_phase("idle", detail)
+        self._set_phase("completed", detail)
 
     def fail(self, detail: str = "") -> None:
-        self._set_phase("error", detail)
+        self._set_phase("failed", detail)
+
+    def cancel(self, detail: str = "") -> None:
+        self._cancelled.set()
+        self._set_phase("cancelled", detail)
+
+    def time_out(self, detail: str = "") -> None:
+        self._set_phase("timed_out", detail)
+
+    def checkpoint(self) -> None:
+        """Stop between model calls without misreporting an unchecked passage."""
+        if self._cancelled.is_set():
+            raise QuestionCancelled("question was cancelled")
+        with self._lock:
+            deadline = self._deadline
+        if deadline is not None and time.monotonic() >= deadline:
+            raise QuestionDeadlineExceeded("question deadline exceeded")
+
+    @property
+    def cancelled(self) -> bool:
+        return self._cancelled.is_set()
 
     def progress(self) -> dict[str, int]:
         with self._lock:

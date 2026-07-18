@@ -35,6 +35,7 @@ def test_pipeline_is_focused_on_cpu_with_latin_text_recognition(monkeypatch):
     table_recognition._load_pipeline()
 
     assert captured["device"] == "cpu"
+    assert captured["enable_mkldnn"] is False
     assert captured["text_recognition_model_name"] == "latin_PP-OCRv5_mobile_rec"
     assert captured["use_layout_detection"] is False
 
@@ -48,6 +49,21 @@ def test_nested_paddle_markdown_is_returned_verbatim(tmp_path, monkeypatch):
     result = table_recognition.recognize_table(image)
 
     assert result.markdown == payload["res"]["table_markdown"]
+    assert result.payload == payload
+
+
+def test_paddle_html_document_with_nested_table_is_returned_verbatim(
+    tmp_path, monkeypatch
+):
+    image = tmp_path / "table.png"
+    image.write_bytes(b"not-read-by-the-fake")
+    html = "<html><body><table><tr><td>A</td></tr></table></body></html>"
+    payload = {"res": {"table_res_list": [{"pred_html": html}]}}
+    monkeypatch.setattr(table_recognition, "_load_pipeline", lambda: Pipeline(payload))
+
+    result = table_recognition.recognize_table(image)
+
+    assert result.markdown == html
     assert result.payload == payload
 
 

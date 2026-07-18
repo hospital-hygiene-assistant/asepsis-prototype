@@ -93,6 +93,11 @@ async function apiPost(path, body) {
   }
   return r.json();
 }
+async function apiDelete(path) {
+  const r = await fetch(path, { method: 'DELETE', keepalive: true });
+  if (!r.ok) throw new Error(`${r.status} ${r.statusText}`);
+  return r.json();
+}
 
 function toast(message, kind = 'ok', ms = 4200) {
   const t = el('div', `toast toast-${kind}`, message);
@@ -104,6 +109,7 @@ function toast(message, kind = 'ok', ms = 4200) {
 
 async function init() {
   let docs = [];
+  document.getElementById('run-pill').addEventListener('click', cancelCurrentRun);
   try {
     const [tests, modules, config, status, fetchedDocs] = await Promise.all([
       apiGet('/api/tests'), apiGet('/api/modules'), apiGet('/api/config'),
@@ -416,6 +422,7 @@ async function fetchStatus() {
     const run = await apiGet(`/api/runs/${state.runId}`);
     return {
       ...service,
+      run,
       progress: run.progress,
       live: run.live,
       chat: { phase: run.phase, detail: run.detail },
@@ -425,16 +432,48 @@ async function fetchStatus() {
   }
 }
 
+function renderLiveStatus(status) {
+  state.liveStatus = status;
+  renderInstanceDots(status);
+  applyTreemapEvents(status);
+  refreshOpenDocViewer();
+  if (typeof chatOnStatus === 'function') chatOnStatus(status);
+}
+
+async function waitForRunResult(runId) {
+  let failedSince = null;
+  while (state.runId === runId) {
+    try {
+      const status = await fetchStatus();
+      failedSince = null;
+      renderLiveStatus(status);
+      const run = status.run;
+      if (run?.phase === 'completed') return run.result;
+      if (run?.phase === 'cancelled') throw new Error('Run cancelled');
+      if (run?.phase === 'timed_out') throw new Error('Run exceeded its execution deadline');
+      if (run?.phase === 'failed') throw new Error(run.error?.code || 'Run failed');
+    } catch (error) {
+      if (/cancelled|deadline|Run failed/.test(error.message)) throw error;
+      failedSince ??= Date.now();
+      if (Date.now() - failedSince >= 30000) throw error;
+    }
+    await new Promise(resolve => setTimeout(resolve, 250));
+  }
+  throw new Error('Run cancelled');
+}
+
+async function cancelCurrentRun() {
+  const runId = state.runId;
+  if (!runId || !state.running) return;
+  try { await apiDelete(`/api/runs/${runId}`); } catch { /* best effort */ }
+}
+
 function startStatusPolling() {
   if (_statusPoller) return;
   _statusPoller = setInterval(async () => {
     try {
       const status = await fetchStatus();
-      state.liveStatus = status;
-      renderInstanceDots(status);
-      applyTreemapEvents(status);
-      refreshOpenDocViewer();
-      if (typeof chatOnStatus === 'function') chatOnStatus(status);
+      renderLiveStatus(status);
     } catch { /* transient */ }
   }, 250);
 }
@@ -443,11 +482,7 @@ async function stopStatusPolling() {
   if (_statusPoller) { clearInterval(_statusPoller); _statusPoller = null; }
   try {
     const status = await fetchStatus();
-    state.liveStatus = status;
-    renderInstanceDots(status);
-    applyTreemapEvents(status);
-    refreshOpenDocViewer();
-    if (typeof chatOnStatus === 'function') chatOnStatus(status);
+    renderLiveStatus(status);
   } catch { renderInstanceDots(null); }
 }
 
@@ -599,10 +634,10 @@ async function executeRun(body, message) {
   document.getElementById('main-run-btn').disabled = true;
   try { renderTreemap(await getDocs()); } catch { /* keep old canvas */ }
   state.runId = newRunId();
-  startStatusPolling();
   updateFlowSteps();
   try {
-    const data = await apiPost('/api/run', { ...body, ...selectedModules(), run_id: state.runId });
+    const accepted = await apiPost('/api/run', { ...body, ...selectedModules(), run_id: state.runId });
+    const data = await waitForRunResult(accepted.run_id);
     state.currentResults = data;
     renderResults(data);
     setView('results');
@@ -614,7 +649,6 @@ async function executeRun(body, message) {
     setRunPill(null);
     document.getElementById('main-query-input').disabled = false;
     document.getElementById('main-run-btn').disabled = false;
-    await stopStatusPolling();
     if (state.view === 'library') resetLibraryStatus();
     updateFlowSteps();
   }

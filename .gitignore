@@ -8,6 +8,7 @@ venv/
 .coverage*
 
 # Generated pipeline artifacts (rebuilt locally, not committed)
+/local_sources/
 /knowledge_base/
 /index/
 /library/

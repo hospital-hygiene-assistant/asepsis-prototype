@@ -117,7 +117,9 @@ button { font-family: inherit; }
   background: var(--accent-soft); border: 1px solid rgba(56, 189, 248, 0.3);
   color: var(--accent); border-radius: 999px; padding: 4px 12px;
   font-size: 11px; font-weight: 600; font-variant-numeric: tabular-nums;
+  cursor: pointer;
 }
+.run-pill:hover { border-color: var(--accent); }
 .run-pill-spinner {
   width: 10px; height: 10px; border-radius: 50%;
   border: 2px solid rgba(56, 189, 248, 0.3); border-top-color: var(--accent);

@@ -9,7 +9,12 @@ from enum import StrEnum
 import re
 
 import pageindex as _pi
-from pageindex.question_run import PassageDecision, PassageDecisionKind
+from pageindex.question_run import (
+    PassageDecision,
+    PassageDecisionKind,
+    QuestionCancelled,
+    QuestionDeadlineExceeded,
+)
 from pageindex.library import (
     ExpectedLibraryCorrupt,
     ExpectedLibraryNotBuilt,
@@ -302,6 +307,7 @@ class WholeLibraryRetrieval:
         ))
         documents: list[DocumentSearch] = []
         for library_document, read_diagnostic in prepared:
+            run.checkpoint()
             document = library_document.document_id
             if read_diagnostic is not None:
                 assert read_diagnostic is not None
@@ -323,6 +329,8 @@ class WholeLibraryRetrieval:
                     library_document.index,
                     **retrieval_options,
                 )
+            except (QuestionCancelled, QuestionDeadlineExceeded):
+                raise
             except Exception as exc:
                 diagnostic = SearchDiagnostic(
                     document=document,

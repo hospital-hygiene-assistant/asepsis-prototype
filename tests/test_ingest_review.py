@@ -127,6 +127,70 @@ def test_successful_table_result_becomes_searchable_content(store, tmp_path):
     assert "Duration" in snapshot.document("guide").canonical_markdown
 
 
+def test_embedded_pdf_table_text_is_preferred_over_ocr(
+    store, tmp_path, monkeypatch
+):
+    session = store.create([_doc(tmp_path, "table")])
+    recognized = store.recognize_table(
+        session.session_id,
+        "guide",
+        "table_1",
+        session.revision,
+        lambda _path: SimpleNamespace(
+            markdown="OCR says 3 von 9",
+            payload={"kind": "table"},
+        ),
+    )
+    monkeypatch.setattr(
+        store,
+        "_embedded_region_text",
+        lambda _pdf, _page, _box: "PDF says 3 von 4",
+    )
+
+    _, snapshot = store.publish(session.session_id, recognized.revision)
+    markdown = snapshot.document("guide").canonical_markdown
+    assert "PDF says 3 von 4" in markdown
+    assert "OCR says 3 von 9" not in markdown
+
+
+def test_embedded_pdf_text_recovers_a_visual_only_document(
+    store, tmp_path, monkeypatch
+):
+    doc = _doc(tmp_path)
+    doc.markdown = "\n".join([
+        "# Guideline",
+        "",
+        "## Figures and Tables",
+        "",
+        "![figure 1](assets/figure_1.png)",
+    ])
+    doc.blocks = [Block("doc_title", "Guideline", 0, (10, 10, 150, 30))]
+    monkeypatch.setattr(
+        store,
+        "_embedded_document_guidance",
+        lambda _pdf, _scale: (
+            "Authoritative embedded instruction.",
+            (
+                Block("paragraph_title", "Source text", 0, (0, 0, 1, 1)),
+                Block(
+                    "text",
+                    "Authoritative embedded instruction.",
+                    0,
+                    (0, 0, 200, 400),
+                ),
+            ),
+        ),
+    )
+
+    session = store.create([doc])
+    _, snapshot = store.publish(session.session_id, session.revision)
+
+    assert (
+        "Authoritative embedded instruction."
+        in snapshot.document("guide").canonical_markdown
+    )
+
+
 def test_geometry_interface_preserves_only_unchanged_server_table_outcomes(store, tmp_path):
     session = store.create([_doc(tmp_path, "table")])
     recognized = store.recognize_table(

@@ -7,6 +7,8 @@ them.
 """
 
 import subprocess
+import threading
+import time
 
 import pytest
 from unittest.mock import MagicMock, patch
@@ -19,6 +21,7 @@ from api.ollama_pool import (
     shutdown_pool,
     start_configured_instances,
 )
+from pageindex import clients
 
 
 @pytest.fixture(autouse=True)
@@ -80,6 +83,28 @@ class TestProcessorStatus:
         assert status["models"][0]["size_vram"] == 1024
 
 
+class TestModelCallSlots:
+    def test_one_ollama_url_accepts_only_one_call_at_a_time(self):
+        url = "http://slot-test"
+        clients.acquire(url)
+        acquired = threading.Event()
+
+        def second():
+            clients.acquire(url)
+            acquired.set()
+            clients.release(url)
+
+        thread = threading.Thread(target=second)
+        thread.start()
+        time.sleep(0.02)
+        assert acquired.is_set() is False
+        assert clients.get_activity()[url] == 1
+        clients.release(url)
+        assert acquired.wait(1)
+        thread.join()
+        assert clients.get_activity()[url] == 0
+
+
 class TestOllamaBin:
     def test_it_reports_the_binary_when_installed(self):
         with patch.object(ollama_pool.shutil, "which", return_value="/usr/bin/ollama"):
@@ -115,6 +140,7 @@ class TestSetInstances:
         ports = [call.kwargs["env"]["OLLAMA_HOST"] for call in spawner.call_args_list]
         assert ports == [f"127.0.0.1:{BASE_PORT + 1}", f"127.0.0.1:{BASE_PORT + 2}"]
         for call in spawner.call_args_list:
+            assert call.kwargs["env"]["OLLAMA_NUM_PARALLEL"] == "1"
             assert call.kwargs["env"]["GGML_VK_VISIBLE_DEVICES"] == "-1"
             assert call.kwargs["env"]["CUDA_VISIBLE_DEVICES"] == "-1"
 

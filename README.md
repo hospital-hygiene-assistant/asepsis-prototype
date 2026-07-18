@@ -186,8 +186,8 @@ Both phases run in parallel across the configured Ollama instances.
 - Optionally first change the **ingest adapter** or the **Ollama instance count** (the stepper POSTs to the backend and the activity dots reflect the new pool).
 
 ⚙️ **Backend**
-- The frontend `POST`s to `/api/run` with `{query | test_id}`; retrieval always uses the one PageIndex implementation.
-- The server counts total leaves across all documents and calls `start_run(total)` to reset the live counters, then begins retrieval per document.
+- The frontend `POST`s to `/api/run` with `{query | test_id}` and receives a run identifier immediately; retrieval always uses the one PageIndex implementation.
+- The server executes bounded Question runs in FIFO order. The frontend polls the named run and may cancel it without losing the exact immutable library generation or live retrieval state.
 
 ---
 
@@ -208,7 +208,7 @@ Both phases run in parallel across the configured Ollama instances.
 
 ### t5 — Results arrive
 
-🖥️ **Frontend** — `/api/run` returns and the **results view** replaces the welcome screen:
+🖥️ **Frontend** — when the named Question run completes, its retained result replaces the welcome screen:
 - **Status bar:** the query, the pipeline chips (① ingest · ② index · ③ query), and a **PASS / FAIL** badge (only for test cases; custom queries show *Custom Query*).
 - **Document cards:** one per document with a retrieval ratio (`retrieved / total leaves`). Clicking a card switches the active document; each card also has a **⤢ Read** button.
 - **View tabs:** **⊟ Graph** (a D3 hierarchy tree of the active document) and **▦ Boxes** (a treemap of the active document), both colored by the final verdicts.
@@ -292,9 +292,10 @@ Both phases run in parallel across the configured Ollama instances.
 | `PUT` | `/api/ingest/reviews/{review}/documents/{document}/regions` | Replace reviewed geometry at an expected revision |
 | `POST` | `/api/ingest/reviews/{review}/documents/{document}/regions/{region}/recognize-table` | Recognize one confirmed table crop |
 | `POST` | `/api/ingest/reviews/{review}/confirm` | Atomically publish one ready review |
-| `GET` | `/api/runs/{run_id}` | Progress and verdict state for one retrieval run |
-| `POST` | `/api/run` | Run retrieval for a query/test |
-| `POST` | `/api/chat` | Versioned grounded answer, search-coverage facts, and verified sources |
+| `GET` | `/api/runs/{run_id}` | Lifecycle, progress, and retained terminal result for one Question run |
+| `DELETE` | `/api/runs/{run_id}` | Cancel a queued or active Question run |
+| `POST` | `/api/run` | Queue debug retrieval and return `202 Accepted` with its run identifier |
+| `POST` | `/api/chat` | Queue a grounded answer and return `202 Accepted` with its run identifier |
 | `POST` | `/api/explain` | On-demand grounded "why not selected" (dedicated instance) |
 
 ### Ingest adapters

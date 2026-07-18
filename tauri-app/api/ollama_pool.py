@@ -38,7 +38,11 @@ CPU_ONLY = _env_flag("ASEPSIS_OLLAMA_CPU_ONLY", True)
 
 def ollama_process_env(*, host: str) -> dict[str, str]:
     """Environment for every Ollama process ASEPSIS itself owns."""
-    env = {**os.environ, "OLLAMA_HOST": host}
+    env = {
+        **os.environ,
+        "OLLAMA_HOST": host,
+        "OLLAMA_NUM_PARALLEL": "1",
+    }
     if CPU_ONLY:
         env.update({
             "OLLAMA_VULKAN": "0",

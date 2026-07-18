@@ -6,7 +6,7 @@ import pytest
 
 from api.retrieval import DocumentSearch, LibraryStatus, WholeLibraryRetrieval
 from api.routers.retrieval import _debug_results
-from api.runs import RunRegistry
+from pageindex import QuestionRun
 from pageindex import DocumentRetrieval, PassageDecision, PassageDecisionKind
 from pageindex.library import ExpectedLibraryStore, LibraryCandidate
 from pageindex.nodes import PageNode
@@ -88,7 +88,7 @@ def test_a_fully_searched_library_exposes_only_exactly_quoted_evidence(tmp_path)
     )
 
     result = WholeLibraryRetrieval(index, library_store=library).search(
-        "MRSA?", RunRegistry().create("probe")
+        "MRSA?", QuestionRun("probe")
     )
 
     assert result.status is LibraryStatus.COMPLETE
@@ -141,7 +141,7 @@ def test_an_invalid_quote_is_excluded_and_makes_coverage_partial(tmp_path):
     )
 
     result = WholeLibraryRetrieval(index, library_store=library).search(
-        "MRSA?", RunRegistry().create("probe")
+        "MRSA?", QuestionRun("probe")
     )
 
     assert result.status is LibraryStatus.PARTIAL
@@ -175,7 +175,7 @@ def test_a_document_lost_during_search_remains_named_as_partial_coverage(tmp_pat
 
     result = WholeLibraryRetrieval(
         OneDocumentVanishes(), library_store=library
-    ).search("MRSA?", RunRegistry().create("probe"))
+    ).search("MRSA?", QuestionRun("probe"))
 
     assert result.status is LibraryStatus.PARTIAL
     assert [document.document for document in result.documents] == [
@@ -213,7 +213,7 @@ def test_an_unjudged_section_is_named_and_prevents_complete_coverage(tmp_path):
     )
 
     result = WholeLibraryRetrieval(index, library_store=library).search(
-        "MRSA?", RunRegistry().create("probe")
+        "MRSA?", QuestionRun("probe")
     )
 
     assert result.status is LibraryStatus.PARTIAL
@@ -229,7 +229,7 @@ def test_progress_is_totalled_before_any_document_search(tmp_path):
         "b": (leaf("l3", "three"),),
     })
     engine = ScriptedIndex({"a": ([], {}), "b": ([], {})})
-    run = RunRegistry().create("probe")
+    run = QuestionRun("probe")
 
     WholeLibraryRetrieval(engine, library_store=library).search("q", run)
 
@@ -258,7 +258,7 @@ def test_one_run_uses_one_retrieval_model_across_every_document(tmp_path):
     engine = ModelChangingEngine()
 
     WholeLibraryRetrieval(engine, library_store=library).search(
-        "q", RunRegistry().create("probe")
+        "q", QuestionRun("probe")
     )
 
     assert engine.seen == ["model-a", "model-a"]
@@ -278,7 +278,7 @@ def test_debug_adapter_preserves_verified_reason_quote_and_content(tmp_path):
     })
 
     search = WholeLibraryRetrieval(engine, library_store=library).search(
-        "q", RunRegistry().create("probe")
+        "q", QuestionRun("probe")
     )
     result = _debug_results(search, library)
 
@@ -292,7 +292,7 @@ def test_an_unbuilt_expected_library_is_unavailable_not_an_honest_negative(tmp_p
     result = WholeLibraryRetrieval(
         ScriptedIndex({}),
         library_store=ExpectedLibraryStore(tmp_path / "library"),
-    ).search("q", RunRegistry().create("probe"))
+    ).search("q", QuestionRun("probe"))
 
     assert result.status is LibraryStatus.UNAVAILABLE
     assert result.generation_id is None

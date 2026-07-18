@@ -7,6 +7,7 @@ branches at once.
 
 import os
 import threading
+from collections.abc import Callable
 
 import ollama
 
@@ -16,17 +17,27 @@ OLLAMA_URLS: list[str] = [
     if u.strip()
 ]
 
-_clients: list[ollama.Client] = [ollama.Client(host=url) for url in OLLAMA_URLS]
+REQUEST_TIMEOUT_SECONDS = float(os.getenv("ASEPSIS_OLLAMA_REQUEST_TIMEOUT", "180"))
+
+
+def _client(url: str) -> ollama.Client:
+    return ollama.Client(host=url, timeout=REQUEST_TIMEOUT_SECONDS)
+
+
+_clients: list[ollama.Client] = [_client(url) for url in OLLAMA_URLS]
 _rr_lock = threading.Lock()
 _rr_index = 0
 
 # {url: leaves in flight}, so a client can show which instance is busy.
 _activity: dict[str, int] = {url: 0 for url in OLLAMA_URLS}
 _activity_lock = threading.Lock()
+_slots: dict[str, threading.Semaphore] = {
+    url: threading.Semaphore(1) for url in OLLAMA_URLS
+}
 
 
 def make_client(url: str) -> ollama.Client:
-    return ollama.Client(host=url)
+    return _client(url)
 
 
 def round_robin_client() -> tuple[ollama.Client, str]:
@@ -43,15 +54,30 @@ def reconfigure_clients(urls: list[str]) -> None:
     global OLLAMA_URLS, _clients, _rr_index
     with _rr_lock:
         OLLAMA_URLS = urls
-        _clients = [ollama.Client(host=u) for u in urls]
+        _clients = [_client(u) for u in urls]
         _rr_index = 0
     with _activity_lock:
         _activity.clear()
         for url in urls:
             _activity[url] = 0
+        _slots.clear()
+        for url in urls:
+            _slots[url] = threading.Semaphore(1)
 
 
-def acquire(url: str) -> None:
+def acquire(url: str, checkpoint: Callable[[], None] | None = None) -> None:
+    """Claim one real Ollama process, remaining cancellable while queued."""
+    with _activity_lock:
+        slot = _slots.setdefault(url, threading.Semaphore(1))
+    while not slot.acquire(timeout=0.1):
+        if checkpoint is not None:
+            checkpoint()
+    try:
+        if checkpoint is not None:
+            checkpoint()
+    except BaseException:
+        slot.release()
+        raise
     with _activity_lock:
         _activity[url] = _activity.get(url, 0) + 1
 
@@ -59,6 +85,9 @@ def acquire(url: str) -> None:
 def release(url: str) -> None:
     with _activity_lock:
         _activity[url] = max(0, _activity.get(url, 0) - 1)
+        slot = _slots.get(url)
+    if slot is not None:
+        slot.release()
 
 
 def get_activity() -> dict[str, int]:

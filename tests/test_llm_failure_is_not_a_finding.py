@@ -14,6 +14,7 @@ could reasonably conclude no guideline covers their question.
 from unittest.mock import patch
 
 import pytest
+import time
 from fastapi.testclient import TestClient
 
 
@@ -132,8 +133,7 @@ class TestChatEndpointRefusesToFakeAFinding:
         )
         response = client.post("/api/chat", json={"query": "What PPE for MRSA?"})
 
-        assert response.status_code == 503
-        body = response.text
+        body = str(self._result(client, response)["result"])
         assert "judged relevant" not in body, "must not state a finding about the documents"
         assert "insufficient_evidence" not in body
 
@@ -145,7 +145,7 @@ class TestChatEndpointRefusesToFakeAFinding:
             chat_router, "answer_question", self._answering(outcome)
         )
         response = client.post("/api/chat", json={"query": "q"})
-        body = response.json()
+        body = self._result(client, response)["result"]
         assert body["outcome"]["kind"] == "retrieval_unavailable"
         assert body["outcome"]["coverage"] == {
             "status": "unavailable",
@@ -164,8 +164,8 @@ class TestChatEndpointRefusesToFakeAFinding:
             chat_router, "answer_question", self._answering(outcome)
         )
         response = client.post("/api/chat", json={"query": "unrelated question"})
-        assert response.status_code == 200
-        assert response.json()["outcome"]["kind"] == "insufficient_evidence"
+        body = self._result(client, response)["result"]
+        assert body["outcome"]["kind"] == "insufficient_evidence"
 
     def test_a_wire_defect_after_search_is_not_relabeled_as_retrieval_unavailable(
         self, monkeypatch
@@ -188,5 +188,18 @@ class TestChatEndpointRefusesToFakeAFinding:
             server.app, raise_server_exceptions=False
         ).post("/api/chat", json={"query": "q"})
 
-        assert response.status_code == 500
-        assert "retrieval_unavailable" not in response.text
+        body = self._result(TestClient(server.app), response)
+        assert body["phase"] == "failed"
+        assert body["error"] == {"code": "unexpected_failure"}
+        assert "retrieval_unavailable" not in str(body)
+    @staticmethod
+    def _result(client, response):
+        assert response.status_code == 202
+        run_id = response.json()["run_id"]
+        deadline = time.monotonic() + 1
+        while True:
+            body = client.get(f"/api/runs/{run_id}").json()
+            if body["phase"] in {"completed", "failed", "cancelled", "timed_out"}:
+                return body
+            assert time.monotonic() < deadline
+            time.sleep(0.005)

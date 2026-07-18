@@ -15,7 +15,7 @@ import json
 import pytest
 from unittest.mock import patch
 
-from pageindex import QuestionRun
+from pageindex import QuestionCancelled, QuestionRun
 from pageindex.document_index import DocumentIndex
 from pageindex import search as pi_search
 from pageindex.settings import settings
@@ -94,6 +94,16 @@ class TestSectionCheck:
                 (node := section("isolation", [leaf("mrsa", "x")])),
                 "q", "crumb", self._index(node), run=QuestionRun())
         assert decision.kind.relevant is True
+
+    def test_cancellation_is_not_relabeled_as_a_failed_open_check(self):
+        run = QuestionRun()
+        run.cancel()
+        with pytest.raises(QuestionCancelled):
+            pi_search._check_section_relevant(
+                (node := section("isolation", [leaf("mrsa", "x")])),
+                "q", "crumb", self._index(node), run=run,
+            )
+        assert run.events()["decisions"] == []
 
 
 class TestExplainNonselection:

@@ -40,7 +40,13 @@ from .search import (
     search_document,
 )
 from .document_index import DocumentIndex
-from .question_run import PassageDecision, PassageDecisionKind, QuestionRun
+from .question_run import (
+    PassageDecision,
+    PassageDecisionKind,
+    QuestionCancelled,
+    QuestionDeadlineExceeded,
+    QuestionRun,
+)
 from .settings import settings
 
 __all__ = [
@@ -52,7 +58,8 @@ __all__ = [
     "build_generation", "DocumentRetrieval", "search_document", "explain_nonselection",
     "DocumentIndex",
     "make_client", "reconfigure_clients", "get_activity", "OLLAMA_URLS",
-    "PassageDecision", "PassageDecisionKind", "QuestionRun",
+    "PassageDecision", "PassageDecisionKind", "QuestionCancelled",
+    "QuestionDeadlineExceeded", "QuestionRun",
     "settings",
     "LEAF_EVAL_PROMPT", "SECTION_CHECK_PROMPT", "EXPLAIN_PROMPT",
 ]
