@@ -23,23 +23,72 @@ from pathlib import Path
 from typing import Optional
 
 import ollama
+from dotenv import load_dotenv
 
-KB_DIR = Path("knowledge_base")
-INDEX_DIR = Path("index")
-MODEL = "gemma3:4b"
-SYNTHESIS_MODEL = "gemma3:4b"
+ROOT = Path(__file__).resolve().parent
+load_dotenv(ROOT / ".env", override=False)
+
+KB_DIR = ROOT / "knowledge_base"
+INDEX_DIR = ROOT / "index"
+
+
+def _normalize_backend(value: Optional[str]) -> str:
+    backend = (value or "ollama").strip().lower()
+    return backend if backend in {"ollama", "schlaubox"} else "ollama"
+
+
+LLM_BACKEND = _normalize_backend(os.getenv("LLM_BACKEND"))
+DEFAULT_MODELS = {
+    "ollama": "gemma3:1b",
+    "schlaubox": "llama3.3:70b",
+}
+
+
+def _resolve_model(backend: str) -> str:
+    if backend == "schlaubox":
+        return (
+            os.getenv("LLM_MODEL_SCHLAUBOX")
+            or os.getenv("LLM_MODEL")
+            or DEFAULT_MODELS[backend]
+        )
+    return (
+        os.getenv("LLM_MODEL_OLLAMA")
+        or os.getenv("LLM_MODEL")
+        or DEFAULT_MODELS[backend]
+    )
+
+
+DEFAULT_MODEL = _resolve_model(LLM_BACKEND)
+MODEL = DEFAULT_MODEL
+SYNTHESIS_MODEL = DEFAULT_MODEL
+
+SCHLAUBOX_URL = os.getenv("SCHLAUBOX_URL", "http://intern.schlaubox.de:11434")
+SCHLAUBOX_TIMEOUT = int(os.getenv("SCHLAUBOX_TIMEOUT", "500"))
 
 # ---------------------------------------------------------------------------
 # Ollama instance pool — set OLLAMA_URLS=url1,url2,... for parallelism
 # Each URL is an independent Ollama process; branches are distributed
 # round-robin so N instances process N branches simultaneously.
 # ---------------------------------------------------------------------------
-OLLAMA_URLS: list[str] = [
-    u.strip()
-    for u in os.getenv("OLLAMA_URLS", "http://localhost:11434").split(",")
-    if u.strip()
-]
-_clients: list[ollama.Client] = [ollama.Client(host=url) for url in OLLAMA_URLS]
+def _configured_urls() -> list[str]:
+    if LLM_BACKEND == "schlaubox":
+        return [SCHLAUBOX_URL]
+    urls = [
+        u.strip()
+        for u in os.getenv("OLLAMA_URLS", "http://localhost:11434").split(",")
+        if u.strip()
+    ]
+    return urls or ["http://localhost:11434"]
+
+
+def _make_client(url: str) -> ollama.Client:
+    if LLM_BACKEND == "schlaubox":
+        return ollama.Client(host=url, timeout=SCHLAUBOX_TIMEOUT)
+    return ollama.Client(host=url)
+
+
+OLLAMA_URLS: list[str] = _configured_urls()
+_clients: list[ollama.Client] = [_make_client(url) for url in OLLAMA_URLS]
 _rr_lock  = threading.Lock()
 _rr_index = 0
 
@@ -152,14 +201,22 @@ def _round_robin_client() -> tuple[ollama.Client, str]:
 def reconfigure_clients(urls: list[str]) -> None:
     """Hot-swap the Ollama client pool. Called by the server when instance count changes."""
     global OLLAMA_URLS, _clients, _rr_index
+    if LLM_BACKEND == "schlaubox":
+        urls = [SCHLAUBOX_URL]
+    elif not urls:
+        urls = ["http://localhost:11434"]
     with _rr_lock:
         OLLAMA_URLS = urls
-        _clients = [ollama.Client(host=u) for u in urls]
+        _clients = [_make_client(u) for u in urls]
         _rr_index = 0
     with _activity_lock:
         _activity.clear()
         for u in urls:
             _activity[u] = 0
+
+
+def get_backend() -> str:
+    return LLM_BACKEND
 
 HEADING_RE = re.compile(r"^(#{1,6})\s+(.+)$")
 

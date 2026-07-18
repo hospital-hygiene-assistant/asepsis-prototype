@@ -17,6 +17,11 @@ import time
 import urllib.request
 from pathlib import Path
 
+try:
+    from dotenv import load_dotenv
+except ImportError:
+    load_dotenv = None
+
 ROOT      = Path(__file__).parent
 TAURI_DIR = ROOT / "tauri-app"
 KB_DIR    = ROOT / "knowledge_base"
@@ -25,10 +30,14 @@ DOCS_DIR  = ROOT / "docs"
 PORT      = 8765
 URL       = f"http://127.0.0.1:{PORT}"
 
+if load_dotenv is not None:
+    load_dotenv(ROOT / ".env", override=False)
+
 
 # ── dependency check ──────────────────────────────────────────
 def _ensure_python_deps():
     try:
+        import dotenv  # noqa: F401
         import fastapi, uvicorn  # noqa: F401
     except ImportError:
         req = TAURI_DIR / "requirements-tauri.txt"
@@ -91,14 +100,22 @@ def _has_tauri() -> bool:
 
 # ── main ──────────────────────────────────────────────────────
 def _print_ollama_tip():
-    urls = os.environ.get("OLLAMA_URLS", "")
-    n = len([u for u in urls.split(",") if u.strip()]) if urls else 1
-    if n > 1:
-        print(f"  Ollama pool  → {n} instances ({urls})")
+    backend = os.environ.get("LLM_BACKEND", "ollama").strip().lower()
+    if backend == "schlaubox":
+        model = os.environ.get("LLM_MODEL_SCHLAUBOX") or os.environ.get("LLM_MODEL") or "llama3.3:70b"
+        url = os.environ.get("SCHLAUBOX_URL", "http://intern.schlaubox.de:11434")
+        print(f"  Schlaubox   → {url} (model: {model})")
     else:
-        print("  Ollama tip   → For faster retrieval run multiple Ollama instances and set:")
-        print("                   OLLAMA_URLS=http://localhost:11434,http://localhost:11435")
-        print("                 Start extras with:  OLLAMA_HOST=0.0.0.0:11435 ollama serve")
+        model = os.environ.get("LLM_MODEL_OLLAMA") or os.environ.get("LLM_MODEL") or "gemma3:1b"
+        urls = os.environ.get("OLLAMA_URLS", "")
+        n = len([u for u in urls.split(",") if u.strip()]) if urls else 1
+        if n > 1:
+            print(f"  Ollama pool  → {n} instances ({urls}) (model: {model})")
+        else:
+            print(f"  Ollama tip   → model: {model}")
+            print("                 For faster retrieval run multiple Ollama instances and set:")
+            print("                   OLLAMA_URLS=http://localhost:11434,http://localhost:11435")
+            print("                 Start extras with:  OLLAMA_HOST=0.0.0.0:11435 ollama serve")
 
 
 def main():

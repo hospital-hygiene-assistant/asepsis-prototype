@@ -72,7 +72,7 @@ browser if Tauri isn't installed.
 │        FRONTEND              │  ───────  GET / , /api/* ────────▶  │          BACKEND               │
 │  Tauri WKWebView / browser   │                                     │  FastAPI (tauri-app/server.py) │
 │  index.html · main.js · D3   │  ◀──────  JSON + live status ─────  │  pageindex.py (index + LLM)    │
-└─────────────────────────────┘                                     │  Ollama (gemma3:4b) pool       │
+└─────────────────────────────┘                                     │  Ollama / Schlaubox inference  │
                                                                      └──────────────────────────────┘
 ```
 
@@ -89,8 +89,24 @@ backend owns the document index, the LLM calls, and all run state.
 | UI | HTML + vanilla JS + D3 v7 (vendored offline) | `tauri-app/ui/` |
 | Server | FastAPI + Uvicorn, port `8765` | `tauri-app/server.py` |
 | Index + retrieval | Deterministic heading parser + LLM retrieval | `pageindex.py` |
-| LLM runtime | Ollama, model `gemma3:4b` | pool on `11434+`, explainer on `11500` |
+| LLM runtime | Ollama or Schlaubox, model from `.env` | pool on `11434+`, explainer on `11500` |
 | Pipeline modules | ingest / index / query strategies | `modules/` |
+
+### Environment configuration
+
+The app reads a root-level `.env` file automatically through `python-dotenv`.
+
+- `LLM_BACKEND=ollama|schlaubox` selects the inference host.
+- `LLM_MODEL_OLLAMA=<name>` sets the Ollama model; default: `gemma3:1b`.
+- `LLM_MODEL_SCHLAUBOX=<name>` sets the Schlaubox model; default: `llama3.3:70b`.
+- `LLM_MODEL=<name>` remains a compatibility fallback if you already use a single shared model variable.
+- `OLLAMA_URLS=http://127.0.0.1:11434,...` configures the local Ollama pool.
+- `SCHLAUBOX_URL=http://intern.schlaubox.de:11434` configures the remote Schlaubox endpoint.
+- Defaults are backend-specific and reproducible through `.env`: `gemma3:1b` for local Ollama and `llama3.3:70b` for Schlaubox.
+
+The following models are available: 
+llama3.3:70b (default), llama3:70b,
+llama3:8b, qwen3:32b, qwen3:8b, deepseek-r1:32b, deepseek-r1:8b, deepseek-r1:7
 
 Retrieval is **two-phase**: a cheap top-down **section-pruning** pass (BFS over the
 heading tree) followed by a focused **per-leaf evaluation** of every surviving leaf.
@@ -266,7 +282,7 @@ Discovered automatically from `modules/<stage>/*.py` (each exports a `MODULE_INF
 
 - **Retrieval pool:** ports `11434, 11435, …`, sized by the sidebar stepper / `--ollama-instances`. Used round-robin for the two-phase retrieval.
 - **Explainer:** port `11500`, dedicated to `/api/explain`, started lazily and kept warm — isolated so on-demand explanations never disturb a running query.
-- Model: `gemma3:4b`.
+- Model: backend-dependent default from `.env`.
 
 ### Verdict color scheme
 

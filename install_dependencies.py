@@ -18,7 +18,8 @@ def main():
         "fastapi",
         "uvicorn",
         "pydantic",
-        "openai"
+        "openai",
+        "python-dotenv"
     ]
 
     try:

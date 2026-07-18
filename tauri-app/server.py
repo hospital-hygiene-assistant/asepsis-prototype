@@ -61,6 +61,15 @@ def _ollama_bin() -> Optional[str]:
 def set_ollama_instances(n: int) -> dict:
     """Start/stop Ollama instances so exactly n are running. Returns status dict."""
     global _extra_procs
+    if _pi.get_backend() == "schlaubox":
+        _pi.reconfigure_clients([])
+        return {
+            "requested": 1,
+            "live": len(_pi.OLLAMA_URLS),
+            "urls": _pi.OLLAMA_URLS,
+            "errors": ["LLM_BACKEND=schlaubox uses the configured remote host; local Ollama instances are disabled"],
+        }
+
     n = max(1, n)
 
     # Kill any extras we started beyond what's needed
@@ -128,6 +137,8 @@ def ensure_explainer() -> Optional[str]:
     """
     url = f"http://127.0.0.1:{EXPLAINER_PORT}"
     with _explainer_lock:
+        if _pi.get_backend() == "schlaubox":
+            return _pi.OLLAMA_URLS[0] if _pi.OLLAMA_URLS else None
         if _probe(url):
             return url
         bin_path = _ollama_bin()
@@ -160,9 +171,12 @@ atexit.register(_shutdown_explainer)
 
 
 # Initialise from env on startup
-_initial_n = int(os.environ.get("OLLAMA_INSTANCES", "1"))
-if _initial_n > 1:
-    set_ollama_instances(_initial_n)
+if _pi.get_backend() == "ollama":
+    _initial_n = int(os.environ.get("OLLAMA_INSTANCES", "1"))
+    if _initial_n > 1:
+        set_ollama_instances(_initial_n)
+else:
+    _pi.reconfigure_clients([])
 
 app = FastAPI(title="Asepsis Prototype")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
@@ -315,6 +329,7 @@ def get_status():
 @app.get("/api/config")
 def get_config():
     return JSONResponse({
+        "llm_backend": _pi.get_backend(),
         "ollama_instances": len(_pi.OLLAMA_URLS),
         "ollama_urls": _pi.OLLAMA_URLS,
         "ollama_bin_available": _ollama_bin() is not None,
