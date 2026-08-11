@@ -252,3 +252,30 @@ class TestChunking:
         leaves, _, _ = _prune(tree, fake_ollama)
         assert len(leaves) == len(pageindex._child_batches(children, "", "")), (
             "one survivor per batch — results must be unioned, not overwritten")
+
+
+class TestVerboseIdEcho:
+    """The live tier caught this: the model answers with the whole listing
+    line echoed back — the prompt shows "id=<id> | LEAF | <title>" and it
+    replies "<id> | LEAF | <title>". Those were dropped as unknown ids, so
+    sections the model HAD selected silently vanished from retrieval."""
+
+    @pytest.mark.parametrize("raw,expected", [
+        ("opioids | LEAF | Opioids", "opioids"),
+        ("non-opioid-adjuncts | LEAF | Non-Opioid Adjuncts", "non-opioid-adjuncts"),
+        ("- id=opioids", "opioids"),
+        ("* sodium-restriction | LEAF | Sodium Restriction", "sodium-restriction"),
+    ])
+    def test_echoed_lines_still_yield_the_id(self, raw, expected):
+        assert pageindex._clean_node_id(raw) == expected
+
+    def test_an_echoed_child_is_kept_not_dropped(self, fake_ollama, capsys):
+        child = _leaf(1)
+        tree = [_section("root", [child])]
+        fake_ollama.handler = lambda p, m: (
+            _keep("root") if "id=root" in p
+            else json.dumps({"keep": [{"id": "leaf-1 | LEAF | Leaf 1",
+                                       "reason": "relevant"}]}))
+        leaves, _, _ = _prune(tree, fake_ollama)
+        assert [l.node_id for l in leaves] == ["leaf-1"]
+        assert "ignoring unknown id" not in capsys.readouterr().err

@@ -68,6 +68,33 @@ def _load_sources() -> dict:
         return {}
 
 
+def require_ocr_dependencies() -> None:
+    """Fail with something actionable before importing the OCR stack.
+
+    The layout pipeline needs numpy and the Paddle runtime, which the app's own
+    venv does not carry. Without this check the first missing import surfaces
+    as a bare "No module named 'numpy'" from deep inside the vendored code,
+    with nothing to tell the user which Python to use or what to install.
+    """
+    missing = []
+    for mod, pkg in (("numpy", "numpy"), ("paddle", "paddlepaddle"),
+                     ("paddlex", "paddlex")):
+        try:
+            __import__(mod)
+        except ImportError:
+            missing.append(pkg)
+    if not missing:
+        return
+    raise RuntimeError(
+        f"PDF ingest needs {', '.join(missing)}, which this Python does not "
+        f"have:\n    {sys.executable}\n\n"
+        f"Either install them here:\n"
+        f"    {sys.executable} -m pip install {' '.join(missing)} paddleocr\n\n"
+        f"or launch the app with a Python that already has them. The app's own "
+        f".venv carries runtime dependencies only; the OCR stack is large and "
+        f"is not installed into it by run_tauri.command.")
+
+
 def doc_id_for(pdf: Path, root: Path | None = None) -> str:
     """The document id for a PDF, and its manifest entry.
 
@@ -147,16 +174,7 @@ def _ingest_pdfs(pdfs: list[Path], progress=None,
     # Pre-flight: the layout model needs the Paddle engine.  Fail with a clear,
     # actionable message instead of a deep stack trace (flagged, not silently
     # downgraded — there is no non-OCR fallback worth having).
-    try:
-        import paddle  # noqa: F401
-        import paddlex  # noqa: F401
-    except ImportError as exc:
-        raise RuntimeError(
-            "betteringest_pdf needs paddlepaddle + paddlex (PP-DocLayoutV3 "
-            f"layout model), missing from this Python ({sys.executable}): {exc}. "
-            "Launch the app with the Python env that has them (pyenv 3.12.9 on "
-            "this machine — see .python-version) or `pip install paddlepaddle "
-            "paddlex paddleocr`.") from exc
+    require_ocr_dependencies()
 
     from modules.ingest._betteringest import BetterIngest
     from modules.ingest._captioning import CaptioningUnavailable, caption_assets
@@ -232,6 +250,11 @@ def _ingest_pdfs(pdfs: list[Path], progress=None,
 
 
 def prepare_layout_review(pdf_paths: list[str], progress_cb=None) -> list[dict]:
+    # This is the path the app's "add & index" button takes. It had no
+    # dependency check, so a missing OCR stack surfaced as a raw ImportError
+    # from a vendored module rather than the actionable message below.
+    require_ocr_dependencies()
+
     import pypdfium2 as pdfium
     from modules.ingest._betteringest.ocr import run_ocr, OcrConfig
     from modules.ingest._betteringest import BetterIngest

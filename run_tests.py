@@ -86,7 +86,9 @@ def main() -> int:
         cmd += ["-m", "llm", "-o", "addopts="]
         cmd += ["-v", "-ra", "--tb=short", "--color=yes"]
     elif args.llm:
-        cmd += ["-m", "unit or llm", "-o", "addopts="]
+        # No -m filter at all. "unit or llm" silently deselected every test
+        # carrying no marker — 50 of them, including the whole ingest suite.
+        cmd += ["-o", "addopts="]
         cmd += ["-v", "-ra", "--tb=short", "--color=yes"]
 
     cmd += passthrough

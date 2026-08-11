@@ -33,11 +33,20 @@ pytestmark = pytest.mark.llm
 # ---------------------------------------------------------------------------
 
 def _require_index() -> None:
+    # Guard against a stubbed client pool leaking in from the offline tests.
+    # Without this the whole tier "fails" in milliseconds with every document
+    # pruned to nothing, which is indistinguishable from a real regression.
+    from conftest import real_ollama_available
+    if not real_ollama_available():
+        pytest.fail(
+            "This tier needs a live Ollama, but the client pool is not talking "
+            "to one (stubbed or unreachable). Results would be meaningless.")
     if not INDEX_DIR.exists() or not any(INDEX_DIR.glob("*.json")):
         pytest.skip("No index built — run `python3 pipeline.py index` first")
 
 
 def _retrieved_ids(doc_name: str, query: str) -> set[str]:
+    _require_index()
     try:
         nodes = retrieve(doc_name, query)
     except FileNotFoundError:

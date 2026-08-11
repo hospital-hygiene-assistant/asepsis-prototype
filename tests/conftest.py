@@ -134,7 +134,14 @@ def recorder() -> CallRecorder:
 
 @pytest.fixture
 def fake_ollama(monkeypatch, recorder):
-    """Patch every Ollama client construction point to the recording fake."""
+    """Patch every Ollama client construction point to the recording fake.
+
+    The teardown matters. `reconfigure_clients` stores client INSTANCES in a
+    module global, so monkeypatch reverting `ollama.Client` does not undo it —
+    the fake clients stay in the pool for the rest of the session, and every
+    later test unknowingly runs against stubs. That silently turned the entire
+    live-Ollama tier into a no-op that "failed" in 2.7 seconds.
+    """
     import pageindex
 
     def _factory(*a, **kw):
@@ -143,7 +150,38 @@ def fake_ollama(monkeypatch, recorder):
     monkeypatch.setattr(pageindex.ollama, "Client", _factory)
     monkeypatch.setattr(pageindex, "make_client", lambda url: FakeOllamaClient(recorder))
     pageindex.reconfigure_clients(["http://fake:1"])
-    return recorder
+    yield recorder
+    # Rebuild the pool with the REAL client class now restored.
+    monkeypatch.undo()
+    pageindex.reconfigure_clients(list(_REAL_OLLAMA_URLS))
+
+
+# The client pool as it was before any test touched it.
+_REAL_OLLAMA_URLS: list[str] = []
+
+
+def pytest_configure(config):
+    import pageindex
+    _REAL_OLLAMA_URLS[:] = list(pageindex.OLLAMA_URLS)
+
+
+def real_ollama_available() -> bool:
+    """True when the pool holds genuine clients pointing at a live server.
+
+    The live tier must refuse to run against leaked fakes: a stubbed run
+    reports confident failures in milliseconds and looks exactly like a real
+    retrieval regression.
+    """
+    import pageindex
+    if not pageindex._clients:
+        return False
+    if any(isinstance(c, FakeOllamaClient) for c in pageindex._clients):
+        return False
+    try:
+        pageindex._clients[0].list()
+        return True
+    except Exception:
+        return False
 
 
 @pytest.fixture(autouse=True)

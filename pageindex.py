@@ -397,12 +397,18 @@ def _slugify(text: str) -> str:
 
 def _clean_node_id(raw: str) -> str:
     """Sanitise and extract the node_id from raw strings returned by the LLM."""
-    raw = raw.strip()
+    raw = raw.strip().lstrip("-*• ").strip()
     if "|" in raw:
-        for part in raw.split("|"):
-            part = part.strip()
+        parts = [p.strip() for p in raw.split("|")]
+        for part in parts:
             if part.startswith("id="):
                 return part[3:].strip()
+        # The model often echoes the whole listing line back — the prompt
+        # shows children as "id=<id> | LEAF | <title>", and it answers with
+        # "<id> | LEAF | <title>". The id is the first field, and discarding
+        # the lot means silently dropping a section the model DID select.
+        if parts and parts[0]:
+            raw = parts[0]
     # The separator is required. With `*` this also ate the prefix of any
     # legitimate id that merely STARTS with these words — "leaf-1" became
     # "-1", and a real heading slugged to "section-overview" became
