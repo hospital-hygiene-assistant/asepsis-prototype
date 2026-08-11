@@ -1,0 +1,12 @@
+# Test-only dependencies.
+#
+# The app's own venv (built by run_tauri.command from
+# tauri-app/requirements-tauri.txt) deliberately carries only what the app
+# needs at runtime, so pytest is not in it. Install these into whichever
+# interpreter you run the suite with:
+#
+#     python3 -m pip install -r requirements-dev.txt
+#
+# The offline suite needs nothing else — it stubs Ollama out entirely. The
+# --llm tier additionally needs a running Ollama and a built index.
+pytest>=8

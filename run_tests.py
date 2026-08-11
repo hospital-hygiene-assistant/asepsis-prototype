@@ -31,7 +31,34 @@ PHASE_FILES: dict[str, list[str]] = {
 }
 
 
+def _require_pytest() -> bool:
+    """Fail with the fix, not a bare ModuleNotFoundError.
+
+    The app venv built by run_tauri.command carries runtime dependencies only,
+    so running this with `.venv/bin/python3` finds no pytest — an easy and
+    confusing thing to hit.
+    """
+    import importlib.util
+    if importlib.util.find_spec("pytest") is not None:
+        return True
+    here = Path(sys.executable)
+    print(f"\npytest is not installed in this interpreter:\n    {here}\n")
+    if ".venv" in str(here):
+        print("That is the app's runtime venv, which carries only what the app\n"
+              "needs to run. Either use your system Python:\n\n"
+              "    python3 run_tests.py\n\n"
+              "or add the test dependencies to this venv:\n\n"
+              f"    {here} -m pip install -r requirements-dev.txt\n")
+    else:
+        print("Install the test dependencies:\n\n"
+              f"    {here} -m pip install -r requirements-dev.txt\n")
+    return False
+
+
 def main() -> int:
+    if not _require_pytest():
+        return 1
+
     ap = argparse.ArgumentParser(add_help=True, description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--phase", action="append", metavar="N",
