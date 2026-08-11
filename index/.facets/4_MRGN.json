@@ -1,0 +1,101 @@
+{
+  "meta": {
+    "model": "gemma4:e4b",
+    "key": "v2|p2|q01617b3d95eb"
+  },
+  "leaves": {
+    "98d27b2386dba01279936ce75243902347b8c0de7885df0d4a5fbc48ce1c680d": {
+      "q_stage": [
+        "q_stage__monitor"
+      ],
+      "q_setting": [
+        "q_setting__icu",
+        "q_setting__ward",
+        "q_setting__community"
+      ],
+      "q_population": [],
+      "q_domain": [
+        "q_domain__infection"
+      ]
+    },
+    "11b8e4324de0d0763916f5d23111545c1d9292153e738405d3f769a72fc03ac8": {
+      "q_domain": [
+        "q_domain__infection"
+      ],
+      "q_setting": [
+        "q_setting__periop"
+      ],
+      "q_stage": [],
+      "q_population": []
+    },
+    "874b07f63ed7956c94b13ab878c8376959815697b1382b38e5e9d185398f2a27": {
+      "q_domain": [
+        "q_domain__infection"
+      ],
+      "q_setting": [
+        "q_setting__periop"
+      ],
+      "q_stage": [
+        "q_stage__monitor"
+      ],
+      "q_population": []
+    },
+    "414afcb62a155d9198122e5eb52d6f264325a5374f0fa593192a17b8eb245356": {
+      "q_domain": [
+        "q_domain__infection"
+      ],
+      "q_setting": [
+        "q_setting__periop"
+      ],
+      "q_stage": [
+        "q_stage__monitor"
+      ],
+      "q_population": []
+    },
+    "7b537746acda3dace0f0d1807b46088443f6aa26d9fdca09eb1e3ca37a7e066a": {
+      "q_domain": [
+        "q_domain__infection"
+      ],
+      "q_setting": [],
+      "q_stage": [],
+      "q_population": []
+    },
+    "25c9eead4e577011d928ce5dcf381ef16ed5e796a146a47b3cf8f947b493060a": {
+      "q_domain": [
+        "q_domain__infection"
+      ],
+      "q_setting": [],
+      "q_stage": [],
+      "q_population": []
+    },
+    "83f1ef4dce471d88640b962bb06874283a00711d8487f40ac180717150517288": {
+      "q_domain": [
+        "q_domain__infection"
+      ],
+      "q_setting": [
+        "q_setting__icu",
+        "q_setting__ward",
+        "q_setting__community"
+      ],
+      "q_stage": [
+        "q_stage__diagnose"
+      ],
+      "q_population": []
+    },
+    "be1b419a129e089f0c4f4f07e1a102ace5c5b2f2091618a89d81d9be8dfba5ee": {
+      "q_domain": [
+        "q_domain__infection"
+      ],
+      "q_setting": [
+        "q_setting__icu",
+        "q_setting__ward",
+        "q_setting__community",
+        "q_setting__periop"
+      ],
+      "q_stage": [
+        "q_stage__monitor"
+      ],
+      "q_population": []
+    }
+  }
+}

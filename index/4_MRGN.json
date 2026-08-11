@@ -1,0 +1,346 @@
+{
+  "formatVersion": 2,
+  "doc": "4_MRGN",
+  "summaryModel": "gemma4:e4b",
+  "summaryPromptVersion": 1001,
+  "nodes": [
+    {
+      "nodeId": "4-mrgn",
+      "title": "4 MRGN",
+      "headingLevel": 1,
+      "lineIdx": 0,
+      "summary": "This section covers comprehensive infection control protocols, detailing hygiene measures for patients and staff during various procedures like anesthesia/surgery. It also addresses post-operation cleaning, waste disposal, laundry handling, and provides tables on pathogen management and safety requirements.",
+      "isLeaf": false,
+      "synthetic": false,
+      "parentTitle": null,
+      "content": null,
+      "pin": {
+        "id": "4-mrgn",
+        "kind": "section",
+        "doc": "4_MRGN",
+        "scale": 2.0
+      },
+      "contentHash": "459566829d745c129dba01ca0d0625bdc7b89172614be84d805a166f505c289a",
+      "summarySource": "llm",
+      "summaryModel": "gemma4:e4b",
+      "summaryPromptVersion": 1001,
+      "children": [
+        {
+          "nodeId": "ma-nahmen-patient",
+          "title": "Maßnahmen Patient:",
+          "headingLevel": 2,
+          "lineIdx": 9,
+          "summary": "The passage specifies hygiene measures required when leaving a patient's room, namely hand disinfection and wearing a mouth and nose mask.",
+          "isLeaf": true,
+          "synthetic": false,
+          "parentTitle": null,
+          "content": "• Bei Verlassen des Zimmers Händedesinfektion und Mund-Nasen Schutz",
+          "pin": {
+            "id": "ma-nahmen-patient",
+            "kind": "section",
+            "doc": "4_MRGN",
+            "page": 2,
+            "bbox": [
+              148.0,
+              185.0,
+              351.0,
+              211.0
+            ],
+            "regions": [
+              [
+                2,
+                150.0,
+                232.0,
+                835.0,
+                258.0
+              ]
+            ],
+            "scale": 2.0
+          },
+          "contentHash": "98d27b2386dba01279936ce75243902347b8c0de7885df0d4a5fbc48ce1c680d",
+          "summarySource": "llm",
+          "summaryModel": "gemma4:e4b",
+          "summaryPromptVersion": 1001,
+          "children": []
+        },
+        {
+          "nodeId": "zus-tzliche-ma-nahmen-an-sthesie-op",
+          "title": "Zusätzliche Maßnahmen Anästhesie / OP:",
+          "headingLevel": 2,
+          "lineIdx": 23,
+          "summary": "The passage specifies additional protective measures for personnel during anesthesia/surgery, particularly concerning the donning and doffing of protective clothing when there is patient contact.",
+          "isLeaf": true,
+          "synthetic": false,
+          "parentTitle": null,
+          "content": "• Auch zum Einund Ausschleusen Schutzkleidung für Personal mit Patientenkontakt",
+          "pin": {
+            "id": "zus-tzliche-ma-nahmen-an-sthesie-op",
+            "kind": "section",
+            "doc": "4_MRGN",
+            "page": 3,
+            "bbox": [
+              147.0,
+              254.0,
+              552.0,
+              280.0
+            ],
+            "regions": [
+              [
+                3,
+                150.0,
+                301.0,
+                933.0,
+                327.0
+              ]
+            ],
+            "scale": 2.0
+          },
+          "contentHash": "11b8e4324de0d0763916f5d23111545c1d9292153e738405d3f769a72fc03ac8",
+          "summarySource": "llm",
+          "summaryModel": "gemma4:e4b",
+          "summaryPromptVersion": 1001,
+          "children": []
+        },
+        {
+          "nodeId": "ma-nahmen-der-basishygiene",
+          "title": "Maßnahmen der Basishygiene:",
+          "headingLevel": 2,
+          "lineIdx": 37,
+          "summary": "The passage details immediate hygiene measures following extubation, including glove changes with hand disinfection, changing the anesthesia breathing tube system, preparing anesthesia accessories and equipment, and disinfecting monitoring devices.",
+          "isLeaf": true,
+          "synthetic": false,
+          "parentTitle": null,
+          "content": "• Nach der Inbzw. Extubation sofortiger Handschuhwechsel (Händedesinfektion) • Narkoseschlauchsystem wechseln • Narkose-Zubehör und Narkosegerät nach Standard aufbereiten • Überwachungsgeräte und Kontaktflächen der Bedienteile wischdesinfizieren",
+          "pin": {
+            "id": "ma-nahmen-der-basishygiene",
+            "kind": "section",
+            "doc": "4_MRGN",
+            "page": 3,
+            "bbox": [
+              152.0,
+              371.0,
+              454.0,
+              396.0
+            ],
+            "regions": [
+              [
+                3,
+                151.0,
+                417.0,
+                901.0,
+                516.0
+              ]
+            ],
+            "scale": 2.0
+          },
+          "contentHash": "874b07f63ed7956c94b13ab878c8376959815697b1382b38e5e9d185398f2a27",
+          "summarySource": "llm",
+          "summaryModel": "gemma4:e4b",
+          "summaryPromptVersion": 1001,
+          "children": []
+        },
+        {
+          "nodeId": "nach-der-operation",
+          "title": "Nach der Operation:",
+          "headingLevel": 2,
+          "lineIdx": 51,
+          "summary": "The passage details disinfection procedures after an operation, mentioning standard surface disinfection with OxyWipeS or Incidin pro 0.5%. It also notes that for patients colonized with MRE in OR and procedure rooms, no extra cleaning is needed.",
+          "isLeaf": true,
+          "synthetic": false,
+          "parentTitle": null,
+          "content": "Standardaufbereitung, Flächendesinfektion OxyWipeS oder Incidin pro 0,5 % – nach Antrocknen kann die Fläche wieder genutzt werden, hygienische Händedesinfektion Auch im OP-Bereich und Eingriffsräumen, sind bei MRE-besiedelten Patienten keine zusätzlichen Maßnahmen zur Aufbereitung und Reinigung erforderlich.",
+          "pin": {
+            "id": "nach-der-operation",
+            "kind": "section",
+            "doc": "4_MRGN",
+            "page": 3,
+            "bbox": [
+              149.0,
+              536.0,
+              348.0,
+              562.0
+            ],
+            "regions": [
+              [
+                3,
+                402.0,
+                536.0,
+                1042.0,
+                690.0
+              ]
+            ],
+            "scale": 2.0
+          },
+          "contentHash": "414afcb62a155d9198122e5eb52d6f264325a5374f0fa593192a17b8eb245356",
+          "summarySource": "llm",
+          "summaryModel": "gemma4:e4b",
+          "summaryPromptVersion": 1001,
+          "children": []
+        },
+        {
+          "nodeId": "w-sche",
+          "title": "Wäsche:",
+          "headingLevel": 2,
+          "lineIdx": 65,
+          "summary": "The passage is titled \"nicht infektiöse Wäsche\" and concerns non-infectious laundry within the context of washing procedures.",
+          "isLeaf": true,
+          "synthetic": false,
+          "parentTitle": null,
+          "content": "nicht infektiöse Wäsche",
+          "pin": {
+            "id": "w-sche",
+            "kind": "section",
+            "doc": "4_MRGN",
+            "page": 3,
+            "bbox": [
+              148.0,
+              709.0,
+              237.0,
+              734.0
+            ],
+            "regions": [
+              [
+                3,
+                404.0,
+                710.0,
+                622.0,
+                734.0
+              ]
+            ],
+            "scale": 2.0
+          },
+          "contentHash": "7b537746acda3dace0f0d1807b46088443f6aa26d9fdca09eb1e3ca37a7e066a",
+          "summarySource": "llm",
+          "summaryModel": "gemma4:e4b",
+          "summaryPromptVersion": 1001,
+          "children": []
+        },
+        {
+          "nodeId": "abfall",
+          "title": "Abfall:",
+          "headingLevel": 2,
+          "lineIdx": 79,
+          "summary": "The passage covers non-infectious waste and safe disposal methods for sharp and pointed objects.",
+          "isLeaf": true,
+          "synthetic": false,
+          "parentTitle": null,
+          "content": "nicht infektiöser Abfall, verletzungssichere Entsorgung von spitzen und scharfen Gegenständen",
+          "pin": {
+            "id": "abfall",
+            "kind": "section",
+            "doc": "4_MRGN",
+            "page": 3,
+            "bbox": [
+              149.0,
+              755.0,
+              217.0,
+              780.0
+            ],
+            "regions": [
+              [
+                3,
+                400.0,
+                755.0,
+                1041.0,
+                804.0
+              ]
+            ],
+            "scale": 2.0
+          },
+          "contentHash": "25c9eead4e577011d928ce5dcf381ef16ed5e796a146a47b3cf8f947b493060a",
+          "summarySource": "llm",
+          "summaryModel": "gemma4:e4b",
+          "summaryPromptVersion": 1001,
+          "children": []
+        },
+        {
+          "nodeId": "figures-and-tables",
+          "title": "Figures and Tables",
+          "headingLevel": 2,
+          "lineIdx": 93,
+          "summary": "This section presents tables detailing infection control protocols, covering pathogen management, diagnosis, and isolation procedures. It also outlines mandatory safety requirements for healthcare staff regarding protective measures and material handling in clinical settings.",
+          "isLeaf": false,
+          "synthetic": false,
+          "parentTitle": null,
+          "content": null,
+          "pin": {
+            "id": "figures-and-tables",
+            "kind": "section",
+            "doc": "4_MRGN",
+            "scale": 2.0
+          },
+          "contentHash": "2bf8f4093a51587eca7b55dde9e91ead9f7956702233679bd2b6c558b5b3900d",
+          "summarySource": "llm",
+          "summaryModel": "gemma4:e4b",
+          "summaryPromptVersion": 1001,
+          "children": [
+            {
+              "nodeId": "table-unlabeled",
+              "title": "Table (unlabeled)",
+              "headingLevel": 3,
+              "lineIdx": 102,
+              "summary": "The table details infection control protocols covering prevention, transmission, diagnosis, and isolation procedures. It specifies pathogen management, patient handling guidelines, and risk assessment steps for clinical settings.",
+              "isLeaf": true,
+              "synthetic": false,
+              "parentTitle": null,
+              "content": "Table (unlabeled) The table outlines protocols and requirements related to infection control, focusing on prevention, transmission, diagnosis, and isolation procedures. It details specific information regarding pathogen management, patient handling, and necessary steps for risk assessment in a clinical setting.",
+              "pin": {
+                "id": "table-unlabeled",
+                "kind": "asset",
+                "doc": "4_MRGN",
+                "asset": "table_1",
+                "type": "table",
+                "page": 1,
+                "bbox": [
+                  144.0,
+                  163.0,
+                  1045.0,
+                  1452.0
+                ],
+                "image": "/assets/4_MRGN/table_1.png",
+                "scale": 2.0
+              },
+              "contentHash": "83f1ef4dce471d88640b962bb06874283a00711d8487f40ac180717150517288",
+              "summarySource": "llm",
+              "summaryModel": "gemma4:e4b",
+              "summaryPromptVersion": 1001,
+              "children": []
+            },
+            {
+              "nodeId": "table-unlabeled-2",
+              "title": "Table (unlabeled)",
+              "headingLevel": 3,
+              "lineIdx": 121,
+              "summary": "This table details mandatory safety and procedural requirements for healthcare staff. It specifies protective measures like glove use, face coverings, and material handling protocols when interacting with patients.",
+              "isLeaf": true,
+              "synthetic": false,
+              "parentTitle": null,
+              "content": "Table (unlabeled) The table outlines specific safety and procedural requirements related to patient context, detailing mandatory protective measures such as glove use, face coverings, and material handling protocols. It specifies the necessary precautions staff must take when interacting with patients and handling materials. A reader can use this information to look up detailed guidelines for staff protection and risk management in a healthcare setting.",
+              "pin": {
+                "id": "table-unlabeled-2",
+                "kind": "asset",
+                "doc": "4_MRGN",
+                "asset": "table_2",
+                "type": "table",
+                "page": 2,
+                "bbox": [
+                  145.0,
+                  382.0,
+                  1049.0,
+                  1568.0
+                ],
+                "image": "/assets/4_MRGN/table_2.png",
+                "scale": 2.0
+              },
+              "contentHash": "be1b419a129e089f0c4f4f07e1a102ace5c5b2f2091618a89d81d9be8dfba5ee",
+              "summarySource": "llm",
+              "summaryModel": "gemma4:e4b",
+              "summaryPromptVersion": 1001,
+              "children": []
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

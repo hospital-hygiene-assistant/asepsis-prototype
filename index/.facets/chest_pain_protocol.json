@@ -1,0 +1,127 @@
+{
+  "meta": {
+    "model": "gemma4:e4b",
+    "key": "v2|p2|q01617b3d95eb"
+  },
+  "leaves": {
+    "8c4b18bc15c37acfb18786ca3f56ca358594c0a5053b1022aeb46462b81fc108": {
+      "q_domain": [
+        "q_domain__cardiac"
+      ],
+      "q_population": [
+        "q_population__elderly"
+      ],
+      "q_stage": [
+        "q_stage__diagnose"
+      ],
+      "q_setting": [
+        "q_setting__icu",
+        "q_setting__ward"
+      ]
+    },
+    "e3063a9b014cd0b9b4090781ec1d5db217201058e0f3a97b13881353dcf745e5": {
+      "q_domain": [
+        "q_domain__cardiac"
+      ],
+      "q_setting": [
+        "q_setting__icu"
+      ],
+      "q_stage": [
+        "q_stage__diagnose"
+      ],
+      "q_population": []
+    },
+    "6c9e32321a6638344ebb1b0b7a25aa79510aa721eeba43879182c375b38f35b5": {
+      "q_domain": [
+        "q_domain__cardiac"
+      ],
+      "q_setting": [
+        "q_setting__icu"
+      ],
+      "q_stage": [
+        "q_stage__diagnose"
+      ],
+      "q_population": []
+    },
+    "5d17a8ef1d00435859aa498df14613a631bdb61441fbc92201376a63bb634eb1": {
+      "q_domain": [
+        "q_domain__cardiac"
+      ],
+      "q_setting": [
+        "q_setting__icu"
+      ],
+      "q_stage": [
+        "q_stage__diagnose"
+      ],
+      "q_population": []
+    },
+    "209b7e7bb24b1857cb9c8cdaebf9c8d0d849b07ccb6d3266dea33a883037528f": {
+      "q_domain": [
+        "q_domain__cardiac"
+      ],
+      "q_setting": [
+        "q_setting__icu",
+        "q_setting__ward"
+      ],
+      "q_stage": [
+        "q_stage__diagnose"
+      ],
+      "q_population": []
+    },
+    "8f08e92fdf7b6c4e268a8cb97bcf7f545f69f134402e4b3406b0643ba22d5909": {
+      "q_domain": [
+        "q_domain__cardiac"
+      ],
+      "q_setting": [
+        "q_setting__periop"
+      ],
+      "q_stage": [
+        "q_stage__diagnose",
+        "q_stage__treat"
+      ],
+      "q_population": []
+    },
+    "7573d3afb0425cb8e8d760d074fb45ff1c3b587d431e99c6f5dca2683217b9b2": {
+      "q_domain": [
+        "q_domain__cardiac"
+      ],
+      "q_setting": [
+        "q_setting__periop"
+      ],
+      "q_stage": [
+        "q_stage__treat",
+        "q_stage__monitor"
+      ],
+      "q_population": []
+    },
+    "d698093bc1696c37b914ca5a37b06704d29ed817e1d4b662226aa79e74b87aac": {
+      "q_domain": [
+        "q_domain__cardiac"
+      ],
+      "q_setting": [
+        "q_setting__icu"
+      ],
+      "q_stage": [
+        "q_stage__diagnose",
+        "q_stage__treat"
+      ],
+      "q_population": []
+    },
+    "287065e9cf9b2584cf671713fb5ae7c93da9a3aafbb5d0fb7725c0890ded4a7a": {
+      "q_domain": [
+        "q_domain__cardiac",
+        "q_domain__metabolic"
+      ],
+      "q_setting": [
+        "q_setting__ward"
+      ],
+      "q_stage": [
+        "q_stage__treat"
+      ],
+      "q_population": [
+        "q_population__renal",
+        "q_population__elderly"
+      ]
+    }
+  }
+}

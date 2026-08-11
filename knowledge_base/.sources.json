@@ -1,0 +1,47 @@
+{
+  "4_MRGN": {
+    "pdf": "/Users/fede/Downloads/4 MRGN.pdf",
+    "ocr_scale": 2.0,
+    "module": "betteringest_pdf",
+    "assets": [
+      {
+        "asset_id": "table_1",
+        "type": "table",
+        "number": 1,
+        "caption": "Table (unlabeled)",
+        "page": 1,
+        "image": "/Users/fede/Desktop/VSCODEProjects/asepsis-prototype/.betteringest_out/4 MRGN/assets/table_1.png",
+        "sections": [],
+        "description": "The table outlines protocols and requirements related to infection control, focusing on prevention, transmission, diagnosis, and isolation procedures. It details specific information regarding pathogen management, patient handling, and necessary steps for risk assessment in a clinical setting.",
+        "bbox": [
+          144.0,
+          163.0,
+          1045.0,
+          1452.0
+        ],
+        "table_markdown": "",
+        "custom_name": null
+      },
+      {
+        "asset_id": "table_2",
+        "type": "table",
+        "number": 2,
+        "caption": "Table (unlabeled)",
+        "page": 2,
+        "image": "/Users/fede/Desktop/VSCODEProjects/asepsis-prototype/.betteringest_out/4 MRGN/assets/table_2.png",
+        "sections": [
+          "maßnahmen personal - bei direktem patientenkontakt"
+        ],
+        "description": "The table outlines specific safety and procedural requirements related to patient context, detailing mandatory protective measures such as glove use, face coverings, and material handling protocols. It specifies the necessary precautions staff must take when interacting with patients and handling materials. A reader can use this information to look up detailed guidelines for staff protection and risk management in a healthcare setting.",
+        "bbox": [
+          145.0,
+          382.0,
+          1049.0,
+          1568.0
+        ],
+        "table_markdown": "",
+        "custom_name": null
+      }
+    ]
+  }
+}

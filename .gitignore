@@ -1,4 +1,17 @@
-# Python
+# ═══════════════════════════════════════════════════════════════════
+# The rule here is NOT "is it generated?" — it is "what does it cost a
+# teammate to regenerate?"
+#
+# The pipeline's outputs are generated, but regenerating them means an OCR
+# pass, a vision model captioning every figure, and hundreds of LLM calls
+# against a model they may not even have pulled. Those are committed, so a
+# clone is a working library on first run.
+#
+# Machine-local state (paths, concurrency, caches keyed to this machine) is
+# ignored, because sharing it actively breaks the next person's setup.
+# ═══════════════════════════════════════════════════════════════════
+
+# ── Python ──
 __pycache__/
 *.py[cod]
 *.egg-info/
@@ -6,46 +19,70 @@ __pycache__/
 venv/
 .env
 
-# Generated pipeline artifacts (rebuilt locally, not committed)
-/knowledge_base/
-/index/
-
-# Machine-local runtime settings (context windows, concurrency) and the
-# debug-only retrieval cache
+# ── Machine-local settings ──
+# Concurrency and context windows tuned to THIS machine's hardware; sharing
+# them would hand a laptop a workstation's settings.
 /config/runtime.json
+# Where this machine keeps its source PDFs.
+/.betteringest.json
+# Exact-key replay of local runs — a debugging aid, not a shared artifact.
 /.debug_cache/
 
-# Rust / Tauri build output
+# ── Ingest working directory ──
+# Page renders and intermediate crops. The finished copies live in
+# knowledge_base/assets/ (which IS committed), so this is a duplicate that
+# grows with every PDF.
+/.betteringest_out/*
+!/.betteringest_out/captions.json
+
+# ── Rust / Tauri build output ──
 tauri-app/src-tauri/target/
 tauri-app/src-tauri/gen/*
-tauri-app/src-tauri/Cargo.lock
 
-# Frontend / package manager output
+# ── Frontend / package manager output ──
 node_modules/
 dist/
 build/
 coverage/
 .vite/
 
-# Python test and type-check caches
+# ── Test and type-check caches ──
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
 htmlcov/
 
-# macOS
+# ── macOS ──
 .DS_Store
 .AppleDouble
 
-# Editor
+# ── Editor ──
 .idea/
 .vscode/
 *.swp
 
-# Claude Code session data
-.claude/
+# ── Claude Code ──
+# Project settings are shared; per-user overrides are not.
+.claude/settings.local.json
 
-# BetterIngest working caches + machine-local source config
-/.betteringest_out/
-/.ocr_cache/
-/.betteringest.json
+
+# ═══════════════════════════════════════════════════════════════════
+# DELIBERATELY COMMITTED — do not add these back
+#
+#   knowledge_base/        Ingested markdown, figure assets and the manifest.
+#                          Behind these: OCR, layout reconstruction and a
+#                          vision model captioning every table and figure.
+#   index/                 The document trees, including LLM summaries.
+#   index/.facets/         Pre-filter judgements — one LLM call per passage
+#                          per question. 268 calls for this corpus alone, and
+#                          they are keyed by content hash, so a clone reuses
+#                          every one of them instead of paying again.
+#   .ocr_cache/            OCR layouts keyed by file hash. Portable by
+#                          construction, and the single most expensive step
+#                          to repeat.
+#   .betteringest_out/captions.json
+#                          Vision-model captions, also hash-keyed.
+#   tauri-app/src-tauri/Cargo.lock
+#                          This is an application, not a library: the lock
+#                          file is what makes a teammate's build reproducible.
+# ═══════════════════════════════════════════════════════════════════

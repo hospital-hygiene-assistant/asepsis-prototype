@@ -1,0 +1,204 @@
+{
+  "meta": {
+    "model": "gemma4:e4b",
+    "key": "v2|p2|q01617b3d95eb"
+  },
+  "leaves": {
+    "1fbcb029273440ca3daac964caa1ddf619582558c70bf1129891eceec26724ad": {
+      "q_population": [],
+      "q_domain": [
+        "q_domain__sedation"
+      ],
+      "q_stage": [
+        "q_stage__diagnose",
+        "q_stage__treat",
+        "q_stage__monitor"
+      ],
+      "q_setting": [
+        "q_setting__icu",
+        "q_setting__ward"
+      ]
+    },
+    "8dc7f29fcaa1e7d206806ec392ee0d7841a991ffe0c678ad02333afc0db39638": {
+      "q_domain": [
+        "q_domain__sedation"
+      ],
+      "q_setting": [
+        "q_setting__icu"
+      ],
+      "q_stage": [
+        "q_stage__diagnose"
+      ],
+      "q_population": []
+    },
+    "55d29a2e8a40cea7961e13bd4e28b98ab3d557ee34225e21075c785e4dfa2877": {
+      "q_domain": [
+        "q_domain__sedation"
+      ],
+      "q_setting": [
+        "q_setting__icu"
+      ],
+      "q_stage": [
+        "q_stage__treat"
+      ],
+      "q_population": [
+        "q_population__renal"
+      ]
+    },
+    "bd5236e50e1d84ebf766ed7c0d1a410c873eee9cbf09a388bd78d7e8a775f68d": {
+      "q_domain": [
+        "q_domain__sedation"
+      ],
+      "q_setting": [
+        "q_setting__icu",
+        "q_setting__periop"
+      ],
+      "q_stage": [
+        "q_stage__treat"
+      ],
+      "q_population": [
+        "q_population__renal",
+        "q_population__elderly"
+      ]
+    },
+    "f577974896d7003fb7f933101e517d3497d9065d49ae7be1208d2560f90290de": {
+      "q_domain": [
+        "q_domain__sedation"
+      ],
+      "q_setting": [
+        "q_setting__icu"
+      ],
+      "q_stage": [
+        "q_stage__diagnose",
+        "q_stage__treat",
+        "q_stage__monitor"
+      ],
+      "q_population": []
+    },
+    "4b17301152165e927a09a0790c6954ec9071e6b8312909a6bc1e930c3d206770": {
+      "q_domain": [
+        "q_domain__sedation"
+      ],
+      "q_setting": [
+        "q_setting__icu"
+      ],
+      "q_stage": [
+        "q_stage__monitor"
+      ],
+      "q_population": []
+    },
+    "9801ef0b3de03eddfc6b9e9b7a4f39d1950194c55ec1b320045ea2d49248b0b0": {
+      "q_domain": [
+        "q_domain__sedation"
+      ],
+      "q_setting": [
+        "q_setting__icu"
+      ],
+      "q_stage": [
+        "q_stage__treat",
+        "q_stage__monitor"
+      ],
+      "q_population": [
+        "q_population__renal"
+      ]
+    },
+    "78b1e37e0ce78d7010fe1ac3cf5c950257d46e2951bee56b44182e6a74c68a61": {
+      "q_domain": [
+        "q_domain__sedation"
+      ],
+      "q_setting": [
+        "q_setting__icu"
+      ],
+      "q_stage": [
+        "q_stage__diagnose",
+        "q_stage__treat",
+        "q_stage__monitor"
+      ],
+      "q_population": [
+        "q_population__paediatric",
+        "q_population__renal"
+      ]
+    },
+    "7ce1280c98128d064e587bef961c138a23ae473cb4a68a3959c6d68d5cc8db81": {
+      "q_domain": [
+        "q_domain__sedation"
+      ],
+      "q_setting": [
+        "q_setting__icu"
+      ],
+      "q_stage": [
+        "q_stage__diagnose",
+        "q_stage__treat",
+        "q_stage__monitor"
+      ],
+      "q_population": [
+        "q_population__renal"
+      ]
+    },
+    "d3630b19164c807877f1c1ce38cf46899588047f1acb4d3903403c100bf25349": {
+      "q_domain": [
+        "q_domain__sedation"
+      ],
+      "q_setting": [
+        "q_setting__icu"
+      ],
+      "q_stage": [
+        "q_stage__diagnose"
+      ],
+      "q_population": []
+    },
+    "e46a1e5046ab22dd583499f4aa54ceec87101224e4f9b5e419e86eddfd6f2815": {
+      "q_domain": [
+        "q_domain__sedation"
+      ],
+      "q_setting": [
+        "q_setting__icu"
+      ],
+      "q_stage": [
+        "q_stage__diagnose",
+        "q_stage__treat",
+        "q_stage__monitor"
+      ],
+      "q_population": []
+    },
+    "cdca5584a5c83fbcebeab19070273c39b51790a93c5b8c25be588c1e18ace969": {
+      "q_domain": [
+        "q_domain__sedation"
+      ],
+      "q_setting": [
+        "q_setting__icu"
+      ],
+      "q_stage": [
+        "q_stage__treat"
+      ],
+      "q_population": []
+    },
+    "4f64eeb52130f1f7891ab795b9077ccf797c2ade978c5364990ca1140cf5509e": {
+      "q_domain": [
+        "q_domain__sedation"
+      ],
+      "q_setting": [
+        "q_setting__icu"
+      ],
+      "q_stage": [
+        "q_stage__diagnose",
+        "q_stage__treat"
+      ],
+      "q_population": []
+    },
+    "0415002e75312bb6f6a2e39a449bd8160a124b7e44abfd4a10f746a2a6be1ed0": {
+      "q_domain": [
+        "q_domain__sedation"
+      ],
+      "q_setting": [
+        "q_setting__icu"
+      ],
+      "q_stage": [
+        "q_stage__monitor"
+      ],
+      "q_population": [
+        "q_population__renal"
+      ]
+    }
+  }
+}

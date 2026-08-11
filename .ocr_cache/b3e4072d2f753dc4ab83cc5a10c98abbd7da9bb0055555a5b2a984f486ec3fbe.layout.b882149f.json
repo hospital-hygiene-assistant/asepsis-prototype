@@ -1,0 +1,420 @@
+[
+  {
+    "label": "header",
+    "text": "",
+    "page": 0,
+    "bbox": [
+      274.0,
+      28.0,
+      920.0,
+      52.0
+    ]
+  },
+  {
+    "label": "header_image",
+    "text": "",
+    "page": 0,
+    "bbox": [
+      139.0,
+      68.0,
+      264.0,
+      136.0
+    ]
+  },
+  {
+    "label": "table",
+    "text": "",
+    "page": 0,
+    "bbox": [
+      144.0,
+      163.0,
+      1045.0,
+      1452.0
+    ]
+  },
+  {
+    "label": "footer",
+    "text": "",
+    "page": 0,
+    "bbox": [
+      463.0,
+      1571.0,
+      658.0,
+      1615.0
+    ]
+  },
+  {
+    "label": "footer",
+    "text": "",
+    "page": 0,
+    "bbox": [
+      861.0,
+      1573.0,
+      1054.0,
+      1645.0
+    ]
+  },
+  {
+    "label": "header",
+    "text": "",
+    "page": 1,
+    "bbox": [
+      273.0,
+      28.0,
+      920.0,
+      52.0
+    ]
+  },
+  {
+    "label": "header_image",
+    "text": "",
+    "page": 1,
+    "bbox": [
+      139.0,
+      68.0,
+      264.0,
+      136.0
+    ]
+  },
+  {
+    "label": "header",
+    "text": "",
+    "page": 1,
+    "bbox": [
+      502.0,
+      72.0,
+      636.0,
+      100.0
+    ]
+  },
+  {
+    "label": "header",
+    "text": "",
+    "page": 1,
+    "bbox": [
+      884.0,
+      71.0,
+      1054.0,
+      149.0
+    ]
+  },
+  {
+    "label": "paragraph_title",
+    "text": "Maßnahmen Patient:",
+    "page": 1,
+    "bbox": [
+      148.0,
+      185.0,
+      351.0,
+      211.0
+    ]
+  },
+  {
+    "label": "text",
+    "text": "",
+    "page": 1,
+    "bbox": [
+      150.0,
+      232.0,
+      835.0,
+      258.0
+    ]
+  },
+  {
+    "label": "paragraph_title",
+    "text": "Maßnahmen Personal – bei direktem Patientenkontakt:",
+    "page": 1,
+    "bbox": [
+      148.0,
+      370.0,
+      677.0,
+      397.0
+    ]
+  },
+  {
+    "label": "table",
+    "text": "",
+    "page": 1,
+    "bbox": [
+      145.0,
+      382.0,
+      1049.0,
+      1568.0
+    ]
+  },
+  {
+    "label": "footer",
+    "text": "",
+    "page": 1,
+    "bbox": [
+      138.0,
+      1605.0,
+      327.0,
+      1623.0
+    ]
+  },
+  {
+    "label": "footer",
+    "text": "",
+    "page": 1,
+    "bbox": [
+      493.0,
+      1606.0,
+      636.0,
+      1624.0
+    ]
+  },
+  {
+    "label": "footer",
+    "text": "",
+    "page": 1,
+    "bbox": [
+      979.0,
+      1605.0,
+      1051.0,
+      1623.0
+    ]
+  },
+  {
+    "label": "header",
+    "text": "",
+    "page": 2,
+    "bbox": [
+      273.0,
+      29.0,
+      920.0,
+      52.0
+    ]
+  },
+  {
+    "label": "header_image",
+    "text": "",
+    "page": 2,
+    "bbox": [
+      139.0,
+      68.0,
+      263.0,
+      135.0
+    ]
+  },
+  {
+    "label": "header",
+    "text": "",
+    "page": 2,
+    "bbox": [
+      503.0,
+      72.0,
+      636.0,
+      100.0
+    ]
+  },
+  {
+    "label": "header",
+    "text": "",
+    "page": 2,
+    "bbox": [
+      522.0,
+      121.0,
+      615.0,
+      149.0
+    ]
+  },
+  {
+    "label": "header",
+    "text": "",
+    "page": 2,
+    "bbox": [
+      885.0,
+      71.0,
+      1053.0,
+      148.0
+    ]
+  },
+  {
+    "label": "paragraph_title",
+    "text": "Zusätzliche Maßnahmen Anästhesie / OP:",
+    "page": 2,
+    "bbox": [
+      147.0,
+      254.0,
+      552.0,
+      280.0
+    ]
+  },
+  {
+    "label": "text",
+    "text": "",
+    "page": 2,
+    "bbox": [
+      150.0,
+      301.0,
+      933.0,
+      327.0
+    ]
+  },
+  {
+    "label": "paragraph_title",
+    "text": "Maßnahmen der Basishygiene:",
+    "page": 2,
+    "bbox": [
+      152.0,
+      371.0,
+      454.0,
+      396.0
+    ]
+  },
+  {
+    "label": "text",
+    "text": "",
+    "page": 2,
+    "bbox": [
+      151.0,
+      417.0,
+      901.0,
+      441.0
+    ]
+  },
+  {
+    "label": "text",
+    "text": "",
+    "page": 2,
+    "bbox": [
+      151.0,
+      444.0,
+      506.0,
+      466.0
+    ]
+  },
+  {
+    "label": "text",
+    "text": "",
+    "page": 2,
+    "bbox": [
+      151.0,
+      467.0,
+      754.0,
+      490.0
+    ]
+  },
+  {
+    "label": "text",
+    "text": "",
+    "page": 2,
+    "bbox": [
+      151.0,
+      491.0,
+      867.0,
+      516.0
+    ]
+  },
+  {
+    "label": "paragraph_title",
+    "text": "Nach der Operation:",
+    "page": 2,
+    "bbox": [
+      149.0,
+      536.0,
+      348.0,
+      562.0
+    ]
+  },
+  {
+    "label": "text",
+    "text": "",
+    "page": 2,
+    "bbox": [
+      402.0,
+      536.0,
+      1041.0,
+      608.0
+    ]
+  },
+  {
+    "label": "text",
+    "text": "",
+    "page": 2,
+    "bbox": [
+      403.0,
+      617.0,
+      1042.0,
+      690.0
+    ]
+  },
+  {
+    "label": "paragraph_title",
+    "text": "Wäsche:",
+    "page": 2,
+    "bbox": [
+      148.0,
+      709.0,
+      237.0,
+      734.0
+    ]
+  },
+  {
+    "label": "text",
+    "text": "",
+    "page": 2,
+    "bbox": [
+      404.0,
+      710.0,
+      622.0,
+      734.0
+    ]
+  },
+  {
+    "label": "paragraph_title",
+    "text": "Abfall:",
+    "page": 2,
+    "bbox": [
+      149.0,
+      755.0,
+      217.0,
+      780.0
+    ]
+  },
+  {
+    "label": "text",
+    "text": "",
+    "page": 2,
+    "bbox": [
+      400.0,
+      755.0,
+      1041.0,
+      804.0
+    ]
+  },
+  {
+    "label": "footer",
+    "text": "",
+    "page": 2,
+    "bbox": [
+      139.0,
+      1606.0,
+      327.0,
+      1623.0
+    ]
+  },
+  {
+    "label": "footer",
+    "text": "",
+    "page": 2,
+    "bbox": [
+      494.0,
+      1606.0,
+      636.0,
+      1623.0
+    ]
+  },
+  {
+    "label": "footer",
+    "text": "",
+    "page": 2,
+    "bbox": [
+      979.0,
+      1606.0,
+      1051.0,
+      1623.0
+    ]
+  }
+]
