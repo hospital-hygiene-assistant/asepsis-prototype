@@ -18,6 +18,7 @@ sys.path.insert(0, str(ROOT))
 
 import choices as app_choices
 import config as app_config
+import debug_cache as app_debug_cache
 import tokens as app_tokens
 from modules.ingest._manifest import Manifest
 import pageindex as _pi
@@ -559,6 +560,55 @@ def facet_precompute():
 
     threading.Thread(target=work, daemon=True).start()
     return JSONResponse({"started": True, "docs": stems})
+
+
+# ---------------------------------------------------------------------------
+# Debug cache
+#
+# Exact-key replay of a previous run, for iterating on prompts without paying
+# for retrieval each time. Not a production cache: no similarity matching.
+# ---------------------------------------------------------------------------
+
+_cache = app_debug_cache.DebugCache()
+
+
+def _cache_key_for(query: str, tags=None, selected_answers=None) -> str:
+    cfg = app_config.runtime()
+    return app_debug_cache.make_key(
+        query, _index_dir(), tags=tags, selected_answers=selected_answers,
+        retrieval_model=cfg.retrieval_model, synthesis_model=cfg.synthesis_model)
+
+
+@app.get("/api/cache/lookup")
+def cache_lookup(query: str, tags: Optional[str] = None,
+                 selected_answers: Optional[str] = None):
+    """Has this exact question been run against this exact corpus before?
+
+    The frontend calls this on submit and offers "replay or re-run live".
+    """
+    if not _cache.enabled:
+        return JSONResponse({"hit": False, "enabled": False})
+    tag_list = [t for t in (tags or "").split(",") if t]
+    answer_list = [a for a in (selected_answers or "").split(",") if a]
+    key = _cache_key_for(query, tag_list, answer_list)
+    entry = _cache.get(key)
+    return JSONResponse({"hit": entry is not None, "enabled": True, "key": key,
+                         **(entry.summary() if entry else {})})
+
+
+@app.get("/api/cache/questions")
+def cache_questions():
+    """Previously-asked questions that are still replayable against the
+    current index, for the command bar's autocomplete."""
+    return JSONResponse({
+        "enabled": _cache.enabled,
+        "questions": [e.summary() for e in _cache.entries(_index_dir())],
+    })
+
+
+@app.post("/api/cache/clear")
+def cache_clear():
+    return JSONResponse({"cleared": _cache.clear()})
 
 
 @app.get("/api/tags")
@@ -1128,6 +1178,19 @@ class RunRequest(BaseModel):
     query_module:  Optional[str] = None
 
 
+def _replay(entry) -> tuple[dict, object]:
+    """Rebuild run state from a cache entry.
+
+    The live-event snapshot has to be restored, not just the results: starting
+    a run clears every event set, so without this a cache hit would render an
+    empty treemap and an empty reasoning trace.
+    """
+    total = sum(len(d.get("retrieved_ids") or []) for d in entry.results.values())
+    ctx = _pi.start_run(total)
+    ctx.restore(entry.events)
+    return entry.results, ctx
+
+
 def _budget_payload(ctx, results: dict) -> dict:
     """What the agent's context could and could not hold.
 
@@ -1299,14 +1362,27 @@ def run_query(req: RunRequest):
     except Exception as exc:
         return JSONResponse({"error": f"Could not load index module '{index_mod_name}': {exc}"}, status_code=400)
 
-    results, ctx = _run_retrieval(query, index_mod, tags=req.tags,
-                                  selected_answers=req.selected_answers)
+    cache_key = _cache_key_for(query, req.tags, req.selected_answers)
+    cached = _cache.get(cache_key) if req.use_cache else None
+    if cached is not None:
+        results, ctx = _replay(cached)
+        cache_info = {"cached": True, **cached.summary()}
+    else:
+        results, ctx = _run_retrieval(query, index_mod, tags=req.tags,
+                                      selected_answers=req.selected_answers)
+        _cache.put(cache_key, query=query, results=results,
+                   events=ctx.events_snapshot(),
+                   budget=_budget_payload(ctx, results),
+                   tags=req.tags, selected_answers=req.selected_answers,
+                   index_dir=_index_dir())
+        cache_info = {"cached": False, "key": cache_key}
 
     test_result = _eval_test(test, results) if test else None
     return JSONResponse({
         "query": query,
         "results": results,
         "budget": _budget_payload(ctx, results),
+        "cache": cache_info,
         "test_result": test_result,
         "pipeline": {
             "ingest": req.ingest_module or _module_defaults()["ingest"],
@@ -1418,6 +1494,8 @@ class ChatRequest(BaseModel):
     index_module: Optional[str] = None
     tags: Optional[list[str]] = None
     selected_answers: Optional[list[str]] = None
+    use_cache: bool = False
+    replay_answer: bool = False
 
 
 @app.post("/api/chat")
@@ -1445,9 +1523,17 @@ def chat(req: ChatRequest):
 
     _set_chat_phase("retrieval", "Reading the document trees…")
     try:
-        results, ctx = _run_retrieval(query, index_mod, tags=req.tags,
-                                      selected_answers=req.selected_answers)
-        budget = _budget_payload(ctx, results)
+        cache_key = _cache_key_for(query, req.tags, req.selected_answers)
+        cached = _cache.get(cache_key) if req.use_cache else None
+        if cached is not None:
+            results, ctx = _replay(cached)
+            budget = cached.budget
+            cache_info = {"cached": True, **cached.summary()}
+        else:
+            results, ctx = _run_retrieval(query, index_mod, tags=req.tags,
+                                          selected_answers=req.selected_answers)
+            budget = _budget_payload(ctx, results)
+            cache_info = {"cached": False, "key": cache_key}
 
         # Flatten retrieved nodes into numbered sources (stable order: doc, tree order)
         crumbs = _breadcrumbs_for(results)
@@ -1474,7 +1560,13 @@ def chat(req: ChatRequest):
 
         answer_text = ""
         sections: dict = {}
-        if sources:
+        # Synthesis is re-run live by default even on a cache hit: the point of
+        # the cache is to iterate on the synthesis prompt against a FROZEN node
+        # set, which only works if the answer is recomputed.
+        if cached is not None and req.replay_answer and cached.answer:
+            answer_text = cached.answer.get("content", "")
+            sections = {k: v for k, v in cached.answer.items() if k != "content"}
+        elif sources:
             _set_chat_phase("synthesis", f"Composing an answer from {len(sources)} passages…")
             passages = "\n\n".join(
                 f"[{s['n']}] {s['doc'].replace('_', ' ')} › {s['breadcrumb'] or s['title']}\n{s['excerpt'] or '(no content)'}"
@@ -1505,6 +1597,13 @@ def chat(req: ChatRequest):
             answer_text = re.sub(r"<thought>.*?(</thought>|$)", "", answer_text, flags=re.S).strip()
             sections = _parse_answer_sections(answer_text)
 
+        if cached is None:
+            _cache.put(cache_key, query=query, results=results,
+                       events=ctx.events_snapshot(), budget=budget,
+                       answer={"content": answer_text, **sections},
+                       tags=req.tags, selected_answers=req.selected_answers,
+                       index_dir=_index_dir())
+
         cited = set(int(n) for n in re.findall(r"\[(\d+)\]", answer_text))
         valid_cited = {n for n in cited if 1 <= n <= len(sources)}
         if not sources:
@@ -1530,6 +1629,7 @@ def chat(req: ChatRequest):
             },
             "grounding": {"status": status, "summary": summary, "sources": sources},
             "budget": budget,
+            "cache": cache_info,
             "run": {
                 "query": query,
                 "results": results,

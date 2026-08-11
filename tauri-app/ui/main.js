@@ -97,6 +97,7 @@ async function init() {
 
   initWorkflow();
   initCommandBar();
+  refreshCachedQuestions();
   initLibrary(docs);
   initResultsChrome();
   initDocViewer();
@@ -431,6 +432,18 @@ function autoGrowTextarea(ta) {
 // filtered as you type, arrow-key navigable. (They replace the old sidebar.)
 let _sugFocus = -1;
 
+// Questions already in the debug cache, refreshed on load and after each run.
+let _cachedQuestions = [];
+
+async function refreshCachedQuestions() {
+  try {
+    const r = await apiGet('/api/cache/questions');
+    _cachedQuestions = (r && r.enabled) ? (r.questions || []) : [];
+  } catch { _cachedQuestions = []; }
+  const box = document.getElementById('suggestions');
+  if (box && !box.hidden) renderSuggestions();
+}
+
 function renderSuggestions() {
   const box = document.getElementById('suggestions');
   const input = document.getElementById('main-query-input');
@@ -459,6 +472,32 @@ function renderSuggestions() {
       total++;
     }
   }
+  // Previously-asked questions, replayable from the debug cache. Only those
+  // still valid against the current index are listed — the server filters
+  // stale ones out, so nothing here promises a replay that would be wrong.
+  const prior = _cachedQuestions.filter(q =>
+    !needle || q.query.toLowerCase().includes(needle));
+  if (prior.length) {
+    box.appendChild(el('div', 'sug-group-label', 'Previously asked · cached'));
+    for (const q of prior.slice(0, 8)) {
+      const b = el('button', 'sug-item sug-cached');
+      const age = q.age_seconds || 0;
+      const ago = age < 90 ? `${age}s ago`
+        : age < 5400 ? `${Math.round(age / 60)}m ago`
+        : `${Math.round(age / 3600)}h ago`;
+      b.appendChild(el('span', 'sug-title', q.query));
+      b.appendChild(el('span', 'sug-query',
+        `${q.node_count} passage${q.node_count === 1 ? '' : 's'} · ${ago}`));
+      b.addEventListener('click', () => {
+        input.value = q.query;
+        autoGrowTextarea(input);
+        submitCommandBar();
+      });
+      box.appendChild(b);
+      total++;
+    }
+  }
+
   box.hidden = total === 0 || (!!needle && input.value.length > 60);
 }
 

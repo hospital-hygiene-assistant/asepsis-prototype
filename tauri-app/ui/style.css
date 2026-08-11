@@ -1089,3 +1089,43 @@ button { font-family: inherit; }
   background: transparent; color: #c084fc; font-size: 11px; font-weight: 600;
 }
 .budget-notice button:hover { background: rgba(168, 85, 247, 0.15); }
+
+/* ═══ Debug cache ══════════════════════════════════════════════════
+   Replay is a development aid, so its surfaces are deliberately loud: a
+   replayed answer must never be mistaken for a fresh run of the pipeline. */
+
+.cached-badge {
+  margin-left: 8px; padding: 2px 8px; border-radius: 999px;
+  font-size: 10px; font-weight: 800; letter-spacing: 0.06em;
+  color: #fbbf24; background: rgba(251, 191, 36, 0.12);
+  border: 1px solid rgba(251, 191, 36, 0.5);
+  text-transform: uppercase; white-space: nowrap;
+}
+
+.replay-overlay {
+  position: fixed; inset: 0; z-index: 9000;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(2, 6, 23, 0.6);
+}
+.replay-box {
+  max-width: 460px; padding: 20px 22px; border-radius: 10px;
+  background: var(--panel, #0f172a); border: 1px solid rgba(148, 163, 184, 0.25);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
+}
+.replay-box h3 { margin: 0 0 8px; font-size: 15px; color: var(--text); }
+.replay-detail { margin: 0 0 16px; font-size: 12.5px; color: var(--text-2); line-height: 1.5; }
+.replay-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.replay-actions button {
+  padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px;
+  border: 1px solid rgba(148, 163, 184, 0.35);
+  background: transparent; color: var(--text-2);
+}
+.replay-actions button:hover { border-color: var(--accent); color: var(--text); }
+.replay-actions button.primary {
+  background: rgba(56, 189, 248, 0.15); border-color: var(--accent); color: var(--text);
+  font-weight: 600;
+}
+.replay-actions button.ghost { margin-left: auto; opacity: 0.65; }
+
+.sug-item.sug-cached { border-left: 2px solid rgba(251, 191, 36, 0.55); }
+.sug-item.sug-cached .sug-query { color: #fbbf24; opacity: 0.8; }

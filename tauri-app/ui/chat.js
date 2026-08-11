@@ -21,6 +21,9 @@ const chatState = {
   nodeInfo: {},            // node_id -> {doc, title} (null doc = ambiguous)
   evMode: 'all',
   activeAnswerId: null,
+  // Set per-question by the replay prompt below.
+  useCacheForNext: false,
+  replayAnswerForNext: false,
 };
 
 function setAppTab(tab) {
@@ -174,6 +177,18 @@ async function buildNodeInfo() {
 async function sendChat(text) {
   if (state.running) { toast('A run is already in progress.', 'warn'); return; }
 
+  // Debug cache: if this exact question has already been run against this
+  // exact corpus, offer to replay it instead of paying for retrieval again.
+  chatState.useCacheForNext = false;
+  chatState.replayAnswerForNext = false;
+  const hit = await lookupCachedRun(text);
+  if (hit) {
+    const choice = await askReplay(hit);
+    if (choice === 'cancel') return;
+    chatState.useCacheForNext = choice !== 'live';
+    chatState.replayAnswerForNext = choice === 'replay-answer';
+  }
+
   chatState.messages.push({ role: 'user', content: text });
   renderChatEmptyState();
 
@@ -206,6 +221,8 @@ async function sendChat(text) {
     const data = await apiPost('/api/chat', {
       query: text,
       index_module: selectedModules().index_module,
+      use_cache: chatState.useCacheForNext,
+      replay_answer: chatState.replayAnswerForNext,
     });
     // Feed the retrieval tab the identical run state (the two tabs talk).
     state.currentResults = data.run;
@@ -335,6 +352,64 @@ function renderRichText(text, sources, answerId) {
   return html;
 }
 
+/* ── Debug cache — replay prompt and autocomplete ─────────────
+   Exact-key replay only. The prompt is per-question rather than a silent
+   toggle so a replayed answer is never mistaken for a fresh run. */
+
+async function lookupCachedRun(text) {
+  try {
+    const r = await apiGet(`/api/cache/lookup?query=${encodeURIComponent(text)}`);
+    return (r && r.enabled && r.hit) ? r : null;
+  } catch { return null; }
+}
+
+function askReplay(hit) {
+  return new Promise((resolve) => {
+    const age = hit.age_seconds || 0;
+    const ago = age < 90 ? `${age} seconds ago`
+      : age < 5400 ? `${Math.round(age / 60)} minutes ago`
+      : `${Math.round(age / 3600)} hours ago`;
+
+    const overlay = el('div', 'replay-overlay');
+    const box = el('div', 'replay-box');
+    box.appendChild(el('h3', '', 'You have asked this before'));
+    box.appendChild(el('p', 'replay-detail',
+      `Run ${ago}, retrieving ${hit.node_count} passage${hit.node_count === 1 ? '' : 's'} ` +
+      `from ${hit.doc_count} document${hit.doc_count === 1 ? '' : 's'}. ` +
+      `The index has not changed since.`));
+
+    const actions = el('div', 'replay-actions');
+    const add = (label, value, cls, title) => {
+      const b = el('button', cls, label);
+      if (title) b.title = title;
+      b.addEventListener('click', () => { overlay.remove(); resolve(value); });
+      actions.appendChild(b);
+    };
+    add('Replay retrieval, re-answer', 'replay', 'primary',
+        'Reuse the cached passages but generate a fresh answer — the usual choice when iterating on the synthesis prompt.');
+    if (hit.has_answer) {
+      add('Replay everything', 'replay-answer', '',
+          'Reuse the cached passages AND the cached answer.');
+    }
+    add('Re-run live', 'live', '', 'Ignore the cache and retrieve again.');
+    add('Cancel', 'cancel', 'ghost');
+    box.appendChild(actions);
+
+    overlay.appendChild(box);
+    overlay.addEventListener('click', (e) => {
+      if (e.target === overlay) { overlay.remove(); resolve('cancel'); }
+    });
+    document.body.appendChild(overlay);
+  });
+}
+
+async function loadCachedQuestions() {
+  try {
+    const r = await apiGet('/api/cache/questions');
+    return (r && r.enabled) ? (r.questions || []) : [];
+  } catch { return []; }
+}
+
 function buildBudgetNotice(budget) {
   if (!budget || !budget.deferred) return null;
 
@@ -381,8 +456,21 @@ function finalizeAnswerCard(p, data) {
   const sources = data.grounding?.sources || [];
   const status = data.grounding?.status || 'not_connected';
 
-  // Header: grounding badge
-  p.card.querySelector('.answer-head').appendChild(groundingBadge(status));
+  // Header: grounding badge, plus a CACHED marker when this run was replayed
+  // rather than retrieved. Deliberately unmissable — a replayed answer is not
+  // evidence that the current pipeline still behaves this way.
+  const head = p.card.querySelector('.answer-head');
+  head.appendChild(groundingBadge(status));
+  if (data.cache?.cached) {
+    const badge = el('span', 'cached-badge');
+    const age = data.cache.age_seconds || 0;
+    const ago = age < 90 ? `${age}s ago`
+      : age < 5400 ? `${Math.round(age / 60)}m ago`
+      : `${Math.round(age / 3600)}h ago`;
+    badge.textContent = `CACHED · ${ago}`;
+    badge.title = 'Retrieval was replayed from the debug cache, not re-run.';
+    head.appendChild(badge);
+  }
 
   // Body: structured sections, else the raw answer
   const body = p.card.querySelector('.answer-body');
