@@ -1013,7 +1013,48 @@ class RunRequest(BaseModel):
     query_module:  Optional[str] = None
 
 
-def _run_retrieval(query: str, index_mod, ctx=None) -> dict:
+def _budget_payload(ctx, results: dict) -> dict:
+    """What the agent's context could and could not hold.
+
+    `deferred` nodes were never evaluated — the ranking ran past the budget
+    before reaching them. That is materially different from being pruned or
+    rejected, so they are reported separately and stay browsable.
+    """
+    deferred = []
+    for doc_name, doc_data in results.items():
+        for node_id, meta in (doc_data.get("node_meta") or {}).items():
+            if meta.get("status") != "deferred":
+                continue
+            node = next((n for n in _iter_tree(doc_data["tree"]) if n["nodeId"] == node_id), None)
+            deferred.append({
+                "doc": doc_name,
+                "node_id": node_id,
+                "title": (node or {}).get("title", node_id),
+                "reason": meta.get("reason", ""),
+                "bm25_score": meta.get("bm25_score"),
+                "bm25_rank": meta.get("bm25_rank"),
+            })
+    deferred.sort(key=lambda d: (d["bm25_rank"] is None, d["bm25_rank"]))
+
+    b = ctx.budget
+    return {
+        "evaluated": b.evaluated,
+        "deferred": len(deferred),
+        "tokens_used": b.tokens_used,
+        "tokens_max": b.tokens_max,
+        "capped_by": b.capped_by,
+        "agent_ctx": app_config.runtime().resolved_agent_ctx(),
+        "deferred_nodes": deferred,
+    }
+
+
+def _iter_tree(nodes):
+    for n in nodes:
+        yield n
+        yield from _iter_tree(n.get("children", []))
+
+
+def _run_retrieval(query: str, index_mod, ctx=None) -> tuple[dict, object]:
     """Two-phase retrieval across every indexed document. Shared by /api/run
     (retrieval tab) and /api/chat (chatbot tab) so both drive the same live
     treemap/progress state.
@@ -1039,31 +1080,53 @@ def _run_retrieval(query: str, index_mod, ctx=None) -> dict:
     ctx = ctx or _pi.start_run(total_leaves)
     ctx.set_total(total_leaves)
 
-    retrieve_fn = getattr(index_mod, "retrieve_with_metadata", None)
-
-    def _one(doc_name: str):
-        if retrieve_fn:
-            try:
-                return retrieve_fn(doc_name, query, ctx=ctx)
-            except TypeError:
-                # A third-party index module that predates the ctx parameter.
-                return retrieve_fn(doc_name, query)
-        return index_mod.retrieve(doc_name, query), {}
-
+    # Pruning runs per document, in parallel. Leaf evaluation does NOT: every
+    # retrieved passage lands in one agent context, so candidates are ranked
+    # and budgeted across the whole corpus rather than per file.
+    supports_two_phase = (hasattr(index_mod, "prune_document")
+                          and hasattr(index_mod, "evaluate_ranked"))
     pool = _pi.work_pool()
-    futures = {pool.submit(_one, doc_name): doc_name for doc_name in trees}
+
+    per_doc: dict[str, tuple] = {}
+    if supports_two_phase:
+        futures = {pool.submit(index_mod.prune_document, doc_name, query, ctx): doc_name
+                   for doc_name in trees}
+        candidates = []
+        for future, doc_name in futures.items():
+            try:
+                doc = future.result()
+            except FileNotFoundError:
+                continue
+            except Exception as exc:
+                print(f"[retrieval] {doc_name} failed: {exc}", file=sys.stderr)
+                continue
+            candidates.append(doc)
+
+        index_mod.evaluate_ranked(candidates, query, ctx)
+
+        for doc in candidates:
+            selected = [l for l in doc.leaves
+                        if doc.node_meta.get(l.node_id, {}).get("relevant")]
+            per_doc[doc.doc_name] = (selected, doc.node_meta)
+    else:
+        # A third-party index module without the two-phase API.
+        retrieve_fn = getattr(index_mod, "retrieve_with_metadata", None)
+        futures = {pool.submit(
+            retrieve_fn or (lambda d, q: (index_mod.retrieve(d, q), {})),
+            doc_name, query): doc_name for doc_name in trees}
+        for future, doc_name in futures.items():
+            try:
+                per_doc[doc_name] = future.result()
+            except FileNotFoundError:
+                continue
+            except Exception as exc:
+                print(f"[retrieval] {doc_name} failed: {exc}", file=sys.stderr)
 
     results = {}
-    for future in futures:
-        doc_name = futures[future]
-        try:
-            nodes, node_reasons = future.result()
-        except FileNotFoundError:
+    for doc_name in trees:
+        if doc_name not in per_doc:
             continue
-        except Exception as exc:
-            print(f"[retrieval] {doc_name} failed: {exc}", file=sys.stderr)
-            continue
-
+        nodes, node_reasons = per_doc[doc_name]
         raw_tree = trees[doc_name]
         results[doc_name] = {
             "tree": raw_tree,
@@ -1084,7 +1147,7 @@ def _run_retrieval(query: str, index_mod, ctx=None) -> dict:
                 for n in nodes
             ],
         }
-    return results
+    return results, ctx
 
 
 @app.post("/api/run")
@@ -1112,12 +1175,13 @@ def run_query(req: RunRequest):
     except Exception as exc:
         return JSONResponse({"error": f"Could not load index module '{index_mod_name}': {exc}"}, status_code=400)
 
-    results = _run_retrieval(query, index_mod)
+    results, ctx = _run_retrieval(query, index_mod)
 
     test_result = _eval_test(test, results) if test else None
     return JSONResponse({
         "query": query,
         "results": results,
+        "budget": _budget_payload(ctx, results),
         "test_result": test_result,
         "pipeline": {
             "ingest": req.ingest_module or _module_defaults()["ingest"],
@@ -1254,7 +1318,8 @@ def chat(req: ChatRequest):
 
     _set_chat_phase("retrieval", "Reading the document trees…")
     try:
-        results = _run_retrieval(query, index_mod)
+        results, ctx = _run_retrieval(query, index_mod)
+        budget = _budget_payload(ctx, results)
 
         # Flatten retrieved nodes into numbered sources (stable order: doc, tree order)
         crumbs = _breadcrumbs_for(results)
@@ -1336,9 +1401,11 @@ def chat(req: ChatRequest):
                 "limitations": sections.get("limitations", ""),
             },
             "grounding": {"status": status, "summary": summary, "sources": sources},
+            "budget": budget,
             "run": {
                 "query": query,
                 "results": results,
+                "budget": budget,
                 "test_result": None,
                 "pipeline": {
                     "ingest": defs["ingest"],

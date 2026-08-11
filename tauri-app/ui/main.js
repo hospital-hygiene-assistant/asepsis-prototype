@@ -960,6 +960,10 @@ const STATUS_COLOR = {
   kept:            '#0ea5e9',
   pruned:          '#64748b',
   rejected:        '#f97316',
+  // Never read: the agent's context filled up before the ranking reached it.
+  // Deliberately distinct from pruned/rejected — no judgement was made.
+  deferred:        '#a855f7',
+  error:           '#eab308',
   neutral:         '#374151',
 };
 const STATUS_STROKE = {
@@ -970,6 +974,8 @@ const STATUS_STROKE = {
   kept:            '#38bdf8',
   pruned:          '#475569',
   rejected:        '#ea580c',
+  deferred:        '#9333ea',
+  error:           '#ca8a04',
   neutral:         '#4b5563',
 };
 const STATUS_ICON = {
@@ -977,6 +983,8 @@ const STATUS_ICON = {
   'expected-miss': '✗',
   retrieved:       '↓',
   rejected:        '×',
+  deferred:        '⋯',
+  error:           '!',
 };
 
 function nodeStatus(d, retrievedSet, expectedSet, expectedAnySet, nodeReasons = {}) {
@@ -989,6 +997,8 @@ function nodeStatus(d, retrievedSet, expectedSet, expectedAnySet, nodeReasons = 
   if (got) return 'retrieved';
   if (meta.status === 'kept') return 'kept';
   if (meta.status === 'pruned') return 'pruned';
+  if (meta.status === 'deferred') return 'deferred';
+  if (meta.status === 'error') return 'error';
   if (meta.status === 'rejected') return 'rejected';
   if (!d.data.isLeaf) return 'internal';
   return 'neutral';
@@ -1058,6 +1068,8 @@ function renderTree(rawTree, retrievedSet, expectedSet, expectedAnySet, nodeReas
         if (meta.status === 'retrieved' || retrievedSet.has(id)) { badge = 'Retrieved'; color = '#86efac'; }
         else if (meta.status === 'kept') { badge = 'Kept'; color = '#38bdf8'; }
         else if (meta.status === 'pruned') { badge = 'Pruned'; color = '#64748b'; }
+        else if (meta.status === 'deferred') { badge = 'Not read'; color = '#a855f7'; }
+        else if (meta.status === 'error') { badge = 'Failed'; color = '#eab308'; }
         else if (meta.status === 'rejected') { badge = 'Rejected'; color = '#f97316'; }
         html += `<div style="font-size:11px;">
           <div style="font-weight:600;display:flex;justify-content:space-between;gap:10px;">
@@ -1100,6 +1112,8 @@ function renderTree(rawTree, retrievedSet, expectedSet, expectedAnySet, nodeReas
         if (meta.quote)  html += `<div class="tt-quote">“${escHtml(meta.quote)}”</div>`;
       } else if (meta.status === 'rejected') withReason('✗ Evaluated & rejected', 'tt-rejected');
       else if (meta.status === 'pruned')     withReason('⊘ Pruned (not evaluated)', 'tt-pruned-label');
+      else if (meta.status === 'deferred')   withReason('⋯ Not read — agent context was full', 'tt-deferred-label');
+      else if (meta.status === 'error')      withReason('! Evaluation failed', 'tt-error-label');
       else if (meta.status === 'kept')       withReason('☉ Section kept (passed pruning)', 'tt-kept-label');
       else if (d.data.isLeaf) {
         html += `<div class="tt-label tt-not-selected">Not retrieved</div>`;
@@ -1190,6 +1204,8 @@ function renderResultBoxes(docName, data) {
       if (retrieved.has(id) || m.status === 'retrieved') { label = '✓ Retrieved'; cls = 'tt-selected'; }
       else if (m.status === 'rejected') { label = '✗ Evaluated & rejected'; cls = 'tt-rejected'; }
       else if (m.status === 'pruned')   { label = '⊘ Pruned'; cls = 'tt-pruned-label'; }
+      else if (m.status === 'deferred') { label = '⋯ Not read'; cls = 'tt-deferred-label'; }
+      else if (m.status === 'error')    { label = '! Failed';  cls = 'tt-error-label'; }
       else if (m.status === 'kept')     { label = '☉ Section kept'; cls = 'tt-kept-label'; }
       let html = `<div class="tt-title">${escHtml(d.data.title || id)}</div>`;
       html += `<div class="tt-label ${cls}">${label}</div>`;
@@ -1219,6 +1235,8 @@ function resultBoxClass(nodeData, retrieved, meta) {
   if (retrieved.has(id) || m.status === 'retrieved') return 'tm-retrieved';
   if (m.status === 'rejected') return 'tm-rejected';
   if (m.status === 'pruned')   return 'tm-pruned';
+  if (m.status === 'deferred') return 'tm-deferred';
+  if (m.status === 'error')    return 'tm-error';
   return 'tm-pending';
 }
 
@@ -1344,6 +1362,7 @@ function getDocVerdicts(stem) {
     const ensure = (ids, status) => (ids || []).forEach(id => { if (!meta[id]) meta[id] = { status }; });
     ensure(live.retrieved, 'retrieved'); ensure(live.rejected, 'rejected');
     ensure(live.kept, 'kept');           ensure(live.pruned, 'pruned');
+    ensure(live.deferred, 'deferred');   ensure(live.error, 'error');
     return { retrieved: new Set(live.retrieved || []), meta, live: true };
   }
   return null;
@@ -1355,6 +1374,8 @@ function verdictFor(baseId, v) {
   if (v.retrieved.has(baseId) || m?.status === 'retrieved') return 'accepted';
   if (m?.status === 'rejected') return 'rejected';
   if (m?.status === 'pruned')   return 'pruned';
+  if (m?.status === 'deferred') return 'deferred';
+  if (m?.status === 'error')    return 'error';
   if (m?.status === 'kept')     return 'kept';
   return null;
 }
@@ -1437,7 +1458,7 @@ function refreshOpenDocViewer() {
   decorateDocVerdicts(document.getElementById('doc-modal-content'), state.docViewerStem);
 }
 
-const VERDICT_CLASSES = ['accepted', 'rejected', 'kept', 'pruned'];
+const VERDICT_CLASSES = ['accepted', 'rejected', 'kept', 'pruned', 'deferred', 'error'];
 
 /** Overlay per-node verdicts on the rendered markdown. Idempotent; re-run on
  *  every status poll while a run is live. */
@@ -1531,6 +1552,8 @@ function showDecisionTooltip(event, vid) {
     rejected: ['✗ Evaluated & not selected', 'tt-rejected'],
     kept:     ['☉ Section kept (passed pruning)', 'tt-kept-label'],
     pruned:   ['⊘ Pruned (branch skipped)', 'tt-pruned-label'],
+    deferred: ['⋯ Not read (context budget)', 'tt-deferred-label'],
+    error:    ['! Evaluation failed', 'tt-error-label'],
   }[verdict];
 
   let html = `<div class="tt-label ${LABEL[1]}">${LABEL[0]}${v.live ? ' · live' : ''}</div>`;

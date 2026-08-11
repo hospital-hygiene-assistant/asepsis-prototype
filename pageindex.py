@@ -27,6 +27,7 @@ from typing import Optional
 import ollama
 
 import config as app_config
+import ranking
 import tokens as app_tokens
 
 KB_DIR = Path("knowledge_base")
@@ -1515,6 +1516,203 @@ def _prune_and_collect(
     return candidate_leaves
 
 
+@dataclass
+class DocCandidates:
+    """One document's state between pruning and leaf evaluation."""
+    doc_name: str
+    nodes: list["PageNode"]
+    leaves: list["PageNode"]
+    parent_map: dict
+    nodes_by_id: dict
+    node_assignment: dict
+    candidates: list["PageNode"]
+    node_meta: dict
+
+
+def prune_document(doc_name: str, query: str, ctx: Optional[RunContext] = None) -> DocCandidates:
+    """Phase 1 for one document: load the index and prune it top-down."""
+    ctx = ctx or current_run()
+    nodes = load_index_nodes(doc_name)
+    leaves = _collect_leaves(nodes)
+
+    parent_map = _build_parent_map(nodes)
+    nodes_by_id = _build_nodes_by_id(nodes)
+
+    # Assign every node to an Ollama instance, round-robin by branch.
+    branch_roots = nodes[0].children if (len(nodes) == 1 and nodes[0].children) else nodes
+    node_assignment: dict[str, tuple] = {}
+    for i, branch in enumerate(branch_roots):
+        idx = i % len(_clients)
+        client, url = _clients[idx], OLLAMA_URLS[idx]
+        for node in _collect_all_nodes([branch]):
+            node_assignment[node.node_id] = (client, url)
+    for node in _collect_all_nodes(nodes):
+        node_assignment.setdefault(node.node_id, (_clients[0], OLLAMA_URLS[0]))
+
+    node_meta: dict[str, dict] = {}
+    if nodes:
+        node_meta[nodes[0].node_id] = {
+            "relevant": True,
+            "reason": f"Document root '{nodes[0].title}' — starting point for retrieval.",
+            "status": "kept",
+        }
+
+    candidates: list[PageNode] = []
+    if leaves:
+        top = nodes[0].children if (len(nodes) == 1 and nodes[0].children) else nodes
+        candidates = _prune_and_collect(top, query, parent_map, nodes_by_id,
+                                        node_assignment, node_meta, ctx=ctx)
+        print(f"  [prune] {doc_name}: {len(candidates)}/{len(leaves)} leaves after pruning",
+              file=sys.stderr)
+
+    return DocCandidates(doc_name, nodes, leaves, parent_map, nodes_by_id,
+                         node_assignment, candidates, node_meta)
+
+
+# Rough allowance for the synthesis prompt's own scaffolding (instructions,
+# format block, per-passage headers) on top of the passages themselves.
+SYNTHESIS_OVERHEAD_TOKENS = 900
+
+
+def agent_budget_tokens(query: str) -> int:
+    """How many tokens of retrieved passages the agent can actually reason over."""
+    cfg = app_config.runtime()
+    spec = app_config.spec_for(cfg.synthesis_model)
+    return max(0, cfg.resolved_agent_ctx() - spec.reserve
+               - SYNTHESIS_OVERHEAD_TOKENS - app_tokens.estimate_tokens(query))
+
+
+def _leaf_cost(leaf: "PageNode") -> int:
+    """A leaf's cost against the agent's window: its passage plus its header."""
+    return app_tokens.estimate_tokens(f"{leaf.title}\n{leaf.content or ''}") + 16
+
+
+def evaluate_ranked(
+    docs: list[DocCandidates],
+    query: str,
+    ctx: Optional[RunContext] = None,
+) -> None:
+    """Phase 2: evaluate candidate leaves in BM25 order under the agent's budget.
+
+    Every retrieved node ends up in the agent's context, so that window — not
+    the evaluator's — is the real constraint. Candidates are ranked against the
+    query, then evaluated in order until the ACCEPTED passages would overflow
+    it. Rejected leaves cost no budget, so the walk continues past them.
+
+    Whatever is left unevaluated is marked `deferred`: not a judgement, just
+    the tail of the ranking that the agent had no room for. It stays browsable
+    in the UI.
+    """
+    ctx = ctx or current_run()
+    candidates = [(d, leaf) for d in docs for leaf in d.candidates]
+    budget = agent_budget_tokens(query)
+    ctx.budget.tokens_max = budget
+
+    if not candidates:
+        return
+
+    ranked = ranking.rank(candidates, query, text_of=lambda pair: (
+        f"{pair[1].title}\n{pair[1].summary or ''}\n{pair[1].content or ''}"))
+
+    max_evals = max(1, app_config.runtime().max_leaf_evals)
+    pool = work_pool()
+    wave_size = max(1, pool_size())
+
+    accepted_tokens = 0
+    evaluated = 0
+    stop_reason = ""
+    position = 0
+
+    while position < len(ranked):
+        if stop_reason:
+            break
+        wave = ranked[position:position + wave_size]
+        futures = []
+        for scored in wave:
+            doc, leaf = scored.item
+            futures.append((scored, pool.submit(
+                _evaluate_leaf,
+                leaf, query, doc.doc_name,
+                _make_breadcrumb(leaf.node_id, doc.parent_map, doc.nodes_by_id),
+                doc.parent_map[leaf.node_id].summary if leaf.node_id in doc.parent_map else "",
+                *doc.node_assignment.get(leaf.node_id, (_clients[0], OLLAMA_URLS[0])),
+                ctx=ctx,
+            )))
+
+        # Commit strictly in rank order, so the cutoff is deterministic no
+        # matter which call happens to finish first.
+        committed = 0
+        for scored, future in futures:
+            doc, leaf = scored.item
+            node_id, meta = future.result()
+            committed += 1
+            meta["bm25_score"] = round(scored.score, 4)
+            meta["bm25_rank"] = scored.rank
+            doc.node_meta[node_id] = meta
+            ctx.inc_done()
+            evaluated += 1
+            position += 1
+
+            if meta.get("relevant"):
+                cost = _leaf_cost(leaf)
+                if accepted_tokens + cost > budget:
+                    # This passage cannot fit; it and everything below it in
+                    # the ranking are deferred rather than accepted.
+                    meta.update({
+                        "relevant": False,
+                        "status": "deferred",
+                        "reason": ("Judged relevant, but the agent's context budget was "
+                                   "already full — this passage was not included."),
+                    })
+                    ctx.mark(leaf.node_id, "deferred", meta["reason"],
+                             bm25_rank=scored.rank, bm25_score=meta["bm25_score"])
+                    stop_reason = "context"
+                    break
+                accepted_tokens += cost
+
+            if evaluated >= max_evals:
+                stop_reason = "max_evals"
+                break
+
+        # A wave runs in parallel, so when we stop mid-wave the remaining
+        # calls are still in flight — and each marks its own verdict on the
+        # context when it lands. Drain them before recording the deferred
+        # tail, or a late "retrieved" write would silently overwrite it.
+        for _, future in futures[committed:]:
+            try:
+                future.result()
+            except Exception:
+                pass
+
+    # Everything the queue never reached.
+    deferred = 0
+    for scored in ranked[position:]:
+        doc, leaf = scored.item
+        reason = ("Not evaluated: the agent's context budget was reached before this "
+                  "passage's turn in the relevance ranking."
+                  if stop_reason != "max_evals" else
+                  "Not evaluated: the per-run evaluation cap was reached.")
+        doc.node_meta[leaf.node_id] = {
+            "relevant": False, "reason": reason, "status": "deferred",
+            "bm25_score": round(scored.score, 4), "bm25_rank": scored.rank,
+        }
+        ctx.mark(leaf.node_id, "deferred", reason,
+                 bm25_rank=scored.rank, bm25_score=round(scored.score, 4))
+        ctx.inc_done()
+        deferred += 1
+
+    ctx.budget.tokens_used = accepted_tokens
+    ctx.budget.evaluated = evaluated
+    ctx.budget.deferred = deferred + (1 if stop_reason == "context" else 0)
+    ctx.budget.capped_by = stop_reason
+
+    if stop_reason:
+        print(f"  [budget] stopped after {evaluated} evaluations "
+              f"({accepted_tokens}/{budget} tokens accepted); "
+              f"{ctx.budget.deferred} passage(s) deferred [{stop_reason}]",
+              file=sys.stderr)
+
+
 def retrieve(doc_name: str, query: str, ctx: Optional[RunContext] = None) -> list[PageNode]:
     """Return relevant leaf nodes for a query against one document's index."""
     nodes_result, _ = retrieve_with_metadata(doc_name, query, ctx=ctx)
@@ -1529,71 +1727,21 @@ def retrieve_with_metadata(
     Phase 1: BFS section checks — prune branches whose sections are irrelevant.
     Phase 2: Full leaf evaluation (reason + quote) on survivors only.
     Returns (selected_leaves_in_doc_order, {node_id: {reason, quote}}).
+
+    Single-document convenience wrapper — the budget applies within this
+    document alone. The server uses prune_document + evaluate_ranked directly
+    so that ranking and the agent's budget span the whole corpus.
     """
     ctx = ctx or current_run()
-    nodes = load_index_nodes(doc_name)
-    leaves = _collect_leaves(nodes)
-
-    if not leaves:
+    doc = prune_document(doc_name, query, ctx=ctx)
+    if not doc.leaves:
         return [], {}
 
-    parent_map  = _build_parent_map(nodes)
-    nodes_by_id = _build_nodes_by_id(nodes)
-
-    # Assign every node (section + leaf) to an Ollama instance round-robin by branch.
-    branch_roots = nodes[0].children if (len(nodes) == 1 and nodes[0].children) else nodes
-    node_assignment: dict[str, tuple[ollama.Client, str]] = {}
-    for i, branch in enumerate(branch_roots):
-        idx = i % len(_clients)
-        client, url = _clients[idx], OLLAMA_URLS[idx]
-        for node in _collect_all_nodes([branch]):
-            node_assignment[node.node_id] = (client, url)
-    # Fallback for any node not covered (e.g., single-root flat doc)
-    for node in _collect_all_nodes(nodes):
-        if node.node_id not in node_assignment:
-            node_assignment[node.node_id] = (_clients[0], OLLAMA_URLS[0])
-
-    node_meta: dict[str, dict] = {}
-    if nodes:
-        node_meta[nodes[0].node_id] = {
-            "relevant": True,
-            "reason": f"Document root '{nodes[0].title}' — starting point for retrieval.",
-            "status": "kept"
-        }
-
-    # Phase 1 — top-down pruning
-    top = nodes[0].children if (len(nodes) == 1 and nodes[0].children) else nodes
-    surviving = _prune_and_collect(top, query, parent_map, nodes_by_id,
-                                   node_assignment, node_meta, ctx=ctx)
-    print(
-        f"  [prune] {doc_name}: {len(surviving)}/{len(leaves)} leaves after pruning",
-        file=sys.stderr,
-    )
-
-    # Phase 2 — full leaf evaluation on survivors
-    if surviving:
-        pool = work_pool()
-        futures = {
-            pool.submit(
-                _evaluate_leaf,
-                leaf,
-                query,
-                doc_name,
-                _make_breadcrumb(leaf.node_id, parent_map, nodes_by_id),
-                parent_map[leaf.node_id].summary if leaf.node_id in parent_map else "",
-                *node_assignment.get(leaf.node_id, (_clients[0], OLLAMA_URLS[0])),
-                ctx=ctx,
-            ): leaf
-            for leaf in surviving
-        }
-        for future in as_completed(futures):
-            node_id, meta = future.result()
-            node_meta[node_id] = meta
-            ctx.inc_done()
+    evaluate_ranked([doc], query, ctx=ctx)
 
     # Preserve original document order
-    selected = [l for l in leaves if node_meta.get(l.node_id, {}).get("relevant")]
-    return selected, node_meta
+    selected = [l for l in doc.leaves if doc.node_meta.get(l.node_id, {}).get("relevant")]
+    return selected, doc.node_meta
 
 
 # ---------------------------------------------------------------------------

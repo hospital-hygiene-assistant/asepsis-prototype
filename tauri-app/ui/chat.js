@@ -234,6 +234,9 @@ const TRACE_META = {
   rejected:  ['✕', 'Rejected'],
   kept:      ['○', 'Kept'],
   pruned:    ['⊘', 'Pruned'],
+  // Not a verdict: the agent's context filled before the ranking reached it.
+  deferred:  ['⋯', 'Not read'],
+  error:     ['!', 'Failed'],
 };
 
 function buildPendingCard() {
@@ -332,6 +335,44 @@ function renderRichText(text, sources, answerId) {
   return html;
 }
 
+function buildBudgetNotice(budget) {
+  if (!budget || !budget.deferred) return null;
+
+  const n = budget.deferred;
+  const wrap = el('div', 'budget-notice');
+
+  const used = budget.tokens_max
+    ? Math.min(100, Math.round((budget.tokens_used / budget.tokens_max) * 100))
+    : 100;
+  const bar = el('div', 'budget-bar');
+  const fill = el('i');
+  fill.style.width = `${used}%`;
+  bar.appendChild(fill);
+  wrap.appendChild(bar);
+
+  const text = el('span');
+  const cap = budget.capped_by === 'max_evals'
+    ? 'the per-run evaluation cap was reached'
+    : `the agent's context window filled up (${budget.tokens_used.toLocaleString()} of ` +
+      `${budget.tokens_max.toLocaleString()} tokens)`;
+  text.innerHTML =
+    `<strong>${n} further passage${n === 1 ? '' : 's'} ranked below the cut were not read</strong> — ` +
+    `${escHtml(cap)}. They were not judged irrelevant.`;
+  wrap.appendChild(text);
+
+  const btn = el('button', '', 'Browse them');
+  btn.title = 'Open the retrieval tab filtered to the passages that were not read';
+  btn.addEventListener('click', () => {
+    window.__deferredFilter = (budget.deferred_nodes || []).map(d => d.node_id);
+    setAppTab('retrieval');
+    setView('results');
+    toast(`${n} passage${n === 1 ? '' : 's'} highlighted as "not read"`, 'info', 5000);
+  });
+  wrap.appendChild(btn);
+
+  return wrap;
+}
+
 function finalizeAnswerCard(p, data) {
   const answerId = `a${++chatState.answerCount}`;
   p.card.id = `answer-${answerId}`;
@@ -364,6 +405,12 @@ function finalizeAnswerCard(p, data) {
   } else {
     body.appendChild(el('p', 'chat-loading', 'The model returned no answer text — see the sources below.'));
   }
+
+  // Context-budget notice — passages the agent had no room to read.
+  // Deliberately placed with the answer, not buried in the trace: the user is
+  // being told their answer was composed from a truncated evidence set.
+  const budgetNotice = buildBudgetNotice(data.budget);
+  if (budgetNotice) body.appendChild(budgetNotice);
 
   // Trace: freeze into a collapsed audit block
   p.progressEl.remove();
