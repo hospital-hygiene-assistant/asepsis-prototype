@@ -372,7 +372,11 @@ def _clean_node_id(raw: str) -> str:
             part = part.strip()
             if part.startswith("id="):
                 return part[3:].strip()
-    raw = re.sub(r"^(?:LEAF|SECTION|\[LEAF\]|\[SECTION\])[\s\\:]*", "", raw, flags=re.IGNORECASE)
+    # The separator is required. With `*` this also ate the prefix of any
+    # legitimate id that merely STARTS with these words — "leaf-1" became
+    # "-1", and a real heading slugged to "section-overview" became
+    # "-overview", which then failed to match any node.
+    raw = re.sub(r"^(?:LEAF|SECTION|\[LEAF\]|\[SECTION\])[\s\\:]+", "", raw, flags=re.IGNORECASE)
     if "/" in raw:
         raw = raw.split("/")[-1]
     if raw.startswith("id="):
@@ -888,6 +892,37 @@ Rules:
 Output only the JSON object. No other text.
 """
 
+# The pruning prompt. One call per PARENT, showing all of its direct children
+# together so the model chooses among them comparatively — the previous design
+# asked about each section in isolation, which cost one call per node and gave
+# the model no basis for preferring one branch over its siblings.
+#
+# Children are described by their index-time summaries, so this prompt never
+# needs to recurse into the subtree.
+CHILD_SELECT_PROMPT = """\
+You are navigating a document to find content that answers a query. Below are
+the direct subsections of one part of the document, each with a summary of what
+it contains. Choose which ones are worth opening.
+
+Query: QUERY_PLACEHOLDER
+
+Currently in: BREADCRUMB_PLACEHOLDER
+
+Subsections:
+CHILDREN_PLACEHOLDER
+
+Rules:
+- Select every subsection that could plausibly contain an answer. It is much
+  worse to miss a relevant subsection than to open an irrelevant one.
+- Compare them against each other: prefer the ones whose summaries actually
+  bear on the query.
+- If none of them bear on the query at all, select none.
+- Use the ids exactly as written above. Never invent an id.
+
+Output exactly this JSON object and nothing else:
+  {"keep": [{"id": "<id>", "reason": "<one short sentence>"}]}
+"""
+
 # On-demand explanation for a section that was NOT selected (rejected or pruned).
 # Anchored to the actual content so the negative is verifiable, not confabulated:
 # the model must describe what the section factually covers, then judge fit.
@@ -1230,6 +1265,118 @@ def _check_section_relevant(
         _dec(client_url)
 
 
+# ---------------------------------------------------------------------------
+# Batched child selection (the pruning decision)
+# ---------------------------------------------------------------------------
+
+def _format_children_block(children: list["PageNode"]) -> str:
+    lines = []
+    for child in children:
+        kind = "LEAF" if child.is_leaf else "SECTION"
+        title = f"{child.parent_title} (section prose)" if child.synthetic else child.title
+        summary = (child.summary or "(no summary available)").strip()
+        lines.append(f"- id={child.node_id} | {kind} | {title}\n    {summary}")
+    return "\n".join(lines)
+
+
+def _child_batches(children: list["PageNode"], breadcrumb: str, query: str) -> list[list["PageNode"]]:
+    """Split a child list into groups that each fit the retrieval window.
+
+    Splitting costs the model its full comparative view, so it only happens
+    when the alternative is an overflowing prompt.
+    """
+    budget = app_config.runtime().resolved_retrieval_ctx()
+    overhead = app_tokens.estimate_tokens(CHILD_SELECT_PROMPT + breadcrumb + query) + 512
+    available = max(256, budget - overhead)
+
+    batches, current, used = [], [], 0
+    for child in children:
+        cost = app_tokens.estimate_tokens(
+            f"{child.node_id}{child.title}{child.summary or ''}") + 8
+        if current and used + cost > available:
+            batches.append(current)
+            current, used = [], 0
+        current.append(child)
+        used += cost
+    if current:
+        batches.append(current)
+    return batches
+
+
+def _select_children(
+    children: list["PageNode"],
+    query: str,
+    breadcrumb: str,
+    client: Optional[ollama.Client] = None,
+    client_url: str = "",
+    ctx: Optional[RunContext] = None,
+    *,
+    is_root_level: bool = False,
+) -> tuple[dict[str, str], bool]:
+    """Ask the model which of `children` are worth descending into.
+
+    Returns ({node_id: reason}, errored). On any failure every child is kept —
+    pruning on a failed call would silently delete content.
+    """
+    ctx = ctx or current_run()
+    if not children:
+        return {}, False
+
+    batches = _child_batches(children, breadcrumb, query)
+    kept: dict[str, str] = {}
+    errored = False
+    valid_ids = {c.node_id for c in children}
+
+    for batch in batches:
+        prompt = (
+            CHILD_SELECT_PROMPT
+            .replace("QUERY_PLACEHOLDER", query)
+            .replace("BREADCRUMB_PLACEHOLDER", breadcrumb or "the document root")
+            .replace("CHILDREN_PLACEHOLDER", _format_children_block(batch))
+        )
+        _inc(client_url)
+        try:
+            raw = _chat(prompt, client, client_url)
+            result = _parse_json_response(raw)
+            entries = result.get("keep", []) if isinstance(result, dict) else result
+            if not isinstance(entries, list):
+                raise ValueError(f"expected a list of kept ids, got {type(entries).__name__}")
+
+            batch_ids = {c.node_id for c in batch}
+            for entry in entries:
+                if isinstance(entry, dict):
+                    node_id = _clean_node_id(str(entry.get("id", "")))
+                    reason = str(entry.get("reason") or "").strip()
+                else:
+                    node_id, reason = _clean_node_id(str(entry)), ""
+                if node_id in batch_ids:
+                    kept[node_id] = reason
+                elif node_id in valid_ids:
+                    kept[node_id] = reason  # right doc, wrong batch — accept it
+                else:
+                    print(f"    [prune] ignoring unknown id {node_id!r} from the model",
+                          file=sys.stderr)
+        except Exception as exc:
+            # Conservative: this batch survives intact rather than vanishing.
+            errored = True
+            for child in batch:
+                kept.setdefault(child.node_id, f"Kept after a failed selection call: {exc}")
+            print(f"    [prune] selection failed under {breadcrumb!r}: {exc} — keeping all",
+                  file=sys.stderr)
+        finally:
+            _dec(client_url)
+
+    # A model that selects nothing at the very top has pruned the entire
+    # corpus in one call. Far more likely a bad response than a true verdict.
+    if is_root_level and not kept:
+        print("    [prune] nothing kept at the root — keeping all top-level "
+              "sections instead of pruning the whole corpus", file=sys.stderr)
+        return ({c.node_id: "Kept: the root-level selection returned nothing."
+                 for c in children}, True)
+
+    return kept, errored
+
+
 def make_client(url: str) -> ollama.Client:
     """Build an Ollama client for a specific instance URL (used by the explainer)."""
     return ollama.Client(host=url)
@@ -1300,64 +1447,70 @@ def _prune_and_collect(
     """
     ctx = ctx or current_run()
     candidate_leaves: list["PageNode"] = []
-    frontier = list(nodes)
     pool = work_pool()
 
-    while frontier:
-        sections = [n for n in frontier if not n.is_leaf]
-        candidate_leaves.extend(n for n in frontier if n.is_leaf)
+    def _prune_subtree(node: "PageNode", reason: str) -> None:
+        """Record a rejected child and everything beneath it."""
+        ctx.mark(node.node_id, "pruned", reason)
+        node_meta[node.node_id] = {"relevant": False, "reason": reason, "status": "pruned"}
+        descendant_reason = f"Pruned because ancestor section '{node.title}' was pruned."
+        for descendant in _collect_all_nodes([node]):
+            if descendant.node_id == node.node_id:
+                continue
+            ctx.mark(descendant.node_id, "pruned", descendant_reason)
+            node_meta[descendant.node_id] = {
+                "relevant": False, "reason": descendant_reason, "status": "pruned"}
+        # Pruned leaves count toward "done" so the progress bar still reaches
+        # its total — they will never be evaluated.
+        for leaf in _collect_leaves([node]):
+            ctx.inc_done()
 
-        if not sections:
-            break
+    # Each unit of work is a PARENT and its direct children — one LLM call per
+    # group, rather than one per node.
+    groups: list[tuple[Optional["PageNode"], list["PageNode"]]] = [(None, list(nodes))]
+    level = 0
 
-        futures = {
-            pool.submit(
-                _check_section_relevant,
-                node, query,
-                _make_breadcrumb(node.node_id, parent_map, nodes_by_id),
-                *node_assignment.get(node.node_id, (_clients[0], OLLAMA_URLS[0])),
-                ctx=ctx,
-            ): node
-            for node in sections
-        }
-        next_frontier: list["PageNode"] = []
+    while groups:
+        futures = {}
+        for parent, children in groups:
+            if not children:
+                continue
+            breadcrumb = ("" if parent is None
+                          else _make_breadcrumb(parent.node_id, parent_map, nodes_by_id))
+            assignment = node_assignment.get(
+                parent.node_id if parent is not None else children[0].node_id,
+                (_clients[0], OLLAMA_URLS[0]))
+            futures[pool.submit(
+                _select_children, children, query, breadcrumb,
+                *assignment, ctx=ctx, is_root_level=(level == 0),
+            )] = (parent, children)
+
+        next_groups: list[tuple[Optional["PageNode"], list["PageNode"]]] = []
         for future in as_completed(futures):
-            node = futures[future]
-            verdict, reason = future.result()
+            parent, children = futures[future]
+            kept, errored = future.result()
 
-            node_meta[node.node_id] = {
-                "relevant": verdict,
-                "reason": reason,
-                "status": ctx.get_meta(node.node_id).get("status") or
-                          ("kept" if verdict else "pruned"),
-            }
+            for child in children:
+                if child.node_id in kept:
+                    reason = kept[child.node_id]
+                    if child.is_leaf:
+                        # A kept leaf is only a candidate — its verdict comes
+                        # from the per-leaf evaluator in the next phase.
+                        candidate_leaves.append(child)
+                    else:
+                        status = "error" if errored else "kept"
+                        ctx.mark(child.node_id, status, reason)
+                        node_meta[child.node_id] = {
+                            "relevant": True, "reason": reason, "status": status}
+                        next_groups.append((child, child.children))
+                else:
+                    _prune_subtree(child, reason=(
+                        kept.get(child.node_id)
+                        or f"Not selected: the model judged this branch unlikely to "
+                           f"answer the query when compared with its siblings."))
 
-            if verdict:
-                next_frontier.extend(node.children)
-            else:
-                # Pruned: count all leaf descendants toward "done" so the
-                # progress counter reaches total. They won't be evaluated again.
-                _prune_reason = f"Pruned because ancestor section '{node.title}' was pruned."
-                ctx.mark(node.node_id, "pruned", reason or _prune_reason)
-                node_meta[node.node_id]["status"] = "pruned"
-                for leaf in _collect_leaves([node]):
-                    ctx.inc_done()
-                    ctx.mark(leaf.node_id, "pruned", _prune_reason)
-                    node_meta[leaf.node_id] = {
-                        "relevant": False,
-                        "reason": _prune_reason,
-                        "status": "pruned",
-                    }
-                for descendant in _collect_all_nodes([node]):
-                    if descendant.node_id != node.node_id:
-                        ctx.mark(descendant.node_id, "pruned", _prune_reason)
-                        node_meta[descendant.node_id] = {
-                            "relevant": False,
-                            "reason": _prune_reason,
-                            "status": "pruned",
-                        }
-
-        frontier = next_frontier
+        groups = next_groups
+        level += 1
 
     return candidate_leaves
 
