@@ -480,10 +480,12 @@ def finalize_ingestion(pdf_path: str, confirmed_assets: list[dict], non_assets: 
     }
     SOURCES_MANIFEST.write_text(
         json.dumps(sources, indent=2, ensure_ascii=False), encoding="utf-8")
-    _manifest.register(source_path=pdf, root=_root, doc_id=stem,
-                       ingest_module=MODULE_INFO["name"],
-                       extra={"pdf": str(pdf.resolve()),
-                              "assets": [a.to_dict() for a in doc.assets]})
+    from modules.ingest._manifest import Manifest
+    Manifest(KB_DIR).register(
+        source_path=pdf, root=Path(get_source_dir() or pdf.parent), doc_id=stem,
+        ingest_module=MODULE_INFO["name"],
+        extra={"pdf": str(pdf.resolve()),
+               "assets": [a.to_dict() for a in doc.assets]})
 
     return {
         "stem": stem,

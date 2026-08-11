@@ -10,3 +10,6 @@
 # The offline suite needs nothing else — it stubs Ollama out entirely. The
 # --llm tier additionally needs a running Ollama and a built index.
 pytest>=8
+# Catches undefined names in code no test exercises — two of those shipped
+# as NameErrors on a button click. See tests/test_static_checks.py.
+pyflakes>=3

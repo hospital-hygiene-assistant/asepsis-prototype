@@ -912,13 +912,18 @@ def run_ingest(req: IngestRunRequest):
             ingest_mod = _load_module("ingest", ingest_name)
             
             if ingest_name == "betteringest_pdf":
+                import modules.ingest.betteringest_pdf as bpdf
+                from modules.ingest._manifest import discover_files
+
                 _set_ingest_state(phase="ocr", message="Performing layout detection...")
                 src_path = source_dir or getattr(ingest_mod, "get_source_dir")()
                 if not src_path:
                     raise FileNotFoundError("BetterIngest source folder not set.")
-                pdfs = sorted(Path(src_path).glob("*.pdf"))
+                # Recursive, like every other ingest path — sub-folder names are
+                # what become tags, and a flat glob silently ignored them.
+                pdfs = discover_files(Path(src_path), (".pdf",))
                 if not pdfs:
-                    raise FileNotFoundError(f"No PDF files found in {src_path}/")
+                    raise FileNotFoundError(f"No PDF files found under {src_path}/")
                 
                 review_results = bpdf.prepare_layout_review(
                     [str(p) for p in pdfs],
