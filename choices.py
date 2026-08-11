@@ -200,6 +200,36 @@ def reset_cache() -> None:
 # The persisted per-leaf judgements
 # ---------------------------------------------------------------------------
 
+def normalise_answer_id(raw, valid_ids: set[str]) -> Optional[str]:
+    """Recover an answer id from whatever shape the model echoed it back in.
+
+    The prompt lists answers as "- id=<id> | <facet>", and the model routinely
+    replies with the decoration attached — "id=q_population__adult", or the
+    whole line. Matching the raw string against the known ids silently dropped
+    every one of those, so leaves were stored as matching NOTHING and the
+    pre-filter judged almost the entire library irrelevant to every answer.
+
+    Returns None only when nothing in the string corresponds to a real id.
+    """
+    text = str(raw).strip().lstrip("-*• ").strip().strip('"\'')
+    candidates = [text]
+    if "|" in text:
+        candidates += [part.strip() for part in text.split("|")]
+    expanded = []
+    for c in candidates:
+        expanded.append(c)
+        if c.startswith("id="):
+            expanded.append(c[3:].strip())
+    for c in expanded:
+        if c in valid_ids:
+            return c
+    # Last resort: an id appearing anywhere in the string.
+    for known in valid_ids:
+        if known in text:
+            return known
+    return None
+
+
 def leaf_hash(title: str, content: Optional[str]) -> str:
     return hashlib.sha256(f"{title}\n{content or ''}".encode("utf-8")).hexdigest()
 
@@ -290,7 +320,6 @@ def precompute_document(
 
     calls = reused = 0
     errors: list[str] = []
-    valid_ids = questions.answer_ids()
 
     for i, leaf in enumerate(leaves):
         h = leaf_hash(leaf.title, leaf.content)
@@ -299,6 +328,10 @@ def precompute_document(
                 reused += 1
                 continue
 
+            # Only THIS question's answers are valid here. Validating against
+            # the whole set would let an answer from another question be filed
+            # under this one.
+            valid_ids = {a.id for a in question.answers}
             answers_block = "\n".join(
                 f"- id={a.id} | {a.facet}" for a in question.answers)
             prompt = (
@@ -313,8 +346,15 @@ def precompute_document(
                 raw_ids = result.get("answers", []) if isinstance(result, dict) else result
                 if not isinstance(raw_ids, list):
                     raise ValueError(f"expected a list, got {type(raw_ids).__name__}")
-                picked = [str(a).strip() for a in raw_ids
-                          if str(a).strip() in valid_ids]
+                picked = []
+                for a in raw_ids:
+                    resolved = normalise_answer_id(a, valid_ids)
+                    if resolved is not None:
+                        if resolved not in picked:
+                            picked.append(resolved)
+                    else:
+                        print(f"[choices] ignoring unrecognised answer {a!r} "
+                              f"for {question.id}", file=sys.stderr)
                 store.put(h, question.id, picked)
             except Exception as exc:
                 # Recall-biased on failure too: an unjudged leaf is treated as

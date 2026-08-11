@@ -39,7 +39,7 @@ PROMPT_VERSIONS: dict[str, int] = {
     "child_select": 1,
     "leaf_eval": 1,
     "explain": 1,
-    "facet_leaf": 1,
+    "facet_leaf": 2,   # bumped: answer-id parsing was dropping every echoed id
     "synthesis": 1,
 }
 

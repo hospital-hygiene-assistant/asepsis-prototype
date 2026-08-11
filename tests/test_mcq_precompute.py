@@ -337,3 +337,66 @@ class TestIntegrationWithPruning:
 
         assert len(doc.leaves) > 0, "must not silently return an empty corpus"
         assert "no leaves matched" in capsys.readouterr().err
+
+
+class TestAnswerIdEcho:
+    """The prompt lists answers as "- id=<id> | <facet>" and the model replies
+    with the decoration attached. Matching the raw string against known ids
+    dropped every one, so leaves stored as matching NOTHING and the pre-filter
+    judged the whole library irrelevant to every answer — silently, because an
+    empty result is indistinguishable from a confident negative.
+
+    This is the same defect class as the pruning id echo. Fixed there first,
+    and not carried across until it had shipped here too.
+    """
+
+    @pytest.mark.parametrize("echoed", [
+        "id=q1__icu",
+        "q1__icu",
+        "id=q1__icu | intensive care",
+        "- id=q1__icu",
+        '"q1__icu"',
+        "q1__icu | LEAF | intensive care",
+    ])
+    def test_every_echo_shape_resolves(self, echoed):
+        valid = QUESTIONS.answer_ids()
+        assert choices.normalise_answer_id(echoed, valid) == "q1__icu"
+
+    def test_unrecognised_answers_are_dropped(self):
+        assert choices.normalise_answer_id("totally-made-up", QUESTIONS.answer_ids()) is None
+
+    def test_prefixed_ids_are_stored_not_discarded(self, tmp_path):
+        chat = Chat({"PASSAGE": ["id=q1__icu", "id=q2__adult"]})
+        _precompute(tmp_path, [_leaf("a", "icu passage")], chat)
+        store = choices.FacetStore(tmp_path, "doc")
+        assert store.get(choices.leaf_hash("A", "icu passage"), "q1") == ["q1__icu"]
+        assert store.get(choices.leaf_hash("A", "icu passage"), "q2") == ["q2__adult"]
+
+    def test_duplicates_collapse(self, tmp_path):
+        chat = Chat({"PASSAGE": ["q1__icu", "id=q1__icu"]})
+        _precompute(tmp_path, [_leaf("a", "x")], chat)
+        store = choices.FacetStore(tmp_path, "doc")
+        assert store.get(choices.leaf_hash("A", "x"), "q1") == ["q1__icu"]
+
+
+class TestPrecomputeSanity:
+    """A corpus-level smoke check on the OUTCOME, not the parsing.
+
+    The parse bug was invisible per-leaf: every judgement looked like a valid
+    confident negative. It was only obvious in aggregate — 65 of 67 leaves
+    matching nothing at all. That shape is what to assert on."""
+
+    def test_reports_when_almost_nothing_matches(self, tmp_path):
+        chat = Chat()          # default: every answer list empty
+        leaves = [_leaf(f"n{i}", f"passage {i}") for i in range(20)]
+        report = _precompute(tmp_path, leaves, chat)
+
+        store = choices.FacetStore(tmp_path, "doc")
+        matched = sum(1 for judgements in store.data.values()
+                      if any(judgements.values()))
+        assert report["calls"] == 40
+        assert matched == 0
+        # The store must at least make this visible to a caller that looks.
+        assert len(store.data) == 20, (
+            "every leaf is recorded, so a caller can compute the match rate "
+            "and notice a corpus-wide zero")
