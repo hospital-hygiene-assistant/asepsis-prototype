@@ -1,0 +1,151 @@
+{
+  "meta": {
+    "model": "gemma4:e4b",
+    "key": "v2|p2|q01617b3d95eb"
+  },
+  "leaves": {
+    "38922c95c8d18047f4a3b0dcc1bc27dd66026c5760cdac3e980b6051c551e084": {
+      "q_population": [
+        "q_population__renal"
+      ],
+      "q_domain": [
+        "q_domain__infection"
+      ],
+      "q_stage": [
+        "q_stage__treat"
+      ],
+      "q_setting": [
+        "q_setting__icu",
+        "q_setting__ward",
+        "q_setting__community"
+      ]
+    },
+    "59dfa785615053feb2ae7adabcfac3893f4d4337131d5bbb12c89563aeb4dc1b": {
+      "q_domain": [
+        "q_domain__infection"
+      ],
+      "q_setting": [
+        "q_setting__icu",
+        "q_setting__ward"
+      ],
+      "q_stage": [
+        "q_stage__treat"
+      ],
+      "q_population": [
+        "q_population__renal",
+        "q_population__elderly"
+      ]
+    },
+    "6ffdd76fafb669d52c6bcf08ef8f35eab65d6273b9e33669637dc77c4d18399a": {
+      "q_domain": [
+        "q_domain__metabolic"
+      ],
+      "q_setting": [
+        "q_setting__icu",
+        "q_setting__ward"
+      ],
+      "q_stage": [
+        "q_stage__diagnose"
+      ],
+      "q_population": [
+        "q_population__renal",
+        "q_population__elderly"
+      ]
+    },
+    "a695fb46b9b1f261fd0516633684f3c31895564039ab1c143ec26a8d527d88b3": {
+      "q_domain": [
+        "q_domain__infection"
+      ],
+      "q_setting": [
+        "q_setting__icu"
+      ],
+      "q_stage": [
+        "q_stage__treat",
+        "q_stage__monitor"
+      ],
+      "q_population": [
+        "q_population__renal"
+      ]
+    },
+    "edaf26ba2fea7a1298922b41aaae4da871406e01295ca9b46fc1df270b9bac32": {
+      "q_domain": [
+        "q_domain__infection",
+        "q_domain__sedation"
+      ],
+      "q_setting": [
+        "q_setting__icu"
+      ],
+      "q_stage": [
+        "q_stage__treat",
+        "q_stage__monitor"
+      ],
+      "q_population": [
+        "q_population__renal"
+      ]
+    },
+    "46f10ce15e001f0e5b07c750b0cb3168972829d4e86039feb024580b92661044": {
+      "q_domain": [
+        "q_domain__infection"
+      ],
+      "q_setting": [
+        "q_setting__icu",
+        "q_setting__ward"
+      ],
+      "q_stage": [
+        "q_stage__treat"
+      ],
+      "q_population": [
+        "q_population__renal"
+      ]
+    },
+    "6a5d57c073d1064b41a0d180c71d03f351b0677af02610ed239e3a66502ab5e7": {
+      "q_domain": [
+        "q_domain__cardiac"
+      ],
+      "q_setting": [
+        "q_setting__icu",
+        "q_setting__ward"
+      ],
+      "q_stage": [
+        "q_stage__treat"
+      ],
+      "q_population": [
+        "q_population__renal"
+      ]
+    },
+    "cde1149f365827f3909e3ea22f5aed9698d9429c8cdc6a174c35926ba30b4008": {
+      "q_domain": [
+        "q_domain__sedation"
+      ],
+      "q_setting": [
+        "q_setting__ward"
+      ],
+      "q_stage": [
+        "q_stage__diagnose",
+        "q_stage__treat",
+        "q_stage__monitor"
+      ],
+      "q_population": [
+        "q_population__renal"
+      ]
+    },
+    "560b692f4caab3a8e1c8221b50ada9f49dd0bcf7543083d5c8c24996c8b68f59": {
+      "q_domain": [
+        "q_domain__infection",
+        "q_domain__cardiac",
+        "q_domain__metabolic",
+        "q_domain__sedation"
+      ],
+      "q_setting": [
+        "q_setting__icu",
+        "q_setting__ward"
+      ],
+      "q_stage": [
+        "q_stage__monitor"
+      ],
+      "q_population": [
+        "q_population__renal"
+      ]
+    }
+  }
+}

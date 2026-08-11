@@ -1,0 +1,132 @@
+{
+  "meta": {
+    "model": "gemma4:e4b",
+    "key": "v2|p2|q01617b3d95eb"
+  },
+  "leaves": {
+    "e7268469e3fc1f5b6a602c786c84293f7a4ff3e58b4ec1324c43ed424f8f0c04": {
+      "q_population": [],
+      "q_stage": [],
+      "q_domain": [
+        "q_domain__metabolic"
+      ],
+      "q_setting": [
+        "q_setting__icu"
+      ]
+    },
+    "f4eeaea99e038674a032f7d8fc896512e5afeafd0ed2d2b20e1cb504c9da977a": {
+      "q_domain": [
+        "q_domain__metabolic"
+      ],
+      "q_setting": [
+        "q_setting__icu"
+      ],
+      "q_stage": [
+        "q_stage__diagnose",
+        "q_stage__monitor"
+      ],
+      "q_population": []
+    },
+    "af53b1ef5a2fb8df8d40139290fd38f351ebc163db865417edb0a0b13ed5f886": {
+      "q_domain": [
+        "q_domain__metabolic"
+      ],
+      "q_setting": [
+        "q_setting__icu"
+      ],
+      "q_stage": [
+        "q_stage__monitor"
+      ],
+      "q_population": []
+    },
+    "f1928a863e02910af8070b8872aa40ba3c92656a1dd0d5ed21c30870a6f04b97": {
+      "q_domain": [
+        "q_domain__metabolic"
+      ],
+      "q_setting": [
+        "q_setting__icu",
+        "q_setting__ward"
+      ],
+      "q_stage": [
+        "q_stage__diagnose"
+      ],
+      "q_population": [
+        "q_population__renal"
+      ]
+    },
+    "85dda27e5ebbb1bc8e3fb2e945eaa096ef0f19c4730c5502d141c6784ee109cc": {
+      "q_domain": [
+        "q_domain__metabolic"
+      ],
+      "q_setting": [
+        "q_setting__icu"
+      ],
+      "q_stage": [
+        "q_stage__treat"
+      ],
+      "q_population": []
+    },
+    "8976269bd2fe58d0bdce7c69e801cd85727ccdfd1fe39f153128e3cbd5e101a7": {
+      "q_domain": [
+        "q_domain__metabolic"
+      ],
+      "q_setting": [
+        "q_setting__icu"
+      ],
+      "q_stage": [
+        "q_stage__monitor"
+      ],
+      "q_population": []
+    },
+    "9b87c40c4bfa656503c30ad862b51848e01409bd610eeca5014a473b50d174e6": {
+      "q_domain": [
+        "q_domain__metabolic"
+      ],
+      "q_setting": [
+        "q_setting__icu"
+      ],
+      "q_stage": [
+        "q_stage__monitor"
+      ],
+      "q_population": []
+    },
+    "b57e09eb6d05505ce8658e6c3e747523a6e21f259ca49ba50b12bbd8aa0b81bf": {
+      "q_domain": [
+        "q_domain__metabolic"
+      ],
+      "q_setting": [
+        "q_setting__icu"
+      ],
+      "q_stage": [
+        "q_stage__treat",
+        "q_stage__monitor"
+      ],
+      "q_population": []
+    },
+    "ad671995056a019f947622c97507e69cd373555212105198e3cbe7d23b92ba7b": {
+      "q_domain": [
+        "q_domain__metabolic"
+      ],
+      "q_setting": [
+        "q_setting__icu"
+      ],
+      "q_stage": [
+        "q_stage__monitor"
+      ],
+      "q_population": [
+        "q_population__renal"
+      ]
+    },
+    "3551f695f3df358128fd0fe6a41829c89fb96315cc88968f71333097d1474a56": {
+      "q_domain": [
+        "q_domain__metabolic"
+      ],
+      "q_setting": [],
+      "q_stage": [
+        "q_stage__diagnose",
+        "q_stage__treat"
+      ],
+      "q_population": []
+    }
+  }
+}

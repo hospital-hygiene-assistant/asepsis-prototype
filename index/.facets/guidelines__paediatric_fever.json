@@ -1,0 +1,138 @@
+{
+  "meta": {
+    "model": "gemma4:e4b",
+    "key": "v2|p2|q01617b3d95eb"
+  },
+  "leaves": {
+    "f5983bacc9c062000370602b045c036821e147c7c19ba9c324169b71a56f4ed6": {
+      "q_stage": [],
+      "q_domain": [],
+      "q_setting": [
+        "q_setting__icu",
+        "q_setting__ward",
+        "q_setting__community",
+        "q_setting__periop"
+      ],
+      "q_population": [
+        "q_population__paediatric"
+      ]
+    },
+    "b4f670be268249449ec70fc81afed52dba318656391334e52b9652031d639473": {
+      "q_domain": [
+        "q_domain__infection"
+      ],
+      "q_setting": [
+        "q_setting__community"
+      ],
+      "q_stage": [
+        "q_stage__diagnose"
+      ],
+      "q_population": [
+        "q_population__paediatric"
+      ]
+    },
+    "9072718f553d74678f21b67e8ea77f669388b664d276cbccd15c3078f008522c": {
+      "q_domain": [],
+      "q_setting": [
+        "q_setting__community"
+      ],
+      "q_stage": [
+        "q_stage__diagnose"
+      ],
+      "q_population": []
+    },
+    "44d1f75159f62127057490642f8332cabf5b24b0c860ad6a754167ef5b651163": {
+      "q_domain": [],
+      "q_setting": [
+        "q_setting__icu"
+      ],
+      "q_stage": [
+        "q_stage__diagnose"
+      ],
+      "q_population": []
+    },
+    "1171a401febcab7653a744b5d9473495c325475dac24b092b98a83d09a16c5bf": {
+      "q_domain": [
+        "q_domain__infection"
+      ],
+      "q_setting": [
+        "q_setting__ward"
+      ],
+      "q_stage": [
+        "q_stage__diagnose"
+      ],
+      "q_population": [
+        "q_population__paediatric"
+      ]
+    },
+    "c574bbbf2ed35eb58cac61758b44fd70b1bc855ac895c35d97abd4962e54e36c": {
+      "q_domain": [
+        "q_domain__infection"
+      ],
+      "q_setting": [
+        "q_setting__icu"
+      ],
+      "q_stage": [
+        "q_stage__treat"
+      ],
+      "q_population": [
+        "q_population__paediatric"
+      ]
+    },
+    "32a642e0c27ef912da9cfeca97fb8efc7d8fb1fe6dd510ecf58b38babbaa8460": {
+      "q_domain": [
+        "q_domain__infection"
+      ],
+      "q_setting": [
+        "q_setting__icu",
+        "q_setting__ward"
+      ],
+      "q_stage": [
+        "q_stage__treat"
+      ],
+      "q_population": [
+        "q_population__paediatric"
+      ]
+    },
+    "3b392df83494e87cfc1420b6fa998c0d21315cdcff5ce3e5327b05f0dde19fcc": {
+      "q_domain": [
+        "q_domain__infection"
+      ],
+      "q_setting": [
+        "q_setting__community"
+      ],
+      "q_stage": [
+        "q_stage__diagnose"
+      ],
+      "q_population": [
+        "q_population__paediatric"
+      ]
+    },
+    "fb3af03bf1a6f286b6446cf7ae7daddc5f99f95bd37d7ef2cab1539a50c8b680": {
+      "q_domain": [
+        "q_domain__infection"
+      ],
+      "q_setting": [
+        "q_setting__community"
+      ],
+      "q_stage": [
+        "q_stage__treat"
+      ],
+      "q_population": [
+        "q_population__paediatric"
+      ]
+    },
+    "9c300e78b4b88f2fa4a7d0dc2527d31fbbbe94bdfdfba3363baac451e3f533a9": {
+      "q_domain": [],
+      "q_setting": [
+        "q_setting__community"
+      ],
+      "q_stage": [
+        "q_stage__monitor"
+      ],
+      "q_population": [
+        "q_population__paediatric"
+      ]
+    }
+  }
+}

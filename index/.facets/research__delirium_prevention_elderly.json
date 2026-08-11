@@ -1,0 +1,159 @@
+{
+  "meta": {
+    "model": "gemma4:e4b",
+    "key": "v2|p2|q01617b3d95eb"
+  },
+  "leaves": {
+    "86483a530120d6b36db4228cc88719f069dcba5863758e97049ce8678cd65754": {
+      "q_domain": [
+        "q_domain__sedation"
+      ],
+      "q_population": [
+        "q_population__elderly"
+      ],
+      "q_stage": [],
+      "q_setting": [
+        "q_setting__ward"
+      ]
+    },
+    "204e9728cb7bad6f1ec5bd2838baa36795753bca68a312500b93181a5ad89d59": {
+      "q_domain": [
+        "q_domain__sedation"
+      ],
+      "q_setting": [
+        "q_setting__ward",
+        "q_setting__periop"
+      ],
+      "q_stage": [
+        "q_stage__diagnose"
+      ],
+      "q_population": [
+        "q_population__elderly"
+      ]
+    },
+    "4297450e3c35a7b124c9b7400f6dad3e09ff662302d959bd81d156d7315c530d": {
+      "q_domain": [
+        "q_domain__sedation"
+      ],
+      "q_setting": [
+        "q_setting__ward"
+      ],
+      "q_stage": [
+        "q_stage__diagnose"
+      ],
+      "q_population": [
+        "q_population__elderly"
+      ]
+    },
+    "c34191ee00809c5931d541745e6e94cbbcfda4c1280d4bf5c06dfdde1cbcfba6": {
+      "q_domain": [
+        "q_domain__sedation"
+      ],
+      "q_setting": [
+        "q_setting__community"
+      ],
+      "q_stage": [
+        "q_stage__diagnose"
+      ],
+      "q_population": []
+    },
+    "d9266ac31c480e7d957f2c9bd921ef37c660edb1b7017584c7f9bdf2b3c338a5": {
+      "q_domain": [],
+      "q_setting": [],
+      "q_stage": [
+        "q_stage__diagnose",
+        "q_stage__treat",
+        "q_stage__monitor"
+      ],
+      "q_population": []
+    },
+    "d125098771411dac016be7a868220d3a196961a31281c31ca4fb30f8a705d7f2": {
+      "q_domain": [],
+      "q_setting": [
+        "q_setting__ward"
+      ],
+      "q_stage": [
+        "q_stage__monitor"
+      ],
+      "q_population": [
+        "q_population__elderly"
+      ]
+    },
+    "efa8cfc7d3465258accedc28cd9f8972a6036557f91949a186f65976932c7776": {
+      "q_domain": [
+        "q_domain__sedation"
+      ],
+      "q_setting": [
+        "q_setting__ward"
+      ],
+      "q_stage": [
+        "q_stage__monitor"
+      ],
+      "q_population": []
+    },
+    "c213028a54d5c6d631341194482f9eff1f53b85803bd0cf75914c96cec2a1dc0": {
+      "q_domain": [],
+      "q_setting": [
+        "q_setting__ward"
+      ],
+      "q_stage": [
+        "q_stage__monitor"
+      ],
+      "q_population": [
+        "q_population__renal"
+      ]
+    },
+    "d680ca69db2acfcdfbd03e113c072e1f7749b6bcf4565eeb078f734cbd96ca00": {
+      "q_domain": [
+        "q_domain__sedation"
+      ],
+      "q_setting": [
+        "q_setting__ward"
+      ],
+      "q_stage": [
+        "q_stage__treat"
+      ],
+      "q_population": [
+        "q_population__elderly"
+      ]
+    },
+    "5481c173d070b71d1325b16211ad80030e207d366cca14536db00d97d70cd0f8": {
+      "q_domain": [
+        "q_domain__infection",
+        "q_domain__sedation"
+      ],
+      "q_setting": [
+        "q_setting__icu",
+        "q_setting__ward",
+        "q_setting__community"
+      ],
+      "q_stage": [
+        "q_stage__diagnose"
+      ],
+      "q_population": []
+    },
+    "677a325c18e43a76f0de859dc6a59580166ac1b9971bdca863a1f3c5f9c0e79c": {
+      "q_domain": [
+        "q_domain__sedation"
+      ],
+      "q_setting": [
+        "q_setting__ward",
+        "q_setting__community"
+      ],
+      "q_stage": [
+        "q_stage__treat"
+      ],
+      "q_population": []
+    },
+    "a3638a09c0fb5f9810d1968394f5400fda9f3fefd95bc50b7dc4a2c41b71adb3": {
+      "q_domain": [],
+      "q_setting": [
+        "q_setting__community"
+      ],
+      "q_stage": [
+        "q_stage__monitor"
+      ],
+      "q_population": []
+    }
+  }
+}

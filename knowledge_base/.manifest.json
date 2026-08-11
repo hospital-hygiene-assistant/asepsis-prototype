@@ -60,7 +60,7 @@
     "tags": [],
     "manual_tags": [],
     "ingest_module": "basic_markdown",
-    "ingested_at": "2026-08-11T14:50:38+00:00",
+    "ingested_at": "2026-08-11T20:50:01+00:00",
     "extra": {}
   },
   "chest_pain_protocol": {
@@ -71,7 +71,7 @@
     "tags": [],
     "manual_tags": [],
     "ingest_module": "basic_markdown",
-    "ingested_at": "2026-08-11T14:50:38+00:00",
+    "ingested_at": "2026-08-11T20:50:01+00:00",
     "extra": {}
   },
   "diabetes_management": {
@@ -82,7 +82,33 @@
     "tags": [],
     "manual_tags": [],
     "ingest_module": "basic_markdown",
-    "ingested_at": "2026-08-11T14:50:38+00:00",
+    "ingested_at": "2026-08-11T20:50:01+00:00",
+    "extra": {}
+  },
+  "guidelines__hypertension_in_pregnancy": {
+    "title": "hypertension_in_pregnancy",
+    "rel_path": "guidelines/hypertension_in_pregnancy.md",
+    "source_path": "/Users/fede/Desktop/VSCODEProjects/asepsis-prototype/docs/guidelines/hypertension_in_pregnancy.md",
+    "sha256": "444b2f2361c66fc889780aaaeb16a92ac803ffd248a67e9348593332f135c620",
+    "tags": [
+      "guidelines"
+    ],
+    "manual_tags": [],
+    "ingest_module": "basic_markdown",
+    "ingested_at": "2026-08-11T20:50:01+00:00",
+    "extra": {}
+  },
+  "guidelines__paediatric_fever": {
+    "title": "paediatric_fever",
+    "rel_path": "guidelines/paediatric_fever.md",
+    "source_path": "/Users/fede/Desktop/VSCODEProjects/asepsis-prototype/docs/guidelines/paediatric_fever.md",
+    "sha256": "b9a5a6e013695ce698221393b9d009993db956108f1006c4f65414bdae07bc57",
+    "tags": [
+      "guidelines"
+    ],
+    "manual_tags": [],
+    "ingest_module": "basic_markdown",
+    "ingested_at": "2026-08-11T20:50:01+00:00",
     "extra": {}
   },
   "hypertension_guidelines": {
@@ -93,7 +119,7 @@
     "tags": [],
     "manual_tags": [],
     "ingest_module": "basic_markdown",
-    "ingested_at": "2026-08-11T14:50:38+00:00",
+    "ingested_at": "2026-08-11T20:50:01+00:00",
     "extra": {}
   },
   "icu_sedation_guide": {
@@ -104,7 +130,60 @@
     "tags": [],
     "manual_tags": [],
     "ingest_module": "basic_markdown",
-    "ingested_at": "2026-08-11T14:50:38+00:00",
+    "ingested_at": "2026-08-11T20:50:01+00:00",
+    "extra": {}
+  },
+  "internal__renal_dose_adjustment": {
+    "title": "renal_dose_adjustment",
+    "rel_path": "internal/renal_dose_adjustment.md",
+    "source_path": "/Users/fede/Desktop/VSCODEProjects/asepsis-prototype/docs/internal/renal_dose_adjustment.md",
+    "sha256": "8189307d168773817020e2f2c91c4813a9f32a31d1d123412f47b9331d9d42f3",
+    "tags": [
+      "internal"
+    ],
+    "manual_tags": [],
+    "ingest_module": "basic_markdown",
+    "ingested_at": "2026-08-11T20:50:01+00:00",
+    "extra": {}
+  },
+  "internal__surgical_prophylaxis_protocol": {
+    "title": "surgical_prophylaxis_protocol",
+    "rel_path": "internal/surgical_prophylaxis_protocol.md",
+    "source_path": "/Users/fede/Desktop/VSCODEProjects/asepsis-prototype/docs/internal/surgical_prophylaxis_protocol.md",
+    "sha256": "44ed5baa0cac955c39b6478e77d72698afa8928b04134566d1a9ba5aa098384a",
+    "tags": [
+      "internal"
+    ],
+    "manual_tags": [],
+    "ingest_module": "basic_markdown",
+    "ingested_at": "2026-08-11T20:50:01+00:00",
+    "extra": {}
+  },
+  "research__delirium_prevention_elderly": {
+    "title": "delirium_prevention_elderly",
+    "rel_path": "research/delirium_prevention_elderly.md",
+    "source_path": "/Users/fede/Desktop/VSCODEProjects/asepsis-prototype/docs/research/delirium_prevention_elderly.md",
+    "sha256": "e41c37a8addbf01d97f4866438af9f0086367baa48d5707bef68daeda4da6d38",
+    "tags": [
+      "research"
+    ],
+    "manual_tags": [],
+    "ingest_module": "basic_markdown",
+    "ingested_at": "2026-08-11T20:50:01+00:00",
+    "extra": {}
+  },
+  "research__preprints__glycaemic_control_critical_illness": {
+    "title": "glycaemic_control_critical_illness",
+    "rel_path": "research/preprints/glycaemic_control_critical_illness.md",
+    "source_path": "/Users/fede/Desktop/VSCODEProjects/asepsis-prototype/docs/research/preprints/glycaemic_control_critical_illness.md",
+    "sha256": "4a9872ca1f1aebbf493a365bf0f0efc37625da0acef2b53fd723a04efc0a62f4",
+    "tags": [
+      "research",
+      "preprints"
+    ],
+    "manual_tags": [],
+    "ingest_module": "basic_markdown",
+    "ingested_at": "2026-08-11T20:50:01+00:00",
     "extra": {}
   }
 }

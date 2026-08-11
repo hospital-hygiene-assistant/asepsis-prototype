@@ -799,9 +799,34 @@ function initLibrary(docs) {
   const filter = document.getElementById('library-filter');
   filter.addEventListener('input', () => applyLibraryFilter(filter.value.trim().toLowerCase()));
 
-  window.addEventListener('resize', debounce(async () => {
-    if (state.view === 'library' && _docsCache) renderTreemap(_docsCache);
-  }, 200));
+  observeTreemapSize();
+}
+
+/* The treemap is drawn at the container's measured width, and at first paint
+   that width is not final — the stage is still laying out. The result was a
+   library squeezed into a few pixels, corrected only when a `resize` event
+   happened to fire later. A window listener could not fix it: the window
+   never resized, the CONTAINER did.
+
+   Observing the container covers every case that changes it — first paint,
+   tab switch, panel toggles, window resize — so the old resize listener is
+   gone rather than duplicated. */
+function observeTreemapSize() {
+  const container = document.getElementById('treemap-pack');
+  if (!container || container.__tmObserved) return;
+  container.__tmObserved = true;
+  const redraw = debounce(() => renderTreemap(_docsCache), 120);
+  new ResizeObserver(entries => {
+    if (!_docsCache) return;
+    // Nothing drawn yet: paint NOW rather than after the debounce, or the
+    // library flashes empty on every load. An observer only reports CHANGES,
+    // so a container that was already its final size when we started
+    // observing would otherwise never get a first paint at all.
+    if (!container.querySelector('svg')) { renderTreemap(_docsCache); return; }
+    // Ignore the reflow our own drawing causes, or this observes itself.
+    if (Math.abs(entries[0].contentRect.width - _tmLastWidth) < 2) return;
+    redraw();
+  }).observe(container);
 }
 
 function updateLibraryCount(docs) {
@@ -957,6 +982,8 @@ function initLibraryAdd() {
    one code path for every depth: the same render, the same live colouring,
    the same filter. */
 let _tmFocus = [];
+// The width the current drawing was laid out at — see observeTreemapSize.
+let _tmLastWidth = 0;
 
 function docFolder(d) {
   return Array.isArray(d.folder) ? d.folder.filter(Boolean) : [];
@@ -1047,7 +1074,12 @@ function renderTreemap(docs) {
   document.getElementById('treemap-legend').hidden = false;
 
   const rect = container.getBoundingClientRect();
-  const width = rect.width || 800;
+  const width = rect.width;
+  // Too narrow to lay anything out — the container has not been sized yet.
+  // Draw nothing and wait: the observer fires as soon as it has a real width,
+  // which is better than drawing a library nobody can read.
+  if (width < 200) { _tmLastWidth = 0; return; }
+  _tmLastWidth = width;
 
   const rootData = buildTreemapData(docs);
   const focusNode = resolveTreemapFocus(rootData);

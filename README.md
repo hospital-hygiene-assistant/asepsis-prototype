@@ -284,7 +284,11 @@ One muted palette is shared across the treemap, the Graph tree, the snippet high
 
 ```
 astepsis/
-├── docs/                     # Source documents (.md)
+├── docs/                     # Source documents (.md), ingested recursively
+│   ├── *.md                  #   top level: no folder, no tags
+│   ├── guidelines/           #   sub-folders are provenance: the folder name
+│   ├── internal/             #   becomes a tag, and the path becomes the
+│   └── research/preprints/   #   folder the library treemap groups and zooms by
 ├── knowledge_base/           # Ingested markdown  (ingest output)
 ├── index/                    # Heading-tree indexes, one JSON per doc (index output)
 ├── pageindex.py              # Heading parser, indexer, two-phase LLM retrieval, explainer

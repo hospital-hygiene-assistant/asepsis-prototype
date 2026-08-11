@@ -1,0 +1,150 @@
+{
+  "meta": {
+    "model": "gemma4:e4b",
+    "key": "v2|p2|q01617b3d95eb"
+  },
+  "leaves": {
+    "0d584d7f878d33845b1f00a4bc0b383c6e9b4c0cd75e311d317115c00cf6c98a": {
+      "q_setting": [
+        "q_setting__icu",
+        "q_setting__ward",
+        "q_setting__community",
+        "q_setting__periop"
+      ],
+      "q_stage": [],
+      "q_domain": [],
+      "q_population": [
+        "q_population__pregnancy"
+      ]
+    },
+    "e1208bc486a122c4dee8c222a4b5b4d59c877c7856d035b1ea91a37911a6c75c": {
+      "q_domain": [],
+      "q_setting": [
+        "q_setting__icu"
+      ],
+      "q_stage": [
+        "q_stage__diagnose"
+      ],
+      "q_population": [
+        "q_population__pregnancy"
+      ]
+    },
+    "b361364ee0aa15dcc2e65fea3f45e6bb2b0ba8bbbc21051adc4ccdd75a2101c3": {
+      "q_domain": [
+        "q_domain__cardiac"
+      ],
+      "q_setting": [
+        "q_setting__ward"
+      ],
+      "q_stage": [
+        "q_stage__diagnose"
+      ],
+      "q_population": [
+        "q_population__pregnancy"
+      ]
+    },
+    "02e65a11560211b05a6a006a7b16320a015b7d406c0765ddf5f21267cc55a4a0": {
+      "q_domain": [],
+      "q_setting": [
+        "q_setting__icu",
+        "q_setting__ward"
+      ],
+      "q_stage": [
+        "q_stage__diagnose"
+      ],
+      "q_population": [
+        "q_population__pregnancy"
+      ]
+    },
+    "5deed887c6225cf7e8e139e7f25733a15a85c4a22b60b34bc022ea7698c4a55e": {
+      "q_domain": [
+        "q_domain__cardiac"
+      ],
+      "q_setting": [
+        "q_setting__community"
+      ],
+      "q_stage": [
+        "q_stage__treat"
+      ],
+      "q_population": [
+        "q_population__pregnancy"
+      ]
+    },
+    "3b5abae2d6f17519b8e3976dcbe4431e988930fa733bdcc5b8e576234d564374": {
+      "q_domain": [
+        "q_domain__cardiac"
+      ],
+      "q_setting": [
+        "q_setting__icu"
+      ],
+      "q_stage": [
+        "q_stage__treat"
+      ],
+      "q_population": [
+        "q_population__pregnancy"
+      ]
+    },
+    "c6a86cd09b55204793cb346dd3e73631cba95a381b4811a980b33d336d3f622f": {
+      "q_domain": [
+        "q_domain__cardiac"
+      ],
+      "q_setting": [
+        "q_setting__icu",
+        "q_setting__ward"
+      ],
+      "q_stage": [
+        "q_stage__treat"
+      ],
+      "q_population": [
+        "q_population__pregnancy"
+      ]
+    },
+    "d5afc4859b5775b62245cd4f591115e4bd7169ceddcfc407c9b127a82a2c311e": {
+      "q_domain": [
+        "q_domain__infection"
+      ],
+      "q_setting": [
+        "q_setting__icu"
+      ],
+      "q_stage": [
+        "q_stage__treat",
+        "q_stage__monitor"
+      ],
+      "q_population": [
+        "q_population__renal"
+      ]
+    },
+    "858838adbc8ed8a2876254a444399437c01267a90dc3f63774b5d839d3493596": {
+      "q_domain": [],
+      "q_setting": [
+        "q_setting__icu",
+        "q_setting__ward",
+        "q_setting__community"
+      ],
+      "q_stage": [
+        "q_stage__diagnose",
+        "q_stage__treat"
+      ],
+      "q_population": [
+        "q_population__pregnancy"
+      ]
+    },
+    "3eefa4c26a10ee59f030f04d8e1193c546805335e624ee2d012cae02b8e353ec": {
+      "q_domain": [
+        "q_domain__cardiac",
+        "q_domain__metabolic"
+      ],
+      "q_setting": [
+        "q_setting__ward",
+        "q_setting__community"
+      ],
+      "q_stage": [
+        "q_stage__monitor"
+      ],
+      "q_population": [
+        "q_population__pregnancy",
+        "q_population__elderly"
+      ]
+    }
+  }
+}

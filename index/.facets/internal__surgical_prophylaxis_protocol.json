@@ -1,0 +1,169 @@
+{
+  "meta": {
+    "model": "gemma4:e4b",
+    "key": "v2|p2|q01617b3d95eb"
+  },
+  "leaves": {
+    "1562a2537c7b664c7b5f8abe993125e403e1781572b3bdd6df590bfdd5597783": {
+      "q_stage": [],
+      "q_setting": [
+        "q_setting__periop"
+      ],
+      "q_population": [],
+      "q_domain": [
+        "q_domain__infection"
+      ]
+    },
+    "ecdb9060d1c5a559cdea2ffd34c419060d14df69b6b6f0b68cdc51889d3e66bf": {
+      "q_domain": [
+        "q_domain__infection"
+      ],
+      "q_setting": [
+        "q_setting__periop"
+      ],
+      "q_stage": [
+        "q_stage__diagnose"
+      ],
+      "q_population": []
+    },
+    "9b48975759b32164562e000ffdab0bc6bf1f61e6eb081ae1d847a7c18aba0d38": {
+      "q_domain": [
+        "q_domain__infection"
+      ],
+      "q_setting": [
+        "q_setting__periop"
+      ],
+      "q_stage": [
+        "q_stage__treat"
+      ],
+      "q_population": []
+    },
+    "1917bc7f8ef812f6e2fc54d2263c498ce809c23f24ba8e9155e4a5032a0b5271": {
+      "q_domain": [
+        "q_domain__infection"
+      ],
+      "q_setting": [
+        "q_setting__periop"
+      ],
+      "q_stage": [
+        "q_stage__diagnose"
+      ],
+      "q_population": []
+    },
+    "09a4a7000e7c04769760129a0e511335604c92931d00aa8863452adfde057ed6": {
+      "q_domain": [
+        "q_domain__infection"
+      ],
+      "q_setting": [
+        "q_setting__periop"
+      ],
+      "q_stage": [
+        "q_stage__treat"
+      ],
+      "q_population": []
+    },
+    "42001f8866ff961c88161b452c83b82a046f07bbd8a5e6326d38df75803ce158": {
+      "q_domain": [
+        "q_domain__infection"
+      ],
+      "q_setting": [
+        "q_setting__icu",
+        "q_setting__ward",
+        "q_setting__community"
+      ],
+      "q_stage": [
+        "q_stage__monitor"
+      ],
+      "q_population": []
+    },
+    "96b33f3080e2777ec03fd380ffd3f98916b1e30a66dc406a25f61ca1213432be": {
+      "q_domain": [
+        "q_domain__infection"
+      ],
+      "q_setting": [
+        "q_setting__periop"
+      ],
+      "q_stage": [
+        "q_stage__treat"
+      ],
+      "q_population": []
+    },
+    "a7af8328016404b6feb5c77e2c78f2f388a47dca3500e256ca58d3b526551423": {
+      "q_domain": [
+        "q_domain__infection"
+      ],
+      "q_setting": [
+        "q_setting__periop"
+      ],
+      "q_stage": [
+        "q_stage__treat"
+      ],
+      "q_population": []
+    },
+    "1dcc20e9cfd99e0b9a3f48fb27166775cf0e3891005c13ce1b1e21004a28f3e0": {
+      "q_domain": [
+        "q_domain__infection"
+      ],
+      "q_setting": [
+        "q_setting__periop"
+      ],
+      "q_stage": [
+        "q_stage__diagnose",
+        "q_stage__treat"
+      ],
+      "q_population": []
+    },
+    "c0b6d5fdbea07bbef4b5df5ee419cff678808f2c221ac176fabc0794e50445c8": {
+      "q_domain": [
+        "q_domain__infection"
+      ],
+      "q_setting": [
+        "q_setting__icu",
+        "q_setting__ward"
+      ],
+      "q_stage": [
+        "q_stage__treat"
+      ],
+      "q_population": [
+        "q_population__renal"
+      ]
+    },
+    "c22df18e6012d59836b0ea8c1d797c1250ec9182d9253d87fc15feb8e9a9187e": {
+      "q_domain": [
+        "q_domain__infection"
+      ],
+      "q_setting": [
+        "q_setting__icu",
+        "q_setting__ward"
+      ],
+      "q_stage": [
+        "q_stage__treat"
+      ],
+      "q_population": [
+        "q_population__elderly"
+      ]
+    },
+    "8876805967fad41b8c2b9be5af3e32b22767ccb753b0a62cd97d6be19f8fed3e": {
+      "q_domain": [
+        "q_domain__infection"
+      ],
+      "q_setting": [
+        "q_setting__periop"
+      ],
+      "q_stage": [
+        "q_stage__treat"
+      ],
+      "q_population": []
+    },
+    "7b089008582906492196645ef1ea6d677f571e4e5a714c40f3d9a357fcd24e8e": {
+      "q_domain": [],
+      "q_setting": [
+        "q_setting__periop"
+      ],
+      "q_stage": [
+        "q_stage__treat"
+      ],
+      "q_population": []
+    }
+  }
+}
