@@ -98,7 +98,12 @@ def _print_ollama_tip():
     else:
         print("  Ollama tip   → For faster retrieval run multiple Ollama instances and set:")
         print("                   OLLAMA_URLS=http://localhost:11434,http://localhost:11435")
-        print("                 Start extras with:  OLLAMA_HOST=0.0.0.0:11435 ollama serve")
+        # An extra instance started WITHOUT these serves one request at a time,
+        # so a second instance would add a second single-lane queue rather than
+        # the throughput it looks like it should add.
+        print("                 Start extras with:")
+        print("                   OLLAMA_HOST=0.0.0.0:11435 OLLAMA_NUM_PARALLEL=4 \\")
+        print("                   OLLAMA_FLASH_ATTENTION=1 ollama serve")
 
 
 def main():

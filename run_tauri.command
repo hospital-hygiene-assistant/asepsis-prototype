@@ -45,9 +45,21 @@ MODEL="$(.venv/bin/python -c 'import config; print(config.DEFAULT_RETRIEVAL_MODE
 if ! command -v ollama >/dev/null 2>&1; then
   die "Ollama is not installed. Download it from https://ollama.com/download, open it once, then double-click this file again."
 fi
+# Ollama serves one request at a time by default, which caps indexing and
+# retrieval at single-stream speed. Measured on this project: 4 concurrent
+# calls go from no speedup at all to ~2x, and flash attention adds another
+# ~1.7x on top.
+#
+# When WE start the server we set these on the child process, which is not a
+# system change and needs nobody's permission. When it is already running we
+# can only report it — see below.
+OLLAMA_TUNED_BY_LAUNCHER=0
 if ! curl -s --max-time 2 http://127.0.0.1:11434/api/tags >/dev/null 2>&1; then
-  say "Starting the Ollama server…"
-  (ollama serve >/dev/null 2>&1 &)
+  say "Starting the Ollama server (4 parallel slots, flash attention)…"
+  OLLAMA_TUNED_BY_LAUNCHER=1
+  (OLLAMA_NUM_PARALLEL="${OLLAMA_NUM_PARALLEL:-4}" \
+   OLLAMA_FLASH_ATTENTION="${OLLAMA_FLASH_ATTENTION:-1}" \
+   ollama serve >/dev/null 2>&1 &)
   for _ in $(seq 1 40); do
     curl -s --max-time 1 http://127.0.0.1:11434/api/tags >/dev/null 2>&1 && break
     sleep 0.5
@@ -60,15 +72,25 @@ if ! ollama list 2>/dev/null | grep -q "^${MODEL}[[:space:]]"; then
   ollama pull "$MODEL" || die "Could not pull '"'"'$MODEL'"'"'. Check the tag exists (\`ollama pull $MODEL\`) or set a different model in config.py, then retry."
 fi
 
-# Ollama serves one request at a time by default, which caps indexing and
-# retrieval at single-stream speed. Measured on this project: ~2x faster with
-# batching enabled. Only a hint — changing a user's system-wide environment
-# without asking would be overstepping.
-if [ "$(launchctl getenv OLLAMA_NUM_PARALLEL 2>/dev/null)" = "" ]; then
-  say "Tip: Ollama is set to one request at a time. For ~2x faster indexing:"
-  say "     launchctl setenv OLLAMA_NUM_PARALLEL 4"
-  say "     launchctl setenv OLLAMA_FLASH_ATTENTION 1"
-  say "     …then restart Ollama."
+# An Ollama that was ALREADY running is the common case on macOS, where the
+# app starts at login — and it is the case the old check got wrong. It asked
+# `launchctl getenv`, which describes the environment NEW processes will
+# inherit, not the one the running server actually has. Set the variables and
+# it would report success while the live server still had a single slot.
+#
+# So ask the server itself. `-np` appears on the llama-server process Ollama
+# spawns per loaded model; it is absent until a model is loaded, in which case
+# we say we could not tell rather than guessing.
+if [ "$OLLAMA_TUNED_BY_LAUNCHER" -eq 0 ]; then
+  slots="$(pgrep -fl llama-server 2>/dev/null | grep -o -- '-np [0-9]*' | head -1 | awk '{print $2}')"
+  if [ -n "$slots" ] && [ "$slots" -lt 2 ] 2>/dev/null; then
+    warn "Ollama is already running and serving one request at a time, which caps"
+    warn "indexing and retrieval at single-stream speed (measured here: ~3x slower)."
+    say  "     To fix it, quit Ollama and start it from this launcher, or run:"
+    say  "         launchctl setenv OLLAMA_NUM_PARALLEL 4"
+    say  "         launchctl setenv OLLAMA_FLASH_ATTENTION 1"
+    say  "     …then RESTART Ollama — a running server keeps the settings it started with."
+  fi
 fi
 
 # ── 4 · Launch ────────────────────────────────────────────────
