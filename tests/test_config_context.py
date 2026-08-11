@@ -127,7 +127,7 @@ class TestRequestModelParity:
         return module.RunRequest, module.ChatRequest
 
     @pytest.mark.parametrize("field", [
-        "tags", "selected_answers", "use_cache", "index_module",
+        "tags", "selected_answers", "selection_mode", "use_cache", "index_module",
     ])
     def test_field_present_on_both(self, field):
         run_model, chat_model = self._models()

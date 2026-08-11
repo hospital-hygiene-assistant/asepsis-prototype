@@ -1,6 +1,8 @@
 """Asepsis Prototype — FastAPI backend. Serves the UI and wraps pageindex retrieval."""
 
 import atexit
+import collections
+import inspect
 import json
 import os
 import shutil
@@ -499,17 +501,61 @@ def _manifest() -> Manifest:
 _facet_lock = threading.Lock()
 _facet_state: dict = {"state": "idle", "doc": "", "done": 0, "total": 0,
                       "calls": 0, "reused": 0, "message": "", "errors": []}
+_facet_cancel = threading.Event()
+
+
+def _leaves_of(stem: str):
+    """A document's leaves, or None when its index cannot be read."""
+    try:
+        return _pi._collect_leaves(_pi.load_index_nodes(stem))
+    except (OSError, FileNotFoundError, json.JSONDecodeError, KeyError):
+        return None
+
+
+def _facet_coverage() -> dict:
+    """What the judgements on DISK actually cover.
+
+    The job's own progress is a process variable, so it said "not computed
+    yet" after every restart and never noticed a document ingested since the
+    last run. Disk is the only thing that knows, so the UI is driven from
+    here and the in-flight job is layered on top.
+    """
+    index_dir = _index_dir()
+    questions = app_choices.load_questions()
+    docs = []
+    for path in sorted(index_dir.glob("*.json")):
+        leaves = _leaves_of(path.stem)
+        if leaves is None:
+            continue
+        docs.append(app_choices.document_coverage(
+            index_dir, path.stem, leaves, _pi.MODEL, questions))
+
+    by_state = collections.Counter(d["state"] for d in docs)
+    return {
+        "docs": docs,
+        "ready": by_state["ready"],
+        "needs_work": len(docs) - by_state["ready"],
+        "leaves": sum(d["leaves"] for d in docs),
+        "judged": sum(d["judged"] for d in docs),
+        # The single question the UI actually asks: can these answers filter?
+        "usable": bool(docs) and by_state["ready"] > 0,
+        "complete": bool(docs) and by_state["ready"] == len(docs),
+    }
+
+
+def _facet_status() -> dict:
+    with _facet_lock:
+        job = dict(_facet_state)
+    return {**job, "coverage": _facet_coverage()}
 
 
 @app.get("/api/choices")
 def get_choices():
     qs = app_choices.load_questions()
-    return JSONResponse({**qs.to_dict(), "precompute": _facet_status()})
-
-
-def _facet_status() -> dict:
-    with _facet_lock:
-        return dict(_facet_state)
+    return JSONResponse({**qs.to_dict(),
+                         "default_mode": app_choices.ANY,
+                         "modes": list(app_choices.MODES),
+                         "precompute": _facet_status()})
 
 
 @app.get("/api/choices/precompute")
@@ -518,27 +564,38 @@ def facet_precompute_status():
 
 
 @app.get("/api/choices/candidates")
-def choice_candidates(selected_answers: str = ""):
+def choice_candidates(selected_answers: str = "", mode: str = app_choices.ANY,
+                      tags: str = ""):
     """How many passages the selected answers put in scope.
 
-    Selections are unioned, so this number GROWS as more answers are picked.
-    Surfacing it keeps that direction visible rather than surprising.
+    Honours the tag filter, because the count has to describe the corpus the
+    query will ACTUALLY run over — counting documents the tags exclude made
+    the number quietly wrong whenever both filters were in use.
     """
     picked = [a for a in (selected_answers or "").split(",") if a]
+    tag_list = [t for t in (tags or "").split(",") if t]
+    mode = app_choices.normalise_mode(mode)
+    questions = app_choices.load_questions()
     index_dir = _index_dir()
-    total = candidates = 0
+    allowed = _manifest().filter_docs(tag_list) if tag_list else None
+
+    total = candidates = unjudged = 0
     for path in sorted(index_dir.glob("*.json")):
-        try:
-            leaves = _pi._collect_leaves(_pi.load_index_nodes(path.stem))
-        except (OSError, FileNotFoundError, json.JSONDecodeError):
+        if allowed is not None and path.stem not in allowed:
+            continue
+        leaves = _leaves_of(path.stem)
+        if leaves is None:
             continue
         total += len(leaves)
         if not picked:
             candidates += len(leaves)
             continue
-        store = app_choices.FacetStore(index_dir, path.stem)
-        candidates += len(app_choices.selected_leaf_ids(store, leaves, picked))
+        store = app_choices.open_store(index_dir, path.stem, _pi.MODEL, questions)
+        selection = app_choices.select_leaves(store, leaves, picked, questions, mode)
+        candidates += len(selection.kept)
+        unjudged += len(selection.unjudged)
     return JSONResponse({"candidates": candidates, "total": total,
+                         "unjudged": unjudged, "mode": mode,
                          "selected_answers": picked})
 
 
@@ -549,6 +606,7 @@ def facet_precompute():
     with _facet_lock:
         if _facet_state["state"] == "running":
             return JSONResponse({"error": "a precompute is already running"}, status_code=409)
+        _facet_cancel.clear()
         _facet_state.update({"state": "running", "doc": "", "done": 0, "total": 0,
                              "calls": 0, "reused": 0, "message": "Starting…",
                              "errors": []})
@@ -560,23 +618,55 @@ def facet_precompute():
         # Its own context: a background job must not clobber a live query's
         # progress or treemap.
         ctx = _pi.new_run(make_current=False)
+        # Judgements are independent, so they go on the work pool — the same
+        # bounded pool retrieval uses, so a precompute cannot outrun the
+        # Ollama instances. THIS thread only coordinates and writes the store.
+        pool = _pi.work_pool()
         try:
             for i, stem in enumerate(stems):
+                if _facet_cancel.is_set():
+                    break
                 with _facet_lock:
                     _facet_state.update({"doc": stem, "done": i, "total": len(stems),
                                          "message": f"Judging {stem} ({i + 1}/{len(stems)})…"})
-                leaves = _pi._collect_leaves(_pi.load_index_nodes(stem))
+                leaves = _leaves_of(stem)
+                if leaves is None:
+                    with _facet_lock:
+                        _facet_state["errors"].append(f"{stem}: index unreadable")
+                    continue
+                def on_progress(p, stem=stem, i=i):
+                    # Judgement-level, not document-level: a long document used
+                    # to leave the notice frozen on its name for minutes.
+                    where = f"{stem} ({i + 1}/{len(stems)})"
+                    if p["total"]:
+                        note = f"Judging {where} — {p['done']}/{p['total']} judgements"
+                    else:
+                        note = f"{where} already judged"
+                    with _facet_lock:
+                        _facet_state["message"] = note
+
                 report = app_choices.precompute_document(
                     stem, leaves, index_dir,
                     lambda prompt: _pi._chat(prompt, kind="facet"),
-                    _pi._parse_json_response, _pi.MODEL)
+                    _pi._parse_json_response, _pi.MODEL,
+                    progress=on_progress,
+                    submit=pool.submit,
+                    # Enough to keep every instance busy, short enough that a
+                    # question asked mid-precompute is not queued behind the
+                    # whole corpus.
+                    max_inflight=_pi.pool_size() * 2,
+                    cancelled=_facet_cancel.is_set)
                 with _facet_lock:
                     _facet_state["calls"] += report["calls"]
                     _facet_state["reused"] += report["reused"]
                     _facet_state["errors"].extend(report["errors"][:20])
             with _facet_lock:
-                _facet_state.update({"state": "done", "done": len(stems),
-                                     "message": "Pre-filter judgements ready"})
+                cancelled = _facet_cancel.is_set()
+                _facet_state.update({
+                    "state": "cancelled" if cancelled else "done",
+                    "done": len(stems),
+                    "message": ("Stopped — the judgements already made are kept"
+                                if cancelled else "Pre-filter judgements ready")})
         except Exception as exc:
             with _facet_lock:
                 _facet_state.update({"state": "error", "message": str(exc)})
@@ -585,6 +675,18 @@ def facet_precompute():
 
     threading.Thread(target=work, daemon=True).start()
     return JSONResponse({"started": True, "docs": stems})
+
+
+@app.post("/api/choices/precompute/cancel")
+def facet_precompute_cancel():
+    """Stop the pass. Everything judged so far stays on disk — the store is
+    incremental, so a cancelled run is progress, not waste."""
+    _facet_cancel.set()
+    with _facet_lock:
+        running = _facet_state["state"] == "running"
+        if running:
+            _facet_state["message"] = "Stopping…"
+    return JSONResponse({"cancelling": running})
 
 
 # ---------------------------------------------------------------------------
@@ -597,16 +699,24 @@ def facet_precompute():
 _cache = app_debug_cache.DebugCache()
 
 
-def _cache_key_for(query: str, tags=None, selected_answers=None) -> str:
+def _cache_key_for(query: str, tags=None, selected_answers=None,
+                   selection_mode: str = app_choices.ANY) -> str:
     cfg = app_config.runtime()
+    # The mode is part of the key: the same answers in "all" retrieve a
+    # different set than in "any", so replaying one as the other would serve
+    # a narrower answer than the user asked for.
+    answers = list(selected_answers or [])
+    if answers:
+        answers = answers + [f"__mode:{app_choices.normalise_mode(selection_mode)}"]
     return app_debug_cache.make_key(
-        query, _index_dir(), tags=tags, selected_answers=selected_answers,
+        query, _index_dir(), tags=tags, selected_answers=answers,
         retrieval_model=cfg.retrieval_model, synthesis_model=cfg.synthesis_model)
 
 
 @app.get("/api/cache/lookup")
 def cache_lookup(query: str, tags: Optional[str] = None,
-                 selected_answers: Optional[str] = None):
+                 selected_answers: Optional[str] = None,
+                 selection_mode: str = app_choices.ANY):
     """Has this exact question been run against this exact corpus before?
 
     The frontend calls this on submit and offers "replay or re-run live".
@@ -615,7 +725,7 @@ def cache_lookup(query: str, tags: Optional[str] = None,
         return JSONResponse({"hit": False, "enabled": False})
     tag_list = [t for t in (tags or "").split(",") if t]
     answer_list = [a for a in (selected_answers or "").split(",") if a]
-    key = _cache_key_for(query, tag_list, answer_list)
+    key = _cache_key_for(query, tag_list, answer_list, selection_mode)
     entry = _cache.get(key)
     return JSONResponse({"hit": entry is not None, "enabled": True, "key": key,
                          **(entry.summary() if entry else {})})
@@ -1202,9 +1312,12 @@ class RunRequest(BaseModel):
     query: Optional[str] = None
     # Restrict retrieval to documents carrying ANY of these tags. Empty = all.
     tags: Optional[list[str]] = None
-    # Answer ids from the multiple-choice pre-filter. Unioned: more selections
-    # widen the candidate set.
+    # Answer ids from the multiple-choice pre-filter.
     selected_answers: Optional[list[str]] = None
+    # How those answers combine: "any" (default, recall-first — a passage
+    # matching ANY answer is searched) or "all" (Fast mode — a passage must
+    # satisfy every answered question). Never inferred; always the user's.
+    selection_mode: str = "any"
     # Debug cache: replay a previous identical run instead of re-retrieving.
     use_cache: bool = False
     # Module selections — default to pipeline defaults when not supplied
@@ -1268,7 +1381,8 @@ def _iter_tree(nodes):
 
 
 def _run_retrieval(query: str, index_mod, ctx=None, tags=None,
-                   selected_answers=None) -> tuple[dict, object]:
+                   selected_answers=None,
+                   selection_mode: str = app_choices.ANY) -> tuple[dict, object]:
     """Two-phase retrieval across every indexed document. Shared by /api/run
     (retrieval tab) and /api/chat (chatbot tab) so both drive the same live
     treemap/progress state.
@@ -1312,10 +1426,16 @@ def _run_retrieval(query: str, index_mod, ctx=None, tags=None,
     pool = _pi.coordination_pool()
 
     per_doc: dict[str, tuple] = {}
+    choice_by_doc: dict[str, dict] = {}
     if supports_two_phase:
-        futures = {pool.submit(index_mod.prune_document, doc_name, query, ctx,
-                               selected_answers): doc_name
-                   for doc_name in trees}
+        prune = index_mod.prune_document
+        # A third-party index module may predate the pre-filter entirely.
+        takes_mode = "selection_mode" in inspect.signature(prune).parameters
+        futures = {
+            pool.submit(prune, doc_name, query, ctx, selected_answers,
+                        **({"selection_mode": selection_mode} if takes_mode else {})):
+                doc_name
+            for doc_name in trees}
         candidates = []
         for future, doc_name in futures.items():
             try:
@@ -1343,6 +1463,12 @@ def _run_retrieval(query: str, index_mod, ctx=None, tags=None,
             selected = [l for l in doc.leaves
                         if doc.node_meta.get(l.node_id, {}).get("relevant")]
             per_doc[doc.doc_name] = (selected, doc.node_meta)
+            if getattr(doc, "choice_filter", None):
+                choice_by_doc[doc.doc_name] = {
+                    "doc": doc.doc_name,
+                    **doc.choice_filter,
+                    "tags": getattr(doc, "choice_tags", {}) or {},
+                }
     else:
         # A third-party index module without the two-phase API.
         retrieve_fn = getattr(index_mod, "retrieve_with_metadata", None)
@@ -1367,6 +1493,9 @@ def _run_retrieval(query: str, index_mod, ctx=None, tags=None,
             "tree": raw_tree,
             "retrieved_ids": [n.node_id for n in nodes],
             "node_meta": node_reasons,  # {node_id: {reason, quote}}
+            # What the multiple-choice pre-filter did here. Absent when the
+            # user selected nothing.
+            "choice_filter": choice_by_doc.get(doc_name, {}),
             "nodes": [
                 {
                     "node_id": n.node_id,
@@ -1383,6 +1512,32 @@ def _run_retrieval(query: str, index_mod, ctx=None, tags=None,
             ],
         }
     return results, ctx
+
+
+def _choice_payload(results: dict, selected_answers=None,
+                    selection_mode: str = app_choices.ANY) -> dict:
+    """Corpus-level account of what the pre-filter did.
+
+    The per-document verdicts are already in `results`; this is the one-line
+    version the UI shows above an answer. `unfiltered` is the entry that
+    earns its place: a document searched whole for want of judgements looks
+    identical to a filtered one unless it is counted here.
+    """
+    per_doc = [d.get("choice_filter") or {} for d in results.values()]
+    applied = [c for c in per_doc if c.get("applied")]
+    if not applied:
+        return {"applied": False, "mode": selection_mode,
+                "selected_answers": selected_answers or []}
+    return {
+        "applied": True,
+        "mode": selection_mode,
+        "selected_answers": selected_answers or [],
+        "kept": sum(c.get("kept", 0) for c in applied),
+        "total": sum(c.get("total", 0) for c in applied),
+        "docs_excluded": sum(1 for c in applied if c.get("state") == "excluded"),
+        "docs_unfiltered": [c["doc"] for c in applied
+                            if c.get("state") == "unfiltered"],
+    }
 
 
 @app.post("/api/run")
@@ -1410,14 +1565,16 @@ def run_query(req: RunRequest):
     except Exception as exc:
         return JSONResponse({"error": f"Could not load index module '{index_mod_name}': {exc}"}, status_code=400)
 
-    cache_key = _cache_key_for(query, req.tags, req.selected_answers)
+    cache_key = _cache_key_for(query, req.tags, req.selected_answers,
+                               req.selection_mode)
     cached = _cache.get(cache_key) if req.use_cache else None
     if cached is not None:
         results, ctx = _replay(cached)
         cache_info = {"cached": True, **cached.summary()}
     else:
         results, ctx = _run_retrieval(query, index_mod, tags=req.tags,
-                                      selected_answers=req.selected_answers)
+                                      selected_answers=req.selected_answers,
+                                      selection_mode=req.selection_mode)
         _cache.put(cache_key, query=query, results=results,
                    events=ctx.events_snapshot(),
                    budget=_budget_payload(ctx, results),
@@ -1430,6 +1587,8 @@ def run_query(req: RunRequest):
         "query": query,
         "results": results,
         "budget": _budget_payload(ctx, results),
+        "choices": _choice_payload(results, req.selected_answers,
+                                   req.selection_mode),
         "cache": cache_info,
         "test_result": test_result,
         "pipeline": {
@@ -1542,6 +1701,7 @@ class ChatRequest(BaseModel):
     index_module: Optional[str] = None
     tags: Optional[list[str]] = None
     selected_answers: Optional[list[str]] = None
+    selection_mode: str = "any"
     use_cache: bool = False
     replay_answer: bool = False
 
@@ -1571,7 +1731,8 @@ def chat(req: ChatRequest):
 
     _set_chat_phase("retrieval", "Reading the document trees…")
     try:
-        cache_key = _cache_key_for(query, req.tags, req.selected_answers)
+        cache_key = _cache_key_for(query, req.tags, req.selected_answers,
+                                   req.selection_mode)
         cached = _cache.get(cache_key) if req.use_cache else None
         if cached is not None:
             results, ctx = _replay(cached)
@@ -1579,7 +1740,8 @@ def chat(req: ChatRequest):
             cache_info = {"cached": True, **cached.summary()}
         else:
             results, ctx = _run_retrieval(query, index_mod, tags=req.tags,
-                                          selected_answers=req.selected_answers)
+                                          selected_answers=req.selected_answers,
+                                          selection_mode=req.selection_mode)
             budget = _budget_payload(ctx, results)
             cache_info = {"cached": False, "key": cache_key}
 
@@ -1658,6 +1820,17 @@ def chat(req: ChatRequest):
         if not sources:
             status = "insufficient_evidence"
             summary = "No passage in the library was judged relevant to this question."
+            # With the pre-filter on, "nothing found" may be the filter's doing
+            # rather than the library's. Saying which one it was is the
+            # difference between a dead end and an obvious next step.
+            picked = req.selected_answers or []
+            if picked:
+                mode = app_choices.normalise_mode(req.selection_mode)
+                summary += (
+                    f" Your {len(picked)} pre-filter answer"
+                    f"{'' if len(picked) == 1 else 's'} narrowed the search"
+                    f"{' hard (Fast mode)' if mode == app_choices.ALL else ''}"
+                    f" — clearing them searches the whole library.")
         elif valid_cited:
             status = "grounded"
             summary = (f"{len(valid_cited)} of {len(sources)} retrieved passages are "
@@ -1678,6 +1851,8 @@ def chat(req: ChatRequest):
             },
             "grounding": {"status": status, "summary": summary, "sources": sources},
             "budget": budget,
+            "choices": _choice_payload(results, req.selected_answers,
+                                       req.selection_mode),
             "cache": cache_info,
             "run": {
                 "query": query,

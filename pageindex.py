@@ -1660,14 +1660,19 @@ class DocCandidates:
     node_assignment: dict
     candidates: list["PageNode"]
     node_meta: dict
-    # {leaf_id: [answer_ids]} — which of the user's selections put this leaf
-    # in play. Under union semantics leaves genuinely differ here, so it is
-    # the informative part of the pre-filter.
+    # {leaf_id: [answer_ids]} — which of the user's selections this leaf was
+    # judged relevant to. In the default ANY mode leaves genuinely differ
+    # here, which is what says WHY a passage is in play.
     choice_tags: dict = field(default_factory=dict)
+    # What the pre-filter did to this document: kept/total, the mode, and
+    # whether it was filtered, excluded outright, or searched unfiltered for
+    # want of judgements. Empty when no answers were selected.
+    choice_filter: dict = field(default_factory=dict)
 
 
 def prune_document(doc_name: str, query: str, ctx: Optional[RunContext] = None,
-                   selected_answers: Optional[list[str]] = None) -> DocCandidates:
+                   selected_answers: Optional[list[str]] = None,
+                   selection_mode: str = choices.ANY) -> DocCandidates:
     """Phase 1 for one document: load the index and prune it top-down.
 
     When the user has answered the multiple-choice questions, their selections
@@ -1675,16 +1680,57 @@ def prune_document(doc_name: str, query: str, ctx: Optional[RunContext] = None,
     costs no LLM calls at query time — it is a set lookup — and everything
     outside the selection is recorded as pruned by the choice filter rather
     than being silently absent.
+
+    Three outcomes, and `choice_filter` reports which one happened, because
+    they look identical from the results otherwise: the document is filtered,
+    excluded entirely (judged, nothing matched), or searched unfiltered (never
+    judged — a coverage hole, not a verdict).
     """
     ctx = ctx or current_run()
     nodes = load_index_nodes(doc_name)
     leaves = _collect_leaves(nodes)
 
     choice_tags: dict[str, list[str]] = {}
+    choice_filter: dict = {}
     if selected_answers:
-        store = choices.FacetStore(INDEX_DIR, doc_name)
-        keep_leaf_ids = choices.selected_leaf_ids(store, leaves, selected_answers)
-        if keep_leaf_ids:
+        # open_store, not FacetStore: judgements that no longer match the
+        # questions/model/prompt are not evidence and must not filter a query.
+        store = choices.open_store(INDEX_DIR, doc_name, MODEL)
+        selection = choices.select_leaves(store, leaves, selected_answers,
+                                          mode=choices.normalise_mode(selection_mode))
+        keep_leaf_ids = selection.kept
+        choice_filter = {
+            "applied": True,
+            "mode": selection.mode,
+            "kept": len(keep_leaf_ids),
+            "total": selection.total,
+            "unjudged": len(selection.unjudged),
+            "state": "filtered",
+        }
+
+        if selection.fully_unjudged:
+            # No judgement exists for this document at all — usually it was
+            # ingested after the last precompute. Searching it whole is the
+            # right call, but it must be SAID: an unfiltered document that
+            # looks filtered is the failure mode that hides a coverage hole.
+            choice_filter["state"] = "unfiltered"
+            print(f"  [choices] {doc_name}: no precomputed judgements — searching "
+                  f"the whole document unfiltered", file=sys.stderr)
+        elif not keep_leaf_ids:
+            # Judged, and nothing matched. That is a real verdict about this
+            # document, not an error: exclude it. The corpus-level caller is
+            # responsible for noticing if EVERY document lands here.
+            choice_filter["state"] = "excluded"
+            for node in _collect_all_nodes(nodes):
+                ctx.mark(node.node_id, "pruned",
+                         "Excluded by your pre-filter answers — no passage in this "
+                         "document was judged relevant to them.")
+            for _ in leaves:
+                ctx.inc_done()
+            nodes, leaves = [], []
+            print(f"  [choices] {doc_name}: no leaves matched the selected answers "
+                  f"— document excluded", file=sys.stderr)
+        else:
             keep_ids = choices.ancestor_closure(nodes, keep_leaf_ids)
             for node in _collect_all_nodes(nodes):
                 if node.node_id not in keep_ids:
@@ -1699,12 +1745,6 @@ def prune_document(doc_name: str, query: str, ctx: Optional[RunContext] = None,
             for leaf in leaves:
                 choice_tags[leaf.node_id] = choices.answers_for_leaf(
                     store, leaf, selected_answers)
-        else:
-            # An empty selection would mean querying nothing at all. Fall back
-            # to the whole document and say so, rather than silently returning
-            # no evidence.
-            print(f"  [choices] {doc_name}: no leaves matched the selected answers "
-                  f"— using the whole document", file=sys.stderr)
 
     parent_map = _build_parent_map(nodes)
     nodes_by_id = _build_nodes_by_id(nodes)
@@ -1737,7 +1777,8 @@ def prune_document(doc_name: str, query: str, ctx: Optional[RunContext] = None,
               file=sys.stderr)
 
     return DocCandidates(doc_name, nodes, leaves, parent_map, nodes_by_id,
-                         node_assignment, candidates, node_meta, choice_tags)
+                         node_assignment, candidates, node_meta, choice_tags,
+                         choice_filter)
 
 
 # Rough allowance for the synthesis prompt's own scaffolding (instructions,

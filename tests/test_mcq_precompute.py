@@ -2,9 +2,18 @@
 Phase 5 — multiple-choice pre-filter.
 
 Every leaf is judged against every question ONCE, at index time, keyed by the
-leaf's content hash. At query time the selected answers' leaf sets are unioned
-(more selections = wider candidate set, by design) and the ancestor closure of
-that leaf set becomes the tree the user's query runs over.
+leaf's content hash. At query time the selected answers pick a leaf set and the
+ancestor closure of it becomes the tree the user's query runs over.
+
+Two selection modes, and which one is the DEFAULT is a clinical decision, not
+a technical one:
+
+  ANY (default)  a leaf matching any selected answer is a candidate. More
+                 answers = wider search. Recall-first, because a passage
+                 dropped here can never reach the answer.
+  ALL (Fast)     a leaf must satisfy every question answered. Much narrower
+                 and much faster, and it will drop passages a clinician might
+                 have wanted — so it is opt-in and never inferred.
 """
 import json
 
@@ -49,9 +58,9 @@ class Chat:
         return json.dumps({"answers": []})
 
 
-def _precompute(tmp_path, leaves, chat, model="m1", questions=QUESTIONS):
+def _precompute(tmp_path, leaves, chat, model="m1", questions=QUESTIONS, **kw):
     return choices.precompute_document(
-        "doc", leaves, tmp_path, chat, json.loads, model, questions=questions)
+        "doc", leaves, tmp_path, chat, json.loads, model, questions=questions, **kw)
 
 
 class TestCost:
@@ -299,11 +308,23 @@ class TestQuestionConfig:
         assert len(ids) == len(set(ids))
 
 
+def _wire_questions(tmp_corpus, monkeypatch):
+    """Point the loader at a real file holding the fixture questions.
+
+    Retrieval resolves the question set from disk and keys stored judgements
+    on its content, so a test that precomputes with one set and queries with
+    another is testing the stale-store guard, not the pre-filter.
+    """
+    path = tmp_corpus["root"] / "q.json"
+    path.write_text(json.dumps(QUESTIONS.to_dict()), encoding="utf-8")
+    monkeypatch.setattr(choices, "QUESTIONS_PATH", path)
+    choices.reset_cache()
+
+
 class TestIntegrationWithPruning:
     def test_selection_narrows_the_tree_before_any_llm_call(
             self, tmp_corpus, fake_ollama, monkeypatch):
-        monkeypatch.setattr(choices, "QUESTIONS_PATH", tmp_corpus["root"] / "q.json")
-        choices.reset_cache()
+        _wire_questions(tmp_corpus, monkeypatch)
 
         pageindex.build_index(tmp_corpus["doc"], use_llm_summaries=False)
         nodes = pageindex.load_index_nodes(tmp_corpus["doc"])
@@ -312,7 +333,8 @@ class TestIntegrationWithPruning:
         # Only the imaging leaf is relevant to q1__icu.
         chat = Chat({"CT is preferred": ["q1__icu"]})
         choices.precompute_document(tmp_corpus["doc"], leaves, tmp_corpus["index"],
-                                    chat, json.loads, "m1", questions=QUESTIONS)
+                                    chat, json.loads, pageindex.MODEL,
+                                    questions=QUESTIONS)
 
         fake_ollama.reset()
         fake_ollama.default_response = json.dumps({"keep": []})
@@ -324,10 +346,12 @@ class TestIntegrationWithPruning:
         assert kept == {"imaging"}, f"expected only the imaging leaf, got {kept}"
         assert doc.choice_tags["imaging"] == ["q1__icu"]
 
-    def test_empty_match_falls_back_to_the_whole_document(
+    def test_a_document_with_no_judgements_is_searched_whole_and_says_so(
             self, tmp_corpus, fake_ollama, monkeypatch, capsys):
-        monkeypatch.setattr(choices, "QUESTIONS_PATH", tmp_corpus["root"] / "q.json")
-        choices.reset_cache()
+        """The coverage hole that used to hide: a document ingested after the
+        last precompute has no judgements, so it matches nothing, so it was
+        searched whole — indistinguishable from having been filtered."""
+        _wire_questions(tmp_corpus, monkeypatch)
         pageindex.build_index(tmp_corpus["doc"], use_llm_summaries=False)
 
         fake_ollama.default_response = json.dumps({"keep": []})
@@ -336,7 +360,31 @@ class TestIntegrationWithPruning:
                                        selected_answers=["q1__icu"])
 
         assert len(doc.leaves) > 0, "must not silently return an empty corpus"
-        assert "no leaves matched" in capsys.readouterr().err
+        assert doc.choice_filter["state"] == "unfiltered"
+        assert doc.choice_filter["unjudged"] == doc.choice_filter["total"]
+        assert "no precomputed judgements" in capsys.readouterr().err
+
+    def test_a_judged_document_that_matches_nothing_is_excluded(
+            self, tmp_corpus, fake_ollama, monkeypatch, capsys):
+        """Judged and irrelevant is a VERDICT, not a failure. Falling back to
+        the whole document here defeated the entire point of asking."""
+        _wire_questions(tmp_corpus, monkeypatch)
+        pageindex.build_index(tmp_corpus["doc"], use_llm_summaries=False)
+        leaves = pageindex._collect_leaves(
+            pageindex.load_index_nodes(tmp_corpus["doc"]))
+        # Judged against everything, relevant to nothing selected.
+        choices.precompute_document(tmp_corpus["doc"], leaves, tmp_corpus["index"],
+                                    Chat(), json.loads, pageindex.MODEL,
+                                    questions=QUESTIONS)
+
+        fake_ollama.reset()
+        ctx = pageindex.new_run()
+        doc = pageindex.prune_document(tmp_corpus["doc"], "query", ctx=ctx,
+                                       selected_answers=["q1__icu"])
+
+        assert doc.leaves == []
+        assert doc.choice_filter["state"] == "excluded"
+        assert "document excluded" in capsys.readouterr().err
 
 
 class TestAnswerIdEcho:
@@ -400,3 +448,344 @@ class TestPrecomputeSanity:
         assert len(store.data) == 20, (
             "every leaf is recorded, so a caller can compute the match rate "
             "and notice a corpus-wide zero")
+
+
+class TestFastMode:
+    """ALL: OR within a question, AND across questions.
+
+    The default stays ANY on purpose — on the real corpus a single answer like
+    "adults" covers 54 of 67 leaves, so ANY with two answers searches nearly
+    everything, while ALL cuts hard enough to drop passages a clinician might
+    have wanted. That trade is the user's to make, so the only thing these
+    tests really guard is that it is never made FOR them.
+    """
+
+    def _store(self, tmp_path):
+        chat = Chat({
+            "icu adult": ["q1__icu", "q2__adult"],
+            "icu child": ["q1__icu", "q2__child"],
+            "ward adult": ["q1__ward", "q2__adult"],
+        })
+        leaves = [_leaf("a", "icu adult"), _leaf("b", "icu child"),
+                  _leaf("c", "ward adult"), _leaf("d", "unrelated")]
+        _precompute(tmp_path, leaves, chat)
+        return choices.FacetStore(tmp_path, "doc"), leaves
+
+    def _ids(self, tmp_path, answers, mode):
+        store, leaves = self._store(tmp_path)
+        return choices.selected_leaf_ids(store, leaves, answers, QUESTIONS, mode)
+
+    def test_across_questions_is_an_intersection(self, tmp_path):
+        got = self._ids(tmp_path, ["q1__icu", "q2__adult"], choices.ALL)
+        assert got == {"a"}, "icu AND adult — not icu OR adult"
+
+    def test_within_a_question_is_still_a_union(self, tmp_path):
+        got = self._ids(tmp_path, ["q2__adult", "q2__child"], choices.ALL)
+        assert got == {"a", "b", "c"}, "answers to one question are alternatives"
+
+    def test_all_is_never_wider_than_any(self, tmp_path):
+        answers = ["q1__icu", "q2__adult"]
+        assert (self._ids(tmp_path, answers, choices.ALL)
+                <= self._ids(tmp_path, answers, choices.ANY))
+
+    def test_the_default_is_the_recall_first_mode(self, tmp_path):
+        store, leaves = self._store(tmp_path)
+        answers = ["q1__icu", "q2__adult"]
+        assert (choices.selected_leaf_ids(store, leaves, answers, QUESTIONS)
+                == choices.selected_leaf_ids(store, leaves, answers, QUESTIONS,
+                                             choices.ANY))
+
+    @pytest.mark.parametrize("mode", ["", None, "ALL", "intersect", "fast"])
+    def test_an_unrecognised_mode_falls_back_to_recall(self, mode):
+        assert choices.normalise_mode(mode) == choices.ANY, (
+            "a typo or a stale frontend must never silently narrow a clinical "
+            "search")
+
+    def test_one_answer_behaves_identically_in_both_modes(self, tmp_path):
+        assert (self._ids(tmp_path, ["q1__icu"], choices.ALL)
+                == self._ids(tmp_path, ["q1__icu"], choices.ANY) == {"a", "b"})
+
+    def test_an_unknown_answer_id_satisfies_nothing(self, tmp_path):
+        assert self._ids(tmp_path, ["q1__icu", "made__up"], choices.ALL) == set()
+
+    def test_an_unjudged_leaf_survives_both_modes(self, tmp_path):
+        """Recall bias holds even in Fast mode: never judged is not the same
+        as judged irrelevant, and only one of those is evidence."""
+        store, leaves = self._store(tmp_path)
+        leaves.append(_leaf("new", "ingested after the precompute"))
+        for mode in (choices.ANY, choices.ALL):
+            selection = choices.select_leaves(store, leaves,
+                                              ["q1__icu", "q2__adult"],
+                                              QUESTIONS, mode)
+            assert "new" in selection.kept
+            assert selection.unjudged == {"new"}
+
+
+class TestQuestionEdits:
+    """The cache key hashes the question CONTENT.
+
+    `version` is a hand-maintained integer, and hand-maintained integers get
+    forgotten: editing a facet's wording used to leave every stored judgement
+    in place, answering a question that no longer existed.
+    """
+
+    def _edited(self, **kw):
+        answers = [choices.Answer("q1__icu", kw.get("label", "ICU"),
+                                  kw.get("facet", "intensive care")),
+                   choices.Answer("q1__ward", "Ward", "general ward")]
+        return choices.QuestionSet(version=1, questions=[
+            choices.Question(id="q1", prompt=kw.get("prompt", "Setting?"),
+                             answers=answers)])
+
+    def test_editing_a_facet_invalidates(self, tmp_path):
+        _precompute(tmp_path, [_leaf("a", "x")], Chat(), questions=self._edited())
+        chat = Chat()
+        _precompute(tmp_path, [_leaf("a", "x")], chat,
+                    questions=self._edited(facet="critically ill patients"))
+        assert len(chat.calls) == 1, "a reworded facet is a different question"
+
+    def test_editing_a_prompt_invalidates(self, tmp_path):
+        _precompute(tmp_path, [_leaf("a", "x")], Chat(), questions=self._edited())
+        chat = Chat()
+        _precompute(tmp_path, [_leaf("a", "x")], chat,
+                    questions=self._edited(prompt="Where is the patient?"))
+        assert len(chat.calls) == 1
+
+    def test_an_unchanged_set_still_reuses(self, tmp_path):
+        _precompute(tmp_path, [_leaf("a", "x")], Chat(), questions=self._edited())
+        chat = Chat()
+        _precompute(tmp_path, [_leaf("a", "x")], chat, questions=self._edited())
+        assert len(chat.calls) == 0
+
+    def test_the_shipped_questions_are_well_formed(self):
+        """The real config, not the fixtures: ids unique, facets distinct from
+        labels, nothing empty."""
+        qs = choices.load_questions()
+        ids = [a.id for q in qs.questions for a in q.answers]
+        assert len(ids) == len(set(ids))
+        for q in qs.questions:
+            assert q.prompt and q.answers
+            for a in q.answers:
+                assert a.label and a.facet and a.label != a.facet
+
+
+class TestCoverage:
+    """Precompute status is read from DISK.
+
+    It used to live in a process variable, so a restart reported "not computed
+    yet" over a fully populated store, and a document ingested since the last
+    pass was never noticed at all.
+    """
+
+    def _coverage(self, tmp_path, leaves, model="m1"):
+        return choices.document_coverage(tmp_path, "doc", leaves, model, QUESTIONS)
+
+    def test_missing_store_reports_missing(self, tmp_path):
+        assert self._coverage(tmp_path, [_leaf("a", "x")])["state"] == "missing"
+
+    def test_a_completed_pass_reports_ready(self, tmp_path):
+        leaves = [_leaf("a", "x"), _leaf("b", "y")]
+        _precompute(tmp_path, leaves, Chat())
+        cov = self._coverage(tmp_path, leaves)
+        assert cov["state"] == "ready" and cov["judged"] == 2
+
+    def test_a_document_grown_since_the_pass_reports_partial(self, tmp_path):
+        leaves = [_leaf("a", "x")]
+        _precompute(tmp_path, leaves, Chat())
+        cov = self._coverage(tmp_path, leaves + [_leaf("b", "new section")])
+        assert cov["state"] == "partial"
+        assert (cov["judged"], cov["leaves"]) == (1, 2)
+
+    def test_a_different_model_reports_stale(self, tmp_path):
+        leaves = [_leaf("a", "x")]
+        _precompute(tmp_path, leaves, Chat(), model="m1")
+        assert self._coverage(tmp_path, leaves, model="m2")["state"] == "stale"
+
+    def test_edited_questions_report_stale(self, tmp_path):
+        leaves = [_leaf("a", "x")]
+        _precompute(tmp_path, leaves, Chat())
+        wider = choices.QuestionSet(version=1, questions=QUESTIONS.questions + [
+            choices.Question(id="q3", prompt="New?", answers=[
+                choices.Answer("q3__yes", "Yes", "anything at all")])])
+        cov = choices.document_coverage(tmp_path, "doc", leaves, "m1", wider)
+        assert cov["state"] == "stale"
+
+
+class TestParallelPrecompute:
+    """Judgements are independent, so they run on the caller's pool.
+
+    Serially, a corpus-wide pass left three of four Ollama slots idle for its
+    entire duration.
+    """
+
+    def _pool(self):
+        from concurrent.futures import ThreadPoolExecutor
+        return ThreadPoolExecutor(max_workers=4)
+
+    def test_parallel_and_serial_agree(self, tmp_path):
+        leaves = [_leaf(f"n{i}", f"passage {i}") for i in range(6)]
+        chat = Chat({"passage 3": ["q1__icu"]})
+        with self._pool() as pool:
+            _precompute(tmp_path, leaves, chat, submit=pool.submit)
+        parallel = choices.FacetStore(tmp_path, "doc").data
+
+        serial_dir = tmp_path / "serial"
+        serial_dir.mkdir()
+        choices.precompute_document("doc", leaves, serial_dir, chat, json.loads,
+                                    "m1", questions=QUESTIONS)
+        assert parallel == choices.FacetStore(serial_dir, "doc").data
+
+    def test_every_judgement_is_stored_exactly_once(self, tmp_path):
+        leaves = [_leaf(f"n{i}", f"passage {i}") for i in range(8)]
+        with self._pool() as pool:
+            report = _precompute(tmp_path, leaves, Chat(), submit=pool.submit)
+        store = choices.FacetStore(tmp_path, "doc")
+        assert report["calls"] == 16
+        assert len(store.data) == 8
+        assert all(set(v) == {"q1", "q2"} for v in store.data.values())
+
+    def test_cancelling_keeps_what_was_already_judged(self, tmp_path):
+        """A cancelled pass is progress, not waste — the store is incremental,
+        so the next run picks up where this one stopped."""
+        leaves = [_leaf(f"n{i}", f"passage {i}") for i in range(10)]
+        chat = Chat()
+        report = choices.precompute_document(
+            "doc", leaves, tmp_path, chat, json.loads, "m1", questions=QUESTIONS,
+            cancelled=lambda: len(chat.calls) >= 4)
+
+        assert report["cancelled"]
+        assert 0 < report["calls"] < 20
+        store = choices.FacetStore(tmp_path, "doc")
+        assert 0 < len(store.data) < 10, "partial, and saved"
+
+    def test_a_resumed_pass_only_judges_what_is_left(self, tmp_path):
+        leaves = [_leaf(f"n{i}", f"passage {i}") for i in range(5)]
+        chat = Chat()
+        choices.precompute_document("doc", leaves, tmp_path, chat, json.loads,
+                                    "m1", questions=QUESTIONS,
+                                    cancelled=lambda: len(chat.calls) >= 4)
+        done = choices.FacetStore(tmp_path, "doc").data
+
+        resumed = Chat()
+        report = _precompute(tmp_path, leaves, resumed)
+        assert report["reused"] == sum(len(v) for v in done.values())
+        assert len(choices.FacetStore(tmp_path, "doc").data) == 5
+
+    def test_a_worker_that_explodes_is_recall_biased_like_any_other_failure(
+            self, tmp_path):
+        def broken(prompt):
+            raise ConnectionError("instance down")
+
+        with self._pool() as pool:
+            report = choices.precompute_document(
+                "doc", [_leaf("a", "x")], tmp_path, broken, json.loads, "m1",
+                questions=QUESTIONS, submit=pool.submit)
+
+        assert report["errors"]
+        store = choices.FacetStore(tmp_path, "doc")
+        assert set(store.get(choices.leaf_hash("A", "x"), "q1")) == {"q1__icu", "q1__ward"}
+
+
+class TestStaleJudgementsAreNotEvidence:
+    """Found by running the app, not by the suite.
+
+    `FacetStore` loads whatever is on disk — correct for the precompute, which
+    must see the old data to decide what to redo. At QUERY time it meant a
+    corpus judged against the previous question wording still filtered live
+    searches, while the status endpoint reported "stale" beside it. The two
+    disagreed, and only one of them was visible to the user.
+    """
+
+    def _stale(self, tmp_path):
+        leaves = [_leaf("a", "icu passage"), _leaf("b", "other")]
+        _precompute(tmp_path, leaves, Chat({"icu passage": ["q1__icu"]}))
+        return leaves
+
+    def test_a_raw_store_still_reads_the_old_data(self, tmp_path):
+        """The precompute depends on this, so it is pinned deliberately."""
+        leaves = self._stale(tmp_path)
+        raw = choices.FacetStore(tmp_path, "doc")
+        assert choices.selected_leaf_ids(raw, leaves, ["q1__icu"], QUESTIONS) == {"a"}
+
+    def test_a_model_change_stops_the_old_judgements_filtering(self, tmp_path):
+        leaves = self._stale(tmp_path)
+        store = choices.open_store(tmp_path, "doc", "a-different-model", QUESTIONS)
+        selection = choices.select_leaves(store, leaves, ["q1__icu"], QUESTIONS)
+        assert selection.kept == {"a", "b"}, "unjudged means searched, not filtered"
+        assert selection.fully_unjudged
+
+    def test_edited_questions_stop_the_old_judgements_filtering(self, tmp_path):
+        leaves = self._stale(tmp_path)
+        reworded = choices.QuestionSet(version=1, questions=[
+            choices.Question(id="q1", prompt="Setting?", answers=[
+                choices.Answer("q1__icu", "ICU", "critically ill, ventilated patients"),
+                choices.Answer("q1__ward", "Ward", "general ward")]),
+            QUESTIONS.questions[1]])
+        store = choices.open_store(tmp_path, "doc", "m1", reworded)
+        assert choices.select_leaves(store, leaves, ["q1__icu"], reworded).fully_unjudged
+
+    def test_an_unchanged_set_is_still_trusted(self, tmp_path):
+        leaves = self._stale(tmp_path)
+        store = choices.open_store(tmp_path, "doc", "m1", QUESTIONS)
+        assert choices.selected_leaf_ids(store, leaves, ["q1__icu"], QUESTIONS) == {"a"}
+
+
+class TestInFlightWindow:
+    """The pool is SHARED with live retrieval.
+
+    Submitting a whole document at once put every question asked during a
+    precompute behind hundreds of judgements. A bounded window keeps the
+    instances busy without owning the queue — and it is what makes cancelling
+    take effect promptly, since queued work is what there is to cancel.
+    """
+
+    class CountingPool:
+        """Records how many submitted tasks are outstanding at any moment."""
+
+        def __init__(self, workers=4):
+            from concurrent.futures import ThreadPoolExecutor
+            self.pool = ThreadPoolExecutor(max_workers=workers)
+            self.outstanding = 0
+            self.peak = 0
+            self._lock = __import__("threading").Lock()
+
+        def submit(self, fn, arg):
+            with self._lock:
+                self.outstanding += 1
+                self.peak = max(self.peak, self.outstanding)
+
+            def run():
+                try:
+                    return fn(arg)
+                finally:
+                    with self._lock:
+                        self.outstanding -= 1
+            return self.pool.submit(run)
+
+        def shutdown(self):
+            self.pool.shutdown()
+
+    def test_never_queues_more_than_the_window(self, tmp_path):
+        leaves = [_leaf(f"n{i}", f"passage {i}") for i in range(25)]
+        pool = self.CountingPool()
+        try:
+            _precompute(tmp_path, leaves, Chat(), submit=pool.submit, max_inflight=6)
+        finally:
+            pool.shutdown()
+        assert pool.peak <= 6, f"queued {pool.peak} at once, window was 6"
+        assert len(choices.FacetStore(tmp_path, "doc").data) == 25, (
+            "a window must not lose work")
+
+    def test_cancelling_stops_promptly_rather_than_draining(self, tmp_path):
+        """The whole point of the window: cancel used to have to wait for
+        every already-queued judgement to run."""
+        leaves = [_leaf(f"n{i}", f"passage {i}") for i in range(40)]
+        chat = Chat()
+        from concurrent.futures import ThreadPoolExecutor
+        with ThreadPoolExecutor(max_workers=2) as pool:
+            report = _precompute(tmp_path, leaves, chat, submit=pool.submit,
+                                 max_inflight=4,
+                                 cancelled=lambda: len(chat.calls) >= 8)
+        assert report["cancelled"]
+        assert report["calls"] < 80, "did not drain the whole document"
+        assert len(chat.calls) < 40

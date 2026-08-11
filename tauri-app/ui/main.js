@@ -765,6 +765,7 @@ async function executeRun(body, message) {
     const data = await apiPost('/api/run', {
       ...body, ...selectedModules(),
       selected_answers: selectedAnswers(),
+      selection_mode: selectionMode(),
     });
     state.currentResults = data;
     renderResults(data);

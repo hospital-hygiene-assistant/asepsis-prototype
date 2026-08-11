@@ -222,6 +222,7 @@ async function sendChat(text) {
       query: text,
       index_module: selectedModules().index_module,
       selected_answers: selectedAnswers(),
+      selection_mode: selectionMode(),
       use_cache: chatState.useCacheForNext,
       replay_answer: chatState.replayAnswerForNext,
     });
@@ -359,7 +360,15 @@ function renderRichText(text, sources, answerId) {
 
 async function lookupCachedRun(text) {
   try {
-    const r = await apiGet(`/api/cache/lookup?query=${encodeURIComponent(text)}`);
+    // The pre-filter answers and mode are PART of the cache key, so they have
+    // to be part of the lookup — asking without them tests a key the run will
+    // never use, and offers a replay of a different retrieval.
+    const params = new URLSearchParams({
+      query: text,
+      selected_answers: selectedAnswers().join(','),
+      selection_mode: selectionMode(),
+    });
+    const r = await apiGet(`/api/cache/lookup?${params}`);
     return (r && r.enabled && r.hit) ? r : null;
   } catch { return null; }
 }
@@ -409,6 +418,38 @@ async function loadCachedQuestions() {
     const r = await apiGet('/api/cache/questions');
     return (r && r.enabled) ? (r.questions || []) : [];
   } catch { return []; }
+}
+
+/* What the pre-filter did to THIS answer.
+
+   The filter runs before any model call, so a passage it drops leaves no
+   trace anywhere else in the answer — no "rejected" mark, no reasoning,
+   nothing. Whatever it removed has to be stated here or it is invisible. */
+function buildChoiceNotice(choices) {
+  if (!choices || !choices.applied) return null;
+
+  const wrap = el('div', 'choice-notice');
+  const n = (choices.selected_answers || []).length;
+  const fast = choices.mode === 'all';
+  const text = el('span');
+  text.innerHTML =
+    `<strong>Filtered by your ${n} answer${n === 1 ? '' : 's'}</strong> — ` +
+    `${choices.kept} of ${choices.total} passages searched` +
+    (fast ? ', in Fast mode (a passage had to match every question)' : '') + '.';
+  wrap.appendChild(text);
+
+  // A document searched WHOLE because it has no judgements is the one thing
+  // here that is a coverage hole rather than a choice, so it is named.
+  const unfiltered = choices.docs_unfiltered || [];
+  if (unfiltered.length) {
+    const warn = el('span', 'choice-notice-warn');
+    warn.textContent =
+      ` ${unfiltered.map(d => d.replace(/_/g, ' ')).join(', ')} ` +
+      `${unfiltered.length === 1 ? 'has' : 'have'} no judgements yet and ` +
+      `${unfiltered.length === 1 ? 'was' : 'were'} searched unfiltered.`;
+    wrap.appendChild(warn);
+  }
+  return wrap;
 }
 
 function buildBudgetNotice(budget) {
@@ -495,9 +536,12 @@ function finalizeAnswerCard(p, data) {
     body.appendChild(el('p', 'chat-loading', 'The model returned no answer text — see the sources below.'));
   }
 
-  // Context-budget notice — passages the agent had no room to read.
+  // What the evidence set was narrowed by, before and during retrieval.
   // Deliberately placed with the answer, not buried in the trace: the user is
-  // being told their answer was composed from a truncated evidence set.
+  // being told their answer was composed from a reduced evidence set.
+  const choiceNotice = buildChoiceNotice(data.choices);
+  if (choiceNotice) body.appendChild(choiceNotice);
+
   const budgetNotice = buildBudgetNotice(data.budget);
   if (budgetNotice) body.appendChild(budgetNotice);
 

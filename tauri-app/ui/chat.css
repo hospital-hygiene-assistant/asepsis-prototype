@@ -526,3 +526,65 @@ body[data-tab="chat"] #command-bar { display: none !important; }
   margin-top: 5px; font-size: 11.5px; line-height: 1.5; color: var(--as-text-3);
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
 }
+
+/* ═══ Multiple-choice pre-filter, in the chat tab ═══════════════════
+   The bar is shared with the retrieval tab, which is dark; here it takes
+   the practitioner surface's own language — white card, zinc text, teal
+   accent — so the filter reads as part of the input bar rather than as a
+   dark panel dropped on a light page. Structure lives in style.css; this
+   is colour only. */
+
+#view-chat .choice-summary {
+  background: var(--as-surface);
+  border-color: var(--as-border);
+}
+#view-chat .choice-summary:hover { border-color: #d4d4d8; }
+#view-chat .choice-eyebrow { color: var(--as-muted); opacity: 1; }
+#view-chat .choice-caret { color: var(--as-faint); opacity: 1; }
+#view-chat .choice-empty { color: var(--as-faint); opacity: 1; }
+#view-chat .choice-scope { color: var(--as-muted); opacity: 1; }
+#view-chat .choice-chip {
+  background: var(--as-teal-soft); border-color: var(--as-teal-ring);
+  color: var(--as-teal-dark); font-weight: 600;
+}
+
+#view-chat .choice-panel {
+  background: var(--as-surface); border-color: var(--as-border);
+}
+#view-chat .choice-q { color: var(--as-text-3); opacity: 1; }
+#view-chat .choice-opt {
+  color: var(--as-text-3); border-color: var(--as-border);
+}
+#view-chat .choice-opt:hover { border-color: var(--as-teal); color: var(--as-text); }
+#view-chat .choice-opt.on {
+  background: var(--as-teal-soft); border-color: var(--as-teal);
+  color: var(--as-teal-dark);
+}
+
+#view-chat .choice-foot { border-top-color: var(--as-border-2); }
+#view-chat .choice-fast { color: var(--as-text-2); }
+#view-chat .choice-fast input[type="checkbox"] { accent-color: var(--as-teal); }
+#view-chat .choice-explain { color: var(--as-muted); opacity: 1; }
+#view-chat .choice-clear {
+  color: var(--as-muted); border-color: var(--as-border);
+}
+#view-chat .choice-clear:hover { color: var(--as-text); border-color: var(--as-teal); }
+
+#view-chat .choice-note { color: var(--as-muted); opacity: 1; }
+#view-chat .choice-note.warn { color: #92400e; }   /* amber-800 on white */
+#view-chat .choice-link { color: var(--as-teal); }
+#view-chat .choice-spinner { border-color: var(--as-border); border-top-color: var(--as-teal); }
+
+/* The per-answer notice: same shape as the budget notice it sits beside. */
+#view-chat .choice-notice {
+  background: var(--as-teal-soft);
+  border-color: var(--as-teal-ring); border-left-color: var(--as-teal);
+  color: var(--as-text-2);
+}
+#view-chat .choice-notice strong { color: var(--as-teal-dark); }
+#view-chat .choice-notice-warn { color: #92400e; }
+
+/* The chat mount sits directly above the input bar and must share its
+   gutter — full-bleed, the filter line reads as app chrome rather than as
+   part of the composer. */
+#chat-choice-bar { padding: 6px 22px 0; margin-bottom: 0; }

@@ -1,72 +1,124 @@
 {
-  "version": 1,
+  "version": 2,
+  "_comment": [
+    "The pre-filter questions. `label` is what the clinician reads; `facet` is",
+    "what the model judges each passage against, so the two are tuned",
+    "independently — a label can be short where a facet has to be explicit.",
+    "",
+    "Facets are written to DISCRIMINATE. A facet that could describe half the",
+    "library (\"clinical care\") makes its answer useless as a filter, and the",
+    "recall-biased prompt will attach it to nearly everything. Name the",
+    "vocabulary a relevant passage would actually contain.",
+    "",
+    "Editing this file invalidates every stored judgement automatically — the",
+    "cache key hashes the content, so no version bump is required (though",
+    "bumping `version` is still good manners for a deliberate redesign)."
+  ],
   "questions": [
     {
-      "id": "q_setting",
-      "prompt": "Where is the patient being treated?",
+      "id": "q_domain",
+      "prompt": "What is the question about?",
       "multi_select": true,
-      "help_text": "Placeholder \u2014 replace with real triage questions.",
+      "help_text": "The clinical area. Pick more than one if the question spans them.",
+      "answers": [
+        {
+          "id": "q_domain__infection",
+          "label": "Infection & antimicrobials",
+          "facet": "infection, antibiotics, antimicrobial choice or duration, cultures, sepsis, resistant organisms, isolation and infection-control precautions"
+        },
+        {
+          "id": "q_domain__cardiac",
+          "label": "Cardiac & vascular",
+          "facet": "chest pain, acute coronary syndrome, ECG changes, cardiac biomarkers, reperfusion, antithrombotic therapy, blood pressure and cardiovascular risk"
+        },
+        {
+          "id": "q_domain__metabolic",
+          "label": "Metabolic & endocrine",
+          "facet": "diabetes, glycaemic targets, insulin and oral hypoglycaemics, HbA1c, and metabolic or endocrine complications"
+        },
+        {
+          "id": "q_domain__sedation",
+          "label": "Sedation, analgesia & delirium",
+          "facet": "sedation depth and agents, analgesia and opioids, delirium screening or treatment, and neuromuscular blockade"
+        }
+      ]
+    },
+    {
+      "id": "q_setting",
+      "prompt": "Where is the patient?",
+      "multi_select": true,
+      "help_text": "Where care is being delivered — this changes the regimen more than anything else.",
       "answers": [
         {
           "id": "q_setting__icu",
           "label": "Intensive care",
-          "facet": "critical care, intensive care, ventilated or unstable patients"
+          "facet": "critical care: mechanically ventilated, haemodynamically unstable or organ-supported patients, ICU protocols and infusions"
         },
         {
           "id": "q_setting__ward",
-          "label": "General ward",
-          "facet": "general inpatient ward care"
+          "label": "Hospital ward",
+          "facet": "inpatient care outside intensive care: hospital admission criteria, inpatient regimens, intravenous therapy on a general ward, and discharge planning"
         },
         {
           "id": "q_setting__community",
-          "label": "Community / outpatient",
-          "facet": "primary care, outpatient or community management"
+          "label": "Outpatient / community",
+          "facet": "management outside hospital: primary care, clinic and community treatment, oral outpatient regimens, and routine follow-up between visits"
+        },
+        {
+          "id": "q_setting__periop",
+          "label": "Theatre / periprocedural",
+          "facet": "operating theatre, anaesthesia, surgical prophylaxis, and immediate pre- or post-operative management"
+        }
+      ]
+    },
+    {
+      "id": "q_stage",
+      "prompt": "What do you need to decide?",
+      "multi_select": true,
+      "help_text": "Where you are in the decision — the same topic reads very differently at each stage.",
+      "answers": [
+        {
+          "id": "q_stage__diagnose",
+          "label": "Diagnose or assess",
+          "facet": "reaching a diagnosis: presentation, examination, investigations, laboratory or imaging tests, diagnostic criteria, severity scores and risk stratification"
+        },
+        {
+          "id": "q_stage__treat",
+          "label": "Choose treatment",
+          "facet": "choosing and giving treatment: drug selection, dose, route, regimen, escalation or de-escalation, procedures and interventions"
+        },
+        {
+          "id": "q_stage__monitor",
+          "label": "Monitor or follow up",
+          "facet": "what happens after treatment starts: monitoring parameters, targets and reassessment, adverse effects, complications, safety and long-term follow-up"
         }
       ]
     },
     {
       "id": "q_population",
-      "prompt": "Which population?",
+      "prompt": "Special considerations?",
       "multi_select": true,
-      "help_text": "Placeholder \u2014 replace with real triage questions.",
+      "help_text": "Optional. Leave blank unless the patient's group changes the answer.",
       "answers": [
         {
-          "id": "q_population__adult",
-          "label": "Adults",
-          "facet": "adult patients"
+          "id": "q_population__pregnancy",
+          "label": "Pregnancy",
+          "facet": "pregnancy, obstetric, peripartum or breastfeeding patients, including drugs contraindicated in pregnancy"
         },
         {
           "id": "q_population__paediatric",
           "label": "Children",
-          "facet": "paediatric, neonatal or adolescent patients"
+          "facet": "paediatric, neonatal or adolescent patients, including weight-based paediatric dosing"
         },
         {
-          "id": "q_population__pregnancy",
-          "label": "Pregnancy",
-          "facet": "pregnancy, obstetric or peripartum care"
-        }
-      ]
-    },
-    {
-      "id": "q_intent",
-      "prompt": "What are you trying to decide?",
-      "multi_select": true,
-      "help_text": "Placeholder \u2014 replace with real triage questions.",
-      "answers": [
-        {
-          "id": "q_intent__diagnosis",
-          "label": "Reach a diagnosis",
-          "facet": "diagnosis, investigation, testing or assessment"
+          "id": "q_population__renal",
+          "label": "Renal or hepatic impairment",
+          "facet": "chronic kidney disease, renal or hepatic impairment, dose adjustment for organ dysfunction, and nephrotoxicity"
         },
         {
-          "id": "q_intent__treatment",
-          "label": "Choose a treatment",
-          "facet": "treatment, therapy, drug choice or dosing"
-        },
-        {
-          "id": "q_intent__monitoring",
-          "label": "Monitor or follow up",
-          "facet": "monitoring, follow-up, complications or safety"
+          "id": "q_population__elderly",
+          "label": "Elderly / frail",
+          "facet": "elderly or frail patients, polypharmacy, falls and age-adjusted targets or thresholds"
         }
       ]
     }
