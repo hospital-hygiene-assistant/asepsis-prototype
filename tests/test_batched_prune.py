@@ -140,13 +140,20 @@ class TestRobustness:
         assert "hallucinated-id" not in meta
         assert "ignoring unknown id" in capsys.readouterr().err
 
-    def test_empty_root_selection_keeps_everything(self, fake_ollama, capsys):
-        """Selecting nothing at the top prunes the entire corpus in one call —
-        far more likely a bad response than a true verdict."""
+    def test_empty_top_level_selection_prunes_the_document(self, fake_ollama):
+        """"This document has nothing to do with the question" is a legitimate
+        verdict — it is exactly what cross-document retrieval needs. Overriding
+        it forced every document to be explored in full for every query, and
+        (worse) reported the override as a failure in the UI."""
         tree = [_section("a", [_leaf(1)]), _section("b", [_leaf(2)])]
         fake_ollama.default_response = _keep()
-        _prune(tree, fake_ollama)
-        assert "keeping all top-level" in capsys.readouterr().err
+        leaves, meta, ctx = _prune(tree, fake_ollama)
+
+        assert leaves == [], "an irrelevant document must prune away entirely"
+        assert meta["a"]["status"] == "pruned"
+        assert ctx.events_snapshot()["error"] == [], (
+            "a decision we disagree with is not an error")
+        assert "Not relevant to this question" in meta["a"]["reason"]
 
     def test_deeper_empty_selection_does_prune(self, fake_ollama):
         """Below the root, selecting nothing is a legitimate verdict."""

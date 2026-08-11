@@ -1322,6 +1322,16 @@ def _run_retrieval(query: str, index_mod, ctx=None, tags=None,
                 continue
             candidates.append(doc)
 
+        # The one genuinely suspicious case: EVERY document pruned away. A
+        # single document doing so is a normal, useful verdict; all of them
+        # doing so is either a real "nothing here" or a bad model day, and the
+        # difference matters enough to say out loud rather than silently
+        # returning an empty answer.
+        if candidates and not any(d.candidates for d in candidates):
+            print(f"[retrieval] every document pruned to nothing for "
+                  f"{query!r} — no passage was judged worth reading",
+                  file=sys.stderr)
+
         index_mod.evaluate_ranked(candidates, query, ctx)
 
         for doc in candidates:

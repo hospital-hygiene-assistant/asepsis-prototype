@@ -1439,8 +1439,6 @@ def _select_children(
     client: Optional[ollama.Client] = None,
     client_url: str = "",
     ctx: Optional[RunContext] = None,
-    *,
-    is_root_level: bool = False,
 ) -> tuple[dict[str, str], bool]:
     """Ask the model which of `children` are worth descending into.
 
@@ -1495,14 +1493,12 @@ def _select_children(
         finally:
             _dec(client_url)
 
-    # A model that selects nothing at the very top has pruned the entire
-    # corpus in one call. Far more likely a bad response than a true verdict.
-    if is_root_level and not kept:
-        print("    [prune] nothing kept at the root — keeping all top-level "
-              "sections instead of pruning the whole corpus", file=sys.stderr)
-        return ({c.node_id: "Kept: the root-level selection returned nothing."
-                 for c in children}, True)
-
+    # NOTE: an empty selection is a legitimate verdict at every level,
+    # including a document's top level — "this document has nothing to do with
+    # the question" is exactly the judgement cross-document retrieval needs.
+    # Overriding it here forced every document to be explored in full for every
+    # query. The only genuinely suspicious case is EVERY document pruning to
+    # nothing, which is checked once at the corpus level by the caller.
     return kept, errored
 
 
@@ -1611,7 +1607,7 @@ def _prune_and_collect(
                 (_clients[0], OLLAMA_URLS[0]))
             futures[pool.submit(
                 _select_children, children, query, breadcrumb,
-                *assignment, ctx=ctx, is_root_level=(level == 0),
+                *assignment, ctx=ctx,
             )] = (parent, children)
 
         next_groups: list[tuple[Optional["PageNode"], list["PageNode"]]] = []
@@ -1635,8 +1631,11 @@ def _prune_and_collect(
                 else:
                     _prune_subtree(child, reason=(
                         kept.get(child.node_id)
-                        or f"Not selected: the model judged this branch unlikely to "
-                           f"answer the query when compared with its siblings."))
+                        or ("Not relevant to this question: judged against its "
+                            "siblings, this branch was not worth opening."
+                            if level == 0 else
+                            "Not selected: the model judged this branch unlikely "
+                            "to answer the query when compared with its siblings.")))
 
         groups = next_groups
         level += 1
