@@ -18,6 +18,7 @@ sys.path.insert(0, str(ROOT))
 
 import config as app_config
 import tokens as app_tokens
+from modules.ingest._manifest import Manifest
 import pageindex as _pi
 from pageindex import _node_from_dict
 from modules.registry import discover as _discover_modules, load as _load_module, defaults as _module_defaults
@@ -480,19 +481,55 @@ def get_modules():
     })
 
 
+def _manifest() -> Manifest:
+    return Manifest(ROOT / "knowledge_base")
+
+
+@app.get("/api/tags")
+def get_tags():
+    """Every tag in the library, with how many documents carry it.
+
+    Tags come from the folder each document was ingested from, so this is the
+    corpus's own notion of provenance (internal vs arxiv vs guidelines).
+    """
+    return JSONResponse({"tags": _manifest().all_tags()})
+
+
+class TagUpdateRequest(BaseModel):
+    doc_id: str
+    manual_tags: list[str]
+
+
+@app.post("/api/tags")
+def set_tags(req: TagUpdateRequest):
+    """Set a document's curated tags. Folder-derived tags are untouched — a
+    re-ingest refreshes those and must never clobber hand curation."""
+    manifest = _manifest()
+    entry = manifest.set_manual_tags(req.doc_id, req.manual_tags)
+    if entry is None:
+        return JSONResponse({"error": f"unknown document '{req.doc_id}'"}, status_code=404)
+    return JSONResponse({"doc_id": entry.doc_id, "tags": entry.effective_tags,
+                         "manual_tags": entry.manual_tags})
+
+
 @app.get("/api/documents")
 def get_documents():
     # Use the default index module to find where indices live
     index_mod = _load_module("index", _module_defaults()["index"])
     index_dir = getattr(index_mod, "INDEX_DIR", Path("index"))
+    manifest = _manifest()
     docs = []
     for idx in sorted(index_dir.glob("*.json")):
         # The frontend consumes a bare node array; the on-disk format wraps it
         # with build provenance (see pageindex.read_index_file).
         tree = _pi.read_index_file(idx)["nodes"]
         nodes = [_node_from_dict(d) for d in tree]
+        entry = manifest.get(idx.stem)
         docs.append({
             "name": idx.stem,
+            "doc_id": idx.stem,
+            "title": entry.title if entry else idx.stem,
+            "tags": entry.effective_tags if entry else [],
             "leaf_count": _count_leaves(nodes),
             "tree": tree,
         })
@@ -1007,6 +1044,8 @@ def explain_node(req: ExplainRequest):
 class RunRequest(BaseModel):
     test_id: Optional[str] = None
     query: Optional[str] = None
+    # Restrict retrieval to documents carrying ANY of these tags. Empty = all.
+    tags: Optional[list[str]] = None
     # Module selections — default to pipeline defaults when not supplied
     ingest_module: Optional[str] = None
     index_module:  Optional[str] = None
@@ -1054,7 +1093,7 @@ def _iter_tree(nodes):
         yield from _iter_tree(n.get("children", []))
 
 
-def _run_retrieval(query: str, index_mod, ctx=None) -> tuple[dict, object]:
+def _run_retrieval(query: str, index_mod, ctx=None, tags=None) -> tuple[dict, object]:
     """Two-phase retrieval across every indexed document. Shared by /api/run
     (retrieval tab) and /api/chat (chatbot tab) so both drive the same live
     treemap/progress state.
@@ -1067,8 +1106,15 @@ def _run_retrieval(query: str, index_mod, ctx=None) -> tuple[dict, object]:
 
     # Parse each index exactly once: the leaf count (progress denominator) and
     # the raw tree returned to the frontend both come from this one read.
+    # Tag filtering happens HERE, before anything else: skipping a document
+    # costs nothing, whereas every document that survives this line will cost
+    # LLM calls. It is the cheapest defence against corpus growth there is.
+    allowed = _manifest().filter_docs(tags) if tags else None
+
     trees: dict[str, list] = {}
     for idx in sorted(index_dir.glob("*.json")):
+        if allowed is not None and idx.stem not in allowed:
+            continue
         try:
             trees[idx.stem] = _pi.read_index_file(idx)["nodes"]
         except (OSError, json.JSONDecodeError) as exc:
@@ -1175,7 +1221,7 @@ def run_query(req: RunRequest):
     except Exception as exc:
         return JSONResponse({"error": f"Could not load index module '{index_mod_name}': {exc}"}, status_code=400)
 
-    results, ctx = _run_retrieval(query, index_mod)
+    results, ctx = _run_retrieval(query, index_mod, tags=req.tags)
 
     test_result = _eval_test(test, results) if test else None
     return JSONResponse({
@@ -1291,6 +1337,7 @@ def chat_config():
 class ChatRequest(BaseModel):
     query: str
     index_module: Optional[str] = None
+    tags: Optional[list[str]] = None
 
 
 @app.post("/api/chat")
@@ -1318,7 +1365,7 @@ def chat(req: ChatRequest):
 
     _set_chat_phase("retrieval", "Reading the document trees…")
     try:
-        results, ctx = _run_retrieval(query, index_mod)
+        results, ctx = _run_retrieval(query, index_mod, tags=req.tags)
         budget = _budget_payload(ctx, results)
 
         # Flatten retrieved nodes into numbered sources (stable order: doc, tree order)

@@ -37,6 +37,8 @@ MODULE_INFO = {
     "source": "pdf_folder",
 }
 
+from modules.ingest._manifest import discover_files
+
 ROOT = Path(__file__).resolve().parents[2]
 KB_DIR = ROOT / "knowledge_base"
 OUT_DIR = ROOT / ".betteringest_out"        # BetterIngest working area (crops, raw md)
@@ -85,11 +87,11 @@ def run(source_dir: str | None = None, progress=None,
     if source_dir:
         set_source_dir(str(src))
 
-    pdfs = sorted(src.glob("*.pdf"))
+    pdfs = discover_files(src, (".pdf",))
     if not pdfs:
-        raise FileNotFoundError(f"No PDF files found in {src}/")
+        raise FileNotFoundError(f"No PDF files found under {src}/")
 
-    return _ingest_pdfs(pdfs, progress, caption_backend, caption_model)
+    return _ingest_pdfs(pdfs, progress, caption_backend, caption_model, root=src)
 
 
 def run_paths(paths: list[str], progress=None,
@@ -100,22 +102,31 @@ def run_paths(paths: list[str], progress=None,
     untouched; a re-ingested stem is overwritten). Powers the Library's
     “＋ Add PDFs” affordance."""
     pdfs: list[Path] = []
+    roots: dict[Path, Path] = {}     # pdf -> the folder its tags derive from
     for raw in paths:
         p = Path(raw).expanduser()
         if p.is_file() and p.suffix.lower() == ".pdf":
             pdfs.append(p)
+            # A single file dropped in has no folder context of its own; tag
+            # it from its parent so it is not left untagged.
+            roots[p.resolve()] = p.parent
         elif p.is_dir():
-            pdfs.extend(sorted(p.glob("*.pdf")))
+            found = discover_files(p, (".pdf",))
+            pdfs.extend(found)
+            for f in found:
+                roots[f.resolve()] = p
         else:
             raise FileNotFoundError(f"Not a PDF file or folder: {p}")
     if not pdfs:
         raise FileNotFoundError("No PDF files found in the given path(s).")
-    return _ingest_pdfs(pdfs, progress, caption_backend, caption_model)
+    return _ingest_pdfs(pdfs, progress, caption_backend, caption_model, roots=roots)
 
 
 def _ingest_pdfs(pdfs: list[Path], progress=None,
                  caption_backend: str | None = None,
-                 caption_model: str | None = None) -> dict:
+                 caption_model: str | None = None,
+                 root: Path | None = None,
+                 roots: dict | None = None) -> dict:
     import os
 
     # Pre-flight: the layout model needs the Paddle engine.  Fail with a clear,
@@ -135,11 +146,13 @@ def _ingest_pdfs(pdfs: list[Path], progress=None,
     from modules.ingest._betteringest import BetterIngest
     from modules.ingest._captioning import CaptioningUnavailable, caption_assets
     from modules.ingest._massage import massage
+    from modules.ingest._manifest import Manifest
 
     backend = caption_backend or os.environ.get("BETTERINGEST_CAPTION_BACKEND",
                                                 "ollama")
     KB_DIR.mkdir(exist_ok=True)
     bi = BetterIngest(out_dir=OUT_DIR, cache_dir=OCR_CACHE_DIR)
+    manifest = Manifest(KB_DIR)
     sources = _load_sources()
     warnings: list[str] = []
     done_stems: list[str] = []
@@ -151,7 +164,13 @@ def _ingest_pdfs(pdfs: list[Path], progress=None,
             progress(info)
 
     for i, pdf in enumerate(pdfs):
-        stem = pdf.stem
+        # The id comes from the path relative to the ingest root, not the bare
+        # filename: recursion makes "internal/report.pdf" and "arxiv/report.pdf"
+        # collide otherwise, and the second would silently replace the first.
+        pdf_root = (roots or {}).get(pdf.resolve(), root)
+        entry = manifest.register(source_path=pdf, root=pdf_root,
+                                  ingest_module=MODULE_INFO["name"])
+        stem = entry.doc_id
         report("ocr", stem, i, f"Reconstructing {pdf.name} (layout OCR + hierarchy)…")
         doc = bi.ingest(pdf)
 
@@ -182,6 +201,12 @@ def _ingest_pdfs(pdfs: list[Path], progress=None,
         }
         SOURCES_MANIFEST.write_text(
             json.dumps(sources, indent=2, ensure_ascii=False), encoding="utf-8")
+        # The same provenance, on the manifest that also carries tags.
+        manifest.register(source_path=pdf, root=pdf_root,
+                          ingest_module=MODULE_INFO["name"], doc_id=stem,
+                          extra={"pdf": str(pdf.resolve()),
+                                 "ocr_scale": doc.ocr_scale,
+                                 "assets": [a.to_dict() for a in doc.assets]})
         done_stems.append(stem)
         print(f"  {pdf.name} → {KB_DIR / (stem + '.md')} "
               f"({len(doc.assets)} assets)")
