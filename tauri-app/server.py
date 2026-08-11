@@ -568,7 +568,7 @@ def facet_precompute():
                 leaves = _pi._collect_leaves(_pi.load_index_nodes(stem))
                 report = app_choices.precompute_document(
                     stem, leaves, index_dir,
-                    lambda prompt: _pi._chat(prompt),
+                    lambda prompt: _pi._chat(prompt, kind="facet"),
                     _pi._parse_json_response, _pi.MODEL)
                 with _facet_lock:
                     _facet_state["calls"] += report["calls"]
@@ -1620,6 +1620,7 @@ def chat(req: ChatRequest):
                 model=getattr(_pi, "SYNTHESIS_MODEL", _pi.MODEL),
                 messages=[{"role": "user", "content": prompt}],
                 options=app_config.chat_options("agent"),
+                keep_alive=app_config.keep_alive(),
             )
             app_tokens.observe(prompt, int(response.get("prompt_eval_count") or 0))
             answer_text = response["message"]["content"]

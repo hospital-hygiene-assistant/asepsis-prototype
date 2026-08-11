@@ -143,3 +143,64 @@ class TestRequestModelParity:
         for obj in (run, chat):
             for attr in ("tags", "selected_answers", "use_cache"):
                 getattr(obj, attr)
+
+
+class TestThinkingControl:
+    """gemma4 reasons before answering. Left on, it spent ~300 tokens working
+    out how to summarise one paragraph (15.3s vs 2.3s with it off).
+
+    The trap this guards: capping num_predict WITHOUT disabling thinking
+    truncates the model mid-reasoning, so it emits no content at all and every
+    summary silently falls back to the heuristic. That is a quiet, total
+    quality failure, not a visible error.
+    """
+
+    @pytest.mark.parametrize("kind", ["summary", "prune", "facet", "retrieval"])
+    def test_recognition_tasks_do_not_think(self, kind):
+        assert app_config.think_for(kind) is False
+
+    def test_the_final_answer_still_thinks(self):
+        assert app_config.think_for("agent") is True, (
+            "reasoning earns its keep on the cited answer, not on routing")
+
+    def test_every_thinking_kind_has_room_to_finish(self):
+        """A kind that thinks must not carry a cap so tight that reasoning
+        eats the whole budget and leaves nothing for the answer."""
+        for kind, thinks in app_config.THINK.items():
+            if thinks:
+                assert app_config.NUM_PREDICT[kind] >= 1000, (
+                    f"'{kind}' thinks but is capped at "
+                    f"{app_config.NUM_PREDICT[kind]} tokens — reasoning would "
+                    f"consume it before any content is emitted")
+
+    def test_chat_passes_think_through(self, fake_ollama, monkeypatch):
+        import pageindex
+        seen = {}
+
+        class Recording:
+            def chat(self, **kw):
+                seen.update(kw)
+                return {"message": {"content": "ok"}, "prompt_eval_count": 1}
+
+        monkeypatch.setattr(pageindex, "_round_robin_client",
+                            lambda: (Recording(), "u"))
+        pageindex._chat("hello", kind="summary")
+        assert seen["think"] is False
+        pageindex._chat("hello", kind="agent")
+        assert seen["think"] is True
+
+    def test_models_without_think_support_still_work(self, monkeypatch):
+        """Rejecting `think` must degrade to a plain call, not fail the run."""
+        import pageindex
+        calls = []
+
+        class Fussy:
+            def chat(self, **kw):
+                calls.append(kw)
+                if "think" in kw:
+                    raise ValueError("unknown parameter: think")
+                return {"message": {"content": "ok"}, "prompt_eval_count": 1}
+
+        monkeypatch.setattr(pageindex, "_round_robin_client", lambda: (Fussy(), "u"))
+        assert pageindex._chat("hello", kind="summary") == "ok"
+        assert len(calls) == 2 and "think" not in calls[1]

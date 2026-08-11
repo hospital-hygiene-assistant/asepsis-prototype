@@ -18,6 +18,7 @@ import os
 import re
 import sys
 import threading
+import time
 import uuid
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
@@ -664,13 +665,52 @@ def _summarise_node(node: PageNode, breadcrumb: str) -> tuple[str, str]:
             .replace("CHILDREN_PLACEHOLDER", children_block)
         )
 
-    raw = _chat(prompt)
+    raw = _chat(prompt, kind="summary", model=_summary_model())
     text = re.sub(r"<think>.*?</think>", "", raw, flags=re.DOTALL)
     text = re.sub(r"^```.*?$", "", text, flags=re.MULTILINE)
     text = " ".join(text.split()).strip().strip('"')
     if not text:
         return _generate_summary(node), "heuristic"
     return text, "llm"
+
+
+def _nodes_by_depth(
+    nodes: list[PageNode], depth: int = 0,
+    out: Optional[dict] = None, breadcrumb: str = "",
+) -> dict[int, list[tuple[PageNode, str]]]:
+    """Group every node by its depth, carrying its breadcrumb."""
+    out = out if out is not None else {}
+    for node in nodes:
+        path = f"{breadcrumb} > {node.title}" if breadcrumb else node.title
+        out.setdefault(depth, []).append((node, path))
+        _nodes_by_depth(node.children, depth + 1, out, path)
+    return out
+
+
+def _summarise_one(node: PageNode, path: str, previous: Optional[dict]) -> tuple[str, str, Optional[str]]:
+    """Summarise a single node. Returns (summary, source, error)."""
+    node.content_hash = _summary_hash(node)
+    prior = (previous or {}).get(node.node_id) or {}
+    # Compare against the model that actually WRITES summaries, which may be a
+    # lighter one than the retrieval model. Comparing against MODEL would let a
+    # change of summary model silently reuse the old model's summaries.
+    summary_model = _summary_model()
+    reusable = (
+        prior.get("summary")
+        and prior.get("contentHash") == node.content_hash
+        and prior.get("summaryModel") == summary_model
+        and prior.get("summaryPromptVersion") == _summary_prompt_version()
+        and prior.get("summarySource") == "llm"
+    )
+    if reusable:
+        return prior["summary"], "reused", None
+    try:
+        summary, source = _summarise_node(node, path)
+        return summary, source, None
+    except Exception as exc:
+        # Flagged, never silent: the index stays valid on the heuristic,
+        # and the caller reports that summaries are degraded.
+        return _generate_summary(node), "heuristic", str(exc)
 
 
 def _populate_summaries(
@@ -680,6 +720,7 @@ def _populate_summaries(
     use_llm: bool = False,
     breadcrumb: str = "",
     stats: Optional[dict] = None,
+    progress=None,
 ) -> None:
     """Bottom-up summary generation (leaves first, then internal).
 
@@ -688,49 +729,66 @@ def _populate_summaries(
     summary input actually changed since `previous`, so re-indexing an
     unchanged document costs zero LLM calls, and editing one leaf re-summarises
     that leaf and its ancestor chain alone.
+
+    Nodes at the same depth are summarised CONCURRENTLY. A node's summary
+    depends only on its children's, which are strictly deeper, so processing
+    depth-by-depth from the bottom keeps the dependency order exact while
+    letting each level's calls overlap. Doing this one node at a time made
+    indexing take the sum of every call's latency.
     """
     stats = stats if stats is not None else {}
-    for node in nodes:
-        path = f"{breadcrumb} > {node.title}" if breadcrumb else node.title
-        if node.children:
-            _populate_summaries(node.children, previous, use_llm=use_llm,
-                                breadcrumb=path, stats=stats)
 
-        if not use_llm:
+    if not use_llm:
+        for node in nodes:
+            if node.children:
+                _populate_summaries(node.children, previous, use_llm=False,
+                                    stats=stats)
             node.summary = _generate_summary(node)
-            continue
+        return
 
-        node.content_hash = _summary_hash(node)
-        prior = (previous or {}).get(node.node_id) or {}
-        reusable = (
-            prior.get("summary")
-            and prior.get("contentHash") == node.content_hash
-            and prior.get("summaryModel") == MODEL
-            and prior.get("summaryPromptVersion") == _summary_prompt_version()
-            and prior.get("summarySource") == "llm"
-        )
-        if reusable:
-            node.summary = prior["summary"]
-            node.summary_source = "llm"
-            node.summary_model = prior.get("summaryModel")
-            node.summary_prompt_version = prior.get("summaryPromptVersion")
-            stats["reused"] = stats.get("reused", 0) + 1
-            continue
+    by_depth = _nodes_by_depth(nodes, breadcrumb=breadcrumb)
+    pool = work_pool()
+    total = sum(len(v) for v in by_depth.values())
+    done = 0
 
-        try:
-            summary, source = _summarise_node(node, path)
-        except Exception as exc:
-            # Flagged, never silent: the index stays valid on the heuristic,
-            # and the caller reports that summaries are degraded.
-            summary, source = _generate_summary(node), "heuristic"
-            stats.setdefault("errors", []).append(f"{node.node_id}: {exc}")
+    for depth in sorted(by_depth, reverse=True):     # deepest first
+        level = by_depth[depth]
+        futures = [(node, pool.submit(_summarise_one, node, path, previous))
+                   for node, path in level]
+        for node, future in futures:
+            summary, source, error = future.result()
+            node.summary = summary
+            if error:
+                stats.setdefault("errors", []).append(f"{node.node_id}: {error}")
+            summary_model = _summary_model()
+            if source == "reused":
+                node.summary_source = "llm"
+                node.summary_model = summary_model
+                node.summary_prompt_version = _summary_prompt_version()
+                stats["reused"] = stats.get("reused", 0) + 1
+            else:
+                node.summary_source = source
+                node.summary_model = summary_model if source == "llm" else None
+                node.summary_prompt_version = (
+                    _summary_prompt_version() if source == "llm" else None)
+                key = "generated" if source == "llm" else "heuristic"
+                stats[key] = stats.get(key, 0) + 1
+            done += 1
+            if progress:
+                progress({"node": node.node_id, "title": node.title,
+                          "depth": depth, "done": done, "total": total,
+                          "source": source})
 
-        node.summary = summary
-        node.summary_source = source
-        node.summary_model = MODEL if source == "llm" else None
-        node.summary_prompt_version = _summary_prompt_version() if source == "llm" else None
-        stats["generated" if source == "llm" else "heuristic"] = (
-            stats.get("generated" if source == "llm" else "heuristic", 0) + 1)
+
+def _summary_model() -> str:
+    """The model that writes summaries.
+
+    `MODEL` stays the single authority for the retrieval model (the server
+    assigns it, and tests patch it); config's `summary_model` is an optional
+    override for pointing summarisation at something lighter, since it is a
+    much easier task than the retrieval judgements.
+    """
+    return app_config.runtime().summary_model or MODEL
 
 
 def _summary_prompt_version() -> int:
@@ -969,17 +1027,33 @@ def _chat(prompt: str, client: Optional[ollama.Client] = None, url: str = "",
     """
     if client is None:
         client, url = _round_robin_client()
-    response = client.chat(
-        model=model or MODEL,
-        messages=[{"role": "user", "content": prompt}],
-        options=app_config.chat_options(kind),
-    )
+    response = _chat_call(client, model or MODEL, prompt, kind)
     # Real token count of the prompt we just sent — calibrates the estimator.
     try:
         app_tokens.observe(prompt, int(response.get("prompt_eval_count") or 0))
     except (TypeError, ValueError, AttributeError):
         pass
     return response["message"]["content"]
+
+
+def _chat_call(client: ollama.Client, model: str, prompt: str, kind: str):
+    """One chat request, with thinking disabled where it buys nothing.
+
+    Models that do not support the `think` parameter reject it, so the call
+    falls back to a plain request rather than failing the whole run.
+    """
+    kwargs = {
+        "model": model,
+        "messages": [{"role": "user", "content": prompt}],
+        "options": app_config.chat_options(kind),
+        "keep_alive": app_config.keep_alive(),
+    }
+    try:
+        return client.chat(think=app_config.think_for(kind), **kwargs)
+    except Exception as exc:
+        if "think" not in str(exc).lower():
+            raise
+        return client.chat(**kwargs)
 
 
 def _parse_json_response(raw: str) -> object:
@@ -1146,7 +1220,7 @@ def _previous_summaries(doc_name: str) -> dict[str, dict]:
 
 
 def build_index(doc_name: str, *, use_llm_summaries: bool = True,
-                progress=None) -> dict:
+                progress=None, verbose: bool = False) -> dict:
     """Parse and index a single document from knowledge_base/.
 
     Structure parsing is deterministic; summaries are LLM-generated, computed
@@ -1175,7 +1249,31 @@ def build_index(doc_name: str, *, use_llm_summaries: bool = True,
     previous = _previous_summaries(doc_name) if use_llm_summaries else {}
     if progress:
         progress({"phase": "summarise", "doc": doc_name})
-    _populate_summaries(nodes, previous, use_llm=use_llm_summaries, stats=stats)
+
+    node_total = len(_collect_all_nodes(nodes))
+    started = time.time()
+
+    def _report(info: dict) -> None:
+        if progress:
+            progress({"phase": "summarise", "doc": doc_name, **info})
+        if not verbose:
+            return
+        done, total = info["done"], info["total"]
+        elapsed = time.time() - started
+        rate = done / elapsed if elapsed > 0 else 0
+        eta = (total - done) / rate if rate > 0 else 0
+        mark = {"llm": "+", "reused": "=", "heuristic": "!"}.get(info["source"], "?")
+        title = info["title"][:44]
+        print(f"      [{done:>3}/{total}] {mark} {title:<44s} "
+              f"{elapsed:5.1f}s elapsed, ~{eta:4.0f}s left", flush=True)
+
+    if verbose:
+        print(f"    {node_total} nodes to summarise "
+              f"({len(_collect_leaves(nodes))} leaves), "
+              f"{pool_size()} call(s) in flight at a time", flush=True)
+
+    _populate_summaries(nodes, previous, use_llm=use_llm_summaries,
+                        stats=stats, progress=_report)
 
     INDEX_DIR.mkdir(parents=True, exist_ok=True)
     index_path = index_path_for(doc_name)
@@ -1183,7 +1281,7 @@ def build_index(doc_name: str, *, use_llm_summaries: bool = True,
         json.dumps({
             "formatVersion": app_config.INDEX_FORMAT_VERSION,
             "doc": doc_name,
-            "summaryModel": MODEL if use_llm_summaries else None,
+            "summaryModel": _summary_model() if use_llm_summaries else None,
             "summaryPromptVersion": _summary_prompt_version(),
             "nodes": [_node_to_dict(n) for n in nodes],
         }, indent=2, ensure_ascii=False),
@@ -1193,6 +1291,7 @@ def build_index(doc_name: str, *, use_llm_summaries: bool = True,
     leaves = _collect_leaves(nodes)
     report = {
         "doc": doc_name,
+        "seconds": round(time.time() - started, 1),
         "nodes": len(_collect_all_nodes(nodes)),
         "leaves": len(leaves),
         "summaries_generated": stats.get("generated", 0),
@@ -1338,7 +1437,7 @@ def _select_children(
         )
         _inc(client_url)
         try:
-            raw = _chat(prompt, client, client_url)
+            raw = _chat(prompt, client, client_url, kind="prune")
             result = _parse_json_response(raw)
             entries = result.get("keep", []) if isinstance(result, dict) else result
             if not isinstance(entries, list):

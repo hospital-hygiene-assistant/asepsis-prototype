@@ -66,18 +66,51 @@ def cmd_index(args) -> None:
     name = args.module or defaults()["index"]
     print(f"[index] using module: {name}")
     mod = load("index", name)
-    if args.doc:
-        mod.build_index(args.doc)
-    else:
-        index_dir = Path("knowledge_base")
-        docs = sorted(index_dir.glob("*.md"))
-        if not docs:
-            print("No documents found in knowledge_base/. Run 'pipeline.py ingest' first.")
-            sys.exit(1)
-        print(f"Building index for {len(docs)} documents...")
-        for p in docs:
-            mod.build_index(p.stem)
-        print("Done.")
+    import time
+
+    docs = ([Path(f"knowledge_base/{args.doc}.md")] if args.doc
+            else sorted(Path("knowledge_base").glob("*.md")))
+    if not docs:
+        print("No documents found in knowledge_base/. Run 'pipeline.py ingest' first.")
+        sys.exit(1)
+
+    # Indexing is the one expensive step: every node gets an LLM-written
+    # summary, once. Report enough that a long run is visibly progressing
+    # rather than looking hung.
+    print(f"\nBuilding index for {len(docs)} document(s).")
+    print("Each node is summarised once by the model; unchanged nodes are reused.")
+    print("Legend:  + generated   = reused   ! heuristic fallback\n")
+
+    # Not all index modules take `verbose`; ask the signature rather than
+    # catching TypeError, which would swallow a genuine TypeError raised
+    # inside build_index and then silently run the whole thing twice.
+    import inspect
+    try:
+        supports_verbose = "verbose" in inspect.signature(mod.build_index).parameters
+    except (TypeError, ValueError):
+        supports_verbose = False
+
+    started = time.time()
+    totals = {"generated": 0, "reused": 0, "heuristic": 0, "errors": 0}
+    for i, path in enumerate(docs, 1):
+        print(f"  [{i}/{len(docs)}] {path.stem}")
+        report = (mod.build_index(path.stem, verbose=True) if supports_verbose
+                  else mod.build_index(path.stem)) or {}
+        totals["generated"] += report.get("summaries_generated", 0)
+        totals["reused"]    += report.get("summaries_reused", 0)
+        totals["heuristic"] += report.get("summaries_heuristic", 0)
+        totals["errors"]    += len(report.get("errors") or [])
+        print(f"      done in {report.get('seconds', 0)}s — "
+              f"{report.get('summaries_generated', 0)} generated, "
+              f"{report.get('summaries_reused', 0)} reused\n", flush=True)
+
+    elapsed = time.time() - started
+    print(f"Done in {elapsed:.0f}s — {totals['generated']} summaries generated, "
+          f"{totals['reused']} reused, {totals['heuristic']} heuristic fallback(s).")
+    if totals["errors"]:
+        print(f"  {totals['errors']} summariser error(s); those nodes fell back to "
+              f"the heuristic and will be retried on the next index run.")
+    print("Re-running this on unchanged documents costs nothing.")
 
 
 def cmd_query(args) -> None:

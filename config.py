@@ -108,9 +108,13 @@ class RuntimeConfig:
     """
     retrieval_model: str = DEFAULT_RETRIEVAL_MODEL
     synthesis_model: str = DEFAULT_SYNTHESIS_MODEL
+    # Summarising is a much easier task than the retrieval judgements, so it
+    # can run on a smaller, faster model. Empty = use the retrieval model.
+    summary_model: str = ""
     retrieval_ctx: int = 0     # 0 → use the spec default
     agent_ctx: int = 0         # 0 → use the spec default
     concurrency_per_instance: int = 2
+    keep_alive: str = "10m"
     max_leaf_evals: int = 400  # wall-clock guard, independent of the token budget
     debug_cache_enabled: bool = False
 
@@ -180,11 +184,70 @@ def _save(cfg: RuntimeConfig) -> None:
         print(f"[config] could not persist runtime config: {exc}", file=sys.stderr)
 
 
+# Whether each call kind should let the model think before answering.
+#
+# gemma4 is a reasoning model: left alone it emits a long "Thinking Process"
+# block and only then the answer. Measured on gemma4:e4b, one summary call:
+#
+#     think=True    15.34s   341 tokens
+#     think=False    2.34s    42 tokens
+#
+# Nearly all of that time was reasoning about a task that does not need it.
+# Summarising a passage, judging a facet and picking child branches are
+# recognition tasks; the final answer is the one place reasoning earns its
+# keep, so it is the only kind that keeps thinking on.
+#
+# This also explains a trap: capping num_predict without disabling thinking
+# truncates the model mid-reasoning, so it emits NO content at all and every
+# summary silently falls back to the heuristic.
+THINK = {
+    "summary":   False,
+    "facet":     False,
+    "prune":     False,
+    "retrieval": False,
+    "agent":     True,
+}
+
+# Output-length caps, per call kind — a guard against runaway generation, not
+# a tuning knob. With thinking disabled a summary lands around 40 tokens, so
+# these are far above what any prompt needs; they exist so a degenerate
+# response cannot stall an index build. Truncating a JSON response mid-object
+# turns a good answer into a parse error, hence the generous headroom.
+NUM_PREDICT = {
+    "summary":   192,   # 1-2 sentences plus slack
+    "facet":     160,   # a short JSON list of answer ids
+    "prune":     640,   # JSON: kept child ids, each with a short reason
+    "retrieval": 512,   # JSON: relevance verdict, reason, verbatim quote
+    "agent":    1400,   # the four-section cited answer
+}
+
+
 def chat_options(kind: str = "retrieval", *, temperature: float = 0) -> dict:
-    """The `options` dict for an ollama chat call. `kind` is 'retrieval' or 'agent'."""
+    """The `options` dict for an ollama chat call.
+
+    `kind` selects both the context window ('agent' reasons over retrieved
+    passages and needs the big one; everything else is a retrieval-side call)
+    and the output cap.
+    """
     cfg = runtime()
     ctx = cfg.resolved_agent_ctx() if kind == "agent" else cfg.resolved_retrieval_ctx()
-    return {"temperature": temperature, "num_ctx": ctx}
+    return {"temperature": temperature, "num_ctx": ctx,
+            "num_predict": NUM_PREDICT.get(kind, NUM_PREDICT["retrieval"])}
+
+
+def think_for(kind: str) -> bool:
+    """Whether to let the model reason before answering, for this call kind."""
+    return THINK.get(kind, False)
+
+
+def keep_alive() -> str:
+    """How long Ollama should keep the model resident between calls.
+
+    This is a TOP-LEVEL parameter of the chat request, not an `options` key —
+    putting it in options silently does nothing. Indexing makes one call per
+    node, so a model unload between them would dwarf the calls themselves.
+    """
+    return runtime().keep_alive
 
 
 def describe() -> dict:
@@ -194,6 +257,10 @@ def describe() -> dict:
     return {
         "retrieval_model": cfg.retrieval_model,
         "synthesis_model": cfg.synthesis_model,
+        "summary_model": cfg.summary_model or cfg.retrieval_model,
+        "keep_alive": cfg.keep_alive,
+        "num_predict": dict(NUM_PREDICT),
+        "think": dict(THINK),
         "retrieval_ctx": cfg.resolved_retrieval_ctx(),
         "agent_ctx": cfg.resolved_agent_ctx(),
         "retrieval_ctx_max": r_spec.max_ctx,
