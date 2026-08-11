@@ -36,9 +36,9 @@ INDEX_FORMAT_VERSION = 2
 PROMPT_VERSIONS: dict[str, int] = {
     "leaf_summary": 1,
     "section_summary": 1,
-    "child_select": 1,
-    "leaf_eval": 1,
-    "explain": 1,
+    "child_select": 2,  # bumped: multi-part queries must not drop a part
+    "leaf_eval": 2,     # bumped: judge CONTRIBUTION, not whole-query answering
+    "explain": 2,       # bumped: same criterion as the evaluator
     "facet_leaf": 2,   # bumped: answer-id parsing was dropping every echoed id
     "synthesis": 1,
 }

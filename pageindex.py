@@ -941,8 +941,18 @@ def _collect_leaves(nodes: list[PageNode]) -> list[PageNode]:
 # LLM plumbing
 # ---------------------------------------------------------------------------
 
+# The criterion is CONTRIBUTION, not whole-query answering, and the difference
+# is not pedantic. The answer is composed from several passages, but each
+# passage is judged alone — so asking "does this answer the query?" of a
+# question with two parts rejects every passage, because no single passage
+# ever answers both. Observed exactly that: for "what lifestyle changes AND
+# which drug classes", the DASH-diet section was rejected with the reason
+# "the query asks for lifestyle changes AND drug classes, whereas this section
+# only discusses one specific dietary lifestyle change". The model was obeying
+# the instruction; the instruction was wrong.
 LEAF_EVAL_PROMPT = """\
-Decide if the section below directly answers the query. Read the full content carefully.
+Decide whether the section below helps answer the query, in whole OR in part.
+Read the full content carefully.
 
 Query: QUERY_PLACEHOLDER
 
@@ -955,12 +965,19 @@ CONTENT_PLACEHOLDER
 --- END ---
 
 Rules:
-- Answer YES only if the content directly and specifically addresses the query.
-- A section that is tangentially related or only mentions the topic in passing is NOT relevant.
+- The final answer is assembled from SEVERAL sections. Yours is one of them.
+  Judge whether this section contributes, not whether it answers everything.
+- A query may ask for several things at once ("X and Y", "when and how", a
+  list). A section covering ONE of them is relevant. Do NOT reject a section
+  for failing to cover the other parts — another section covers those.
+- Answer YES if the content gives specific, usable information for any part of
+  the query.
+- Answer NO only when the content is about a different subject, or merely
+  mentions the topic in passing without saying anything usable about it.
 - If YES, the quote must be copied character-for-character from the content above.
 
 Output exactly one of:
-  {"relevant": true,  "reason": "1-2 sentences: what in this content answers the query", "quote": "1-2 verbatim sentences from the content that best answer the query"}
+  {"relevant": true,  "reason": "1-2 sentences: which part of the query this content speaks to, and what it says", "quote": "1-2 verbatim sentences from the content that best serve that part of the query"}
   {"relevant": false}
 
 Output only the JSON object. No other text.
@@ -1008,6 +1025,9 @@ CHILDREN_PLACEHOLDER
 Rules:
 - Select every subsection that could plausibly contain an answer. It is much
   worse to miss a relevant subsection than to open an irrelevant one.
+- A query may ask for several things at once ("X and Y", "when and how"). The
+  answer is assembled from several subsections, so select the ones covering
+  EACH part — never drop a subsection because it covers only one of them.
 - Compare them against each other: prefer the ones whose summaries actually
   bear on the query.
 - If none of them bear on the query at all, select none.
@@ -1033,12 +1053,17 @@ CONTENT_PLACEHOLDER
 --- END ---
 
 First describe the section's actual topic, grounded strictly in the content above.
-Then judge whether it directly answers the query.
+Then judge whether it contributes to answering the query, in whole or in part.
+
+The answer is assembled from several sections, so a section that covers ONE
+part of a multi-part query does contribute — "it only covers part of what was
+asked" is not a reason for non-selection.
 
 Output exactly this JSON object:
   {"topic": "one factual sentence describing what this section actually covers", "addresses_query": false, "reason": "one sentence contrasting the section's topic with what the query asks for"}
 
-Set "addresses_query" to true ONLY if, on re-reading, the content does directly answer the query.
+Set "addresses_query" to true if, on re-reading, the content gives usable
+information for any part of the query.
 Output only the JSON object. No other text.
 """
 
