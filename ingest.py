@@ -1,30 +1,29 @@
 """
-Module 1: Ingest
-Copies docs from docs/ into knowledge_base/ unchanged.
-Exists as an explicit pipeline step for future hooks (OCR, format normalisation, etc.).
+Module 1: Ingest — standalone entry point.
+
+Kept because run-tauri.py and the docs invoke it directly, but the logic now
+lives in modules/ingest/basic_markdown.py so there is exactly one ingest
+implementation. Running this used to copy docs/*.md by filename, without
+recursing into sub-folders and without writing a manifest — a library built
+that way would have no document ids and no tags, and would behave differently
+from one built through the app.
+
+Usage:
+    python ingest.py                # ingest docs/ recursively
+    python ingest.py <folder>       # ingest another folder
 """
 
-import shutil
+import sys
 from pathlib import Path
 
-DOCS_DIR = Path("docs")
-KB_DIR = Path("knowledge_base")
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from modules.ingest.basic_markdown import DOCS_DIR, KB_DIR, run
 
 
-def ingest():
-    KB_DIR.mkdir(exist_ok=True)
-    docs = sorted(DOCS_DIR.glob("*.md"))
-    if not docs:
-        print(f"No markdown files found in {DOCS_DIR}/")
-        return
-
-    for src in docs:
-        dst = KB_DIR / src.name
-        shutil.copy2(src, dst)
-        print(f"  {src.name} → {dst}")
-
-    print(f"\nIngested {len(docs)} documents into {KB_DIR}/")
+def ingest(source_dir: str | None = None) -> dict:
+    return run(source_dir)
 
 
 if __name__ == "__main__":
-    ingest()
+    ingest(sys.argv[1] if len(sys.argv) > 1 else None)
