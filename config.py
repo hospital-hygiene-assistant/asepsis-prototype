@@ -113,7 +113,14 @@ class RuntimeConfig:
     summary_model: str = ""
     retrieval_ctx: int = 0     # 0 → use the spec default
     agent_ctx: int = 0         # 0 → use the spec default
-    concurrency_per_instance: int = 2
+    # How many requests we keep in flight per Ollama instance. Measured on
+    # gemma4:e4b with OLLAMA_NUM_PARALLEL=4: 8 calls took 11.4s sequential,
+    # 8.5s at 2 concurrent (1.33x), 5.6s at 4 concurrent (2.05x). GPU decode is
+    # memory-bandwidth-bound, so batched requests are close to free.
+    #
+    # This is capped by the SERVER's OLLAMA_NUM_PARALLEL, which defaults to 1
+    # — with that default, raising this changes nothing (see ollama_hint()).
+    concurrency_per_instance: int = 4
     keep_alive: str = "10m"
     max_leaf_evals: int = 400  # wall-clock guard, independent of the token budget
     debug_cache_enabled: bool = False
@@ -238,6 +245,15 @@ def chat_options(kind: str = "retrieval", *, temperature: float = 0) -> dict:
 def think_for(kind: str) -> bool:
     """Whether to let the model reason before answering, for this call kind."""
     return THINK.get(kind, False)
+
+
+OLLAMA_TUNING_HINT = (
+    "Ollama serves one request at a time unless told otherwise, which caps "
+    "indexing and retrieval at single-stream speed. To let it batch:\n"
+    "    launchctl setenv OLLAMA_NUM_PARALLEL 4\n"
+    "    launchctl setenv OLLAMA_FLASH_ATTENTION 1\n"
+    "then restart Ollama. Measured here: ~2x on summarisation."
+)
 
 
 def keep_alive() -> str:

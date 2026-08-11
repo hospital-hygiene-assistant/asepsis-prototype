@@ -60,6 +60,17 @@ if ! ollama list 2>/dev/null | grep -q "^${MODEL}[[:space:]]"; then
   ollama pull "$MODEL" || die "Could not pull '"'"'$MODEL'"'"'. Check the tag exists (\`ollama pull $MODEL\`) or set a different model in config.py, then retry."
 fi
 
+# Ollama serves one request at a time by default, which caps indexing and
+# retrieval at single-stream speed. Measured on this project: ~2x faster with
+# batching enabled. Only a hint — changing a user's system-wide environment
+# without asking would be overstepping.
+if [ "$(launchctl getenv OLLAMA_NUM_PARALLEL 2>/dev/null)" = "" ]; then
+  say "Tip: Ollama is set to one request at a time. For ~2x faster indexing:"
+  say "     launchctl setenv OLLAMA_NUM_PARALLEL 4"
+  say "     launchctl setenv OLLAMA_FLASH_ATTENTION 1"
+  say "     …then restart Ollama."
+fi
+
 # ── 4 · Launch ────────────────────────────────────────────────
 say "Starting the app…"
 echo
