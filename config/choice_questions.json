@@ -1,0 +1,74 @@
+{
+  "version": 1,
+  "questions": [
+    {
+      "id": "q_setting",
+      "prompt": "Where is the patient being treated?",
+      "multi_select": true,
+      "help_text": "Placeholder \u2014 replace with real triage questions.",
+      "answers": [
+        {
+          "id": "q_setting__icu",
+          "label": "Intensive care",
+          "facet": "critical care, intensive care, ventilated or unstable patients"
+        },
+        {
+          "id": "q_setting__ward",
+          "label": "General ward",
+          "facet": "general inpatient ward care"
+        },
+        {
+          "id": "q_setting__community",
+          "label": "Community / outpatient",
+          "facet": "primary care, outpatient or community management"
+        }
+      ]
+    },
+    {
+      "id": "q_population",
+      "prompt": "Which population?",
+      "multi_select": true,
+      "help_text": "Placeholder \u2014 replace with real triage questions.",
+      "answers": [
+        {
+          "id": "q_population__adult",
+          "label": "Adults",
+          "facet": "adult patients"
+        },
+        {
+          "id": "q_population__paediatric",
+          "label": "Children",
+          "facet": "paediatric, neonatal or adolescent patients"
+        },
+        {
+          "id": "q_population__pregnancy",
+          "label": "Pregnancy",
+          "facet": "pregnancy, obstetric or peripartum care"
+        }
+      ]
+    },
+    {
+      "id": "q_intent",
+      "prompt": "What are you trying to decide?",
+      "multi_select": true,
+      "help_text": "Placeholder \u2014 replace with real triage questions.",
+      "answers": [
+        {
+          "id": "q_intent__diagnosis",
+          "label": "Reach a diagnosis",
+          "facet": "diagnosis, investigation, testing or assessment"
+        },
+        {
+          "id": "q_intent__treatment",
+          "label": "Choose a treatment",
+          "facet": "treatment, therapy, drug choice or dosing"
+        },
+        {
+          "id": "q_intent__monitoring",
+          "label": "Monitor or follow up",
+          "facet": "monitoring, follow-up, complications or safety"
+        }
+      ]
+    }
+  ]
+}

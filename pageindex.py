@@ -26,6 +26,7 @@ from typing import Optional
 
 import ollama
 
+import choices
 import config as app_config
 import ranking
 import tokens as app_tokens
@@ -1527,13 +1528,51 @@ class DocCandidates:
     node_assignment: dict
     candidates: list["PageNode"]
     node_meta: dict
+    # {leaf_id: [answer_ids]} — which of the user's selections put this leaf
+    # in play. Under union semantics leaves genuinely differ here, so it is
+    # the informative part of the pre-filter.
+    choice_tags: dict = field(default_factory=dict)
 
 
-def prune_document(doc_name: str, query: str, ctx: Optional[RunContext] = None) -> DocCandidates:
-    """Phase 1 for one document: load the index and prune it top-down."""
+def prune_document(doc_name: str, query: str, ctx: Optional[RunContext] = None,
+                   selected_answers: Optional[list[str]] = None) -> DocCandidates:
+    """Phase 1 for one document: load the index and prune it top-down.
+
+    When the user has answered the multiple-choice questions, their selections
+    narrow the tree FIRST, using judgements precomputed at index time. That
+    costs no LLM calls at query time — it is a set lookup — and everything
+    outside the selection is recorded as pruned by the choice filter rather
+    than being silently absent.
+    """
     ctx = ctx or current_run()
     nodes = load_index_nodes(doc_name)
     leaves = _collect_leaves(nodes)
+
+    choice_tags: dict[str, list[str]] = {}
+    if selected_answers:
+        store = choices.FacetStore(INDEX_DIR, doc_name)
+        keep_leaf_ids = choices.selected_leaf_ids(store, leaves, selected_answers)
+        if keep_leaf_ids:
+            keep_ids = choices.ancestor_closure(nodes, keep_leaf_ids)
+            for node in _collect_all_nodes(nodes):
+                if node.node_id not in keep_ids:
+                    reason = ("Excluded by your answers to the pre-filter questions "
+                              "— this passage was not judged relevant to any of them.")
+                    ctx.mark(node.node_id, "pruned", reason)
+            for leaf in leaves:
+                if leaf.node_id not in keep_leaf_ids:
+                    ctx.inc_done()
+            nodes = choices.prune_tree_to(nodes, keep_ids)
+            leaves = _collect_leaves(nodes)
+            for leaf in leaves:
+                choice_tags[leaf.node_id] = choices.answers_for_leaf(
+                    store, leaf, selected_answers)
+        else:
+            # An empty selection would mean querying nothing at all. Fall back
+            # to the whole document and say so, rather than silently returning
+            # no evidence.
+            print(f"  [choices] {doc_name}: no leaves matched the selected answers "
+                  f"— using the whole document", file=sys.stderr)
 
     parent_map = _build_parent_map(nodes)
     nodes_by_id = _build_nodes_by_id(nodes)
@@ -1566,7 +1605,7 @@ def prune_document(doc_name: str, query: str, ctx: Optional[RunContext] = None) 
               file=sys.stderr)
 
     return DocCandidates(doc_name, nodes, leaves, parent_map, nodes_by_id,
-                         node_assignment, candidates, node_meta)
+                         node_assignment, candidates, node_meta, choice_tags)
 
 
 # Rough allowance for the synthesis prompt's own scaffolding (instructions,

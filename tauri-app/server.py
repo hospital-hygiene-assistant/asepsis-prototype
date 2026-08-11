@@ -16,6 +16,7 @@ from typing import Optional
 ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(ROOT))
 
+import choices as app_choices
 import config as app_config
 import tokens as app_tokens
 from modules.ingest._manifest import Manifest
@@ -483,6 +484,81 @@ def get_modules():
 
 def _manifest() -> Manifest:
     return Manifest(ROOT / "knowledge_base")
+
+
+# ---------------------------------------------------------------------------
+# Multiple-choice pre-filter
+#
+# The questions shown before the user types. Each answer maps to a set of
+# leaves judged relevant to it once, at index time; the selections are unioned
+# at query time. Precompute runs on its own RunContext so it can never disturb
+# the live visualisation of a query in flight.
+# ---------------------------------------------------------------------------
+
+_facet_lock = threading.Lock()
+_facet_state: dict = {"state": "idle", "doc": "", "done": 0, "total": 0,
+                      "calls": 0, "reused": 0, "message": "", "errors": []}
+
+
+@app.get("/api/choices")
+def get_choices():
+    qs = app_choices.load_questions()
+    return JSONResponse({**qs.to_dict(), "precompute": _facet_status()})
+
+
+def _facet_status() -> dict:
+    with _facet_lock:
+        return dict(_facet_state)
+
+
+@app.get("/api/choices/precompute")
+def facet_precompute_status():
+    return JSONResponse(_facet_status())
+
+
+@app.post("/api/choices/precompute")
+def facet_precompute():
+    """Judge every leaf against every question. Resumable and incremental:
+    unchanged leaves reuse their stored judgements."""
+    with _facet_lock:
+        if _facet_state["state"] == "running":
+            return JSONResponse({"error": "a precompute is already running"}, status_code=409)
+        _facet_state.update({"state": "running", "doc": "", "done": 0, "total": 0,
+                             "calls": 0, "reused": 0, "message": "Starting…",
+                             "errors": []})
+
+    index_dir = _index_dir()
+    stems = sorted(p.stem for p in index_dir.glob("*.json"))
+
+    def work():
+        # Its own context: a background job must not clobber a live query's
+        # progress or treemap.
+        ctx = _pi.new_run(make_current=False)
+        try:
+            for i, stem in enumerate(stems):
+                with _facet_lock:
+                    _facet_state.update({"doc": stem, "done": i, "total": len(stems),
+                                         "message": f"Judging {stem} ({i + 1}/{len(stems)})…"})
+                leaves = _pi._collect_leaves(_pi.load_index_nodes(stem))
+                report = app_choices.precompute_document(
+                    stem, leaves, index_dir,
+                    lambda prompt: _pi._chat(prompt),
+                    _pi._parse_json_response, _pi.MODEL)
+                with _facet_lock:
+                    _facet_state["calls"] += report["calls"]
+                    _facet_state["reused"] += report["reused"]
+                    _facet_state["errors"].extend(report["errors"][:20])
+            with _facet_lock:
+                _facet_state.update({"state": "done", "done": len(stems),
+                                     "message": "Pre-filter judgements ready"})
+        except Exception as exc:
+            with _facet_lock:
+                _facet_state.update({"state": "error", "message": str(exc)})
+        finally:
+            del ctx
+
+    threading.Thread(target=work, daemon=True).start()
+    return JSONResponse({"started": True, "docs": stems})
 
 
 @app.get("/api/tags")
@@ -1093,7 +1169,8 @@ def _iter_tree(nodes):
         yield from _iter_tree(n.get("children", []))
 
 
-def _run_retrieval(query: str, index_mod, ctx=None, tags=None) -> tuple[dict, object]:
+def _run_retrieval(query: str, index_mod, ctx=None, tags=None,
+                   selected_answers=None) -> tuple[dict, object]:
     """Two-phase retrieval across every indexed document. Shared by /api/run
     (retrieval tab) and /api/chat (chatbot tab) so both drive the same live
     treemap/progress state.
@@ -1135,7 +1212,8 @@ def _run_retrieval(query: str, index_mod, ctx=None, tags=None) -> tuple[dict, ob
 
     per_doc: dict[str, tuple] = {}
     if supports_two_phase:
-        futures = {pool.submit(index_mod.prune_document, doc_name, query, ctx): doc_name
+        futures = {pool.submit(index_mod.prune_document, doc_name, query, ctx,
+                               selected_answers): doc_name
                    for doc_name in trees}
         candidates = []
         for future, doc_name in futures.items():
@@ -1221,7 +1299,8 @@ def run_query(req: RunRequest):
     except Exception as exc:
         return JSONResponse({"error": f"Could not load index module '{index_mod_name}': {exc}"}, status_code=400)
 
-    results, ctx = _run_retrieval(query, index_mod, tags=req.tags)
+    results, ctx = _run_retrieval(query, index_mod, tags=req.tags,
+                                  selected_answers=req.selected_answers)
 
     test_result = _eval_test(test, results) if test else None
     return JSONResponse({
@@ -1338,6 +1417,7 @@ class ChatRequest(BaseModel):
     query: str
     index_module: Optional[str] = None
     tags: Optional[list[str]] = None
+    selected_answers: Optional[list[str]] = None
 
 
 @app.post("/api/chat")
@@ -1365,7 +1445,8 @@ def chat(req: ChatRequest):
 
     _set_chat_phase("retrieval", "Reading the document trees…")
     try:
-        results, ctx = _run_retrieval(query, index_mod, tags=req.tags)
+        results, ctx = _run_retrieval(query, index_mod, tags=req.tags,
+                                      selected_answers=req.selected_answers)
         budget = _budget_payload(ctx, results)
 
         # Flatten retrieved nodes into numbered sources (stable order: doc, tree order)
