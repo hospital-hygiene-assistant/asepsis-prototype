@@ -16,6 +16,8 @@ from typing import Optional
 ROOT = Path(__file__).parent.parent
 sys.path.insert(0, str(ROOT))
 
+import config as app_config
+import tokens as app_tokens
 import pageindex as _pi
 from pageindex import _node_from_dict
 from modules.registry import discover as _discover_modules, load as _load_module, defaults as _module_defaults
@@ -309,6 +311,8 @@ def get_status():
         "progress": _pi.get_progress(),
         "live":     _pi.get_live_events(),
         "chat":     chat_phase,
+        "pool":     {"workers": _pi.pool_size()},
+        "tokens":   app_tokens.calibration(),
     })
 
 
@@ -318,26 +322,49 @@ def get_config():
         "ollama_instances": len(_pi.OLLAMA_URLS),
         "ollama_urls": _pi.OLLAMA_URLS,
         "ollama_bin_available": _ollama_bin() is not None,
-        "retrieval_model": _pi.MODEL,
-        "synthesis_model": getattr(_pi, "SYNTHESIS_MODEL", _pi.MODEL),
+        **app_config.describe(),
     })
 
 
 class ConfigRequest(BaseModel):
-    ollama_instances: int
+    ollama_instances: Optional[int] = None
     retrieval_model: Optional[str] = None
     synthesis_model: Optional[str] = None
+    # Context windows, in tokens. The agent window is the one that decides how
+    # many retrieved passages survive to the answer (see the Phase-3 budget),
+    # so it is deliberately user-adjustable at runtime.
+    retrieval_ctx: Optional[int] = None
+    agent_ctx: Optional[int] = None
+    concurrency_per_instance: Optional[int] = None
+    max_leaf_evals: Optional[int] = None
+    debug_cache_enabled: Optional[bool] = None
 
 
 @app.post("/api/config")
 def post_config(req: ConfigRequest):
-    result = set_ollama_instances(req.ollama_instances)
+    result = (set_ollama_instances(req.ollama_instances)
+              if req.ollama_instances is not None else {})
+
+    prev_concurrency = app_config.runtime().concurrency_per_instance
+    app_config.update(
+        retrieval_model=req.retrieval_model,
+        synthesis_model=req.synthesis_model,
+        retrieval_ctx=req.retrieval_ctx,
+        agent_ctx=req.agent_ctx,
+        concurrency_per_instance=req.concurrency_per_instance,
+        max_leaf_evals=req.max_leaf_evals,
+        debug_cache_enabled=req.debug_cache_enabled,
+    )
     if req.retrieval_model:
         _pi.MODEL = req.retrieval_model
     if req.synthesis_model:
         _pi.SYNTHESIS_MODEL = req.synthesis_model
-    result["retrieval_model"] = _pi.MODEL
-    result["synthesis_model"] = getattr(_pi, "SYNTHESIS_MODEL", _pi.MODEL)
+    if (req.concurrency_per_instance is not None
+            and req.concurrency_per_instance != prev_concurrency):
+        _pi._reset_work_pool()
+
+    result.update(app_config.describe())
+    result["ollama_instances"] = len(_pi.OLLAMA_URLS)
     return JSONResponse(result)
 
 
@@ -898,33 +925,58 @@ class RunRequest(BaseModel):
     query_module:  Optional[str] = None
 
 
-def _run_retrieval(query: str, index_mod) -> dict:
+def _run_retrieval(query: str, index_mod, ctx=None) -> dict:
     """Two-phase retrieval across every indexed document. Shared by /api/run
     (retrieval tab) and /api/chat (chatbot tab) so both drive the same live
-    treemap/progress state."""
+    treemap/progress state.
+
+    Documents are retrieved in parallel through pageindex's shared bounded
+    pool — previously this loop was serial, so retrieval time grew linearly
+    with corpus size even when the Ollama instances were idle.
+    """
     index_dir = getattr(index_mod, "INDEX_DIR", Path("index"))
 
-    # Count total leaves across all docs so progress polling has a denominator
+    # Parse each index exactly once: the leaf count (progress denominator) and
+    # the raw tree returned to the frontend both come from this one read.
+    trees: dict[str, list] = {}
+    for idx in sorted(index_dir.glob("*.json")):
+        try:
+            trees[idx.stem] = json.loads(idx.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            print(f"[retrieval] skipping unreadable index {idx.name}: {exc}", file=sys.stderr)
+
     total_leaves = sum(
-        _count_leaves([_node_from_dict(d) for d in json.loads(idx.read_text(encoding="utf-8"))])
-        for idx in sorted(index_dir.glob("*.json"))
+        _count_leaves([_node_from_dict(d) for d in tree]) for tree in trees.values()
     )
-    _pi.start_run(total_leaves)
+    ctx = ctx or _pi.start_run(total_leaves)
+    ctx.set_total(total_leaves)
+
+    retrieve_fn = getattr(index_mod, "retrieve_with_metadata", None)
+
+    def _one(doc_name: str):
+        if retrieve_fn:
+            try:
+                return retrieve_fn(doc_name, query, ctx=ctx)
+            except TypeError:
+                # A third-party index module that predates the ctx parameter.
+                return retrieve_fn(doc_name, query)
+        return index_mod.retrieve(doc_name, query), {}
+
+    pool = _pi.work_pool()
+    futures = {pool.submit(_one, doc_name): doc_name for doc_name in trees}
 
     results = {}
-    for idx in sorted(index_dir.glob("*.json")):
-        doc_name = idx.stem
+    for future in futures:
+        doc_name = futures[future]
         try:
-            retrieve_fn = getattr(index_mod, "retrieve_with_metadata", None)
-            if retrieve_fn:
-                nodes, node_reasons = retrieve_fn(doc_name, query)
-            else:
-                nodes = index_mod.retrieve(doc_name, query)
-                node_reasons = {}
+            nodes, node_reasons = future.result()
         except FileNotFoundError:
             continue
+        except Exception as exc:
+            print(f"[retrieval] {doc_name} failed: {exc}", file=sys.stderr)
+            continue
 
-        raw_tree = json.loads(idx.read_text(encoding="utf-8"))
+        raw_tree = trees[doc_name]
         results[doc_name] = {
             "tree": raw_tree,
             "retrieved_ids": [n.node_id for n in nodes],
@@ -1060,11 +1112,13 @@ def chat_config():
     engine pool, with exactly which prompts — nothing hidden."""
     activity = _pi.get_activity()
     defs = _module_defaults()
+    cfg = app_config.describe()
     return JSONResponse({
         "model": _pi.MODEL,
         "retrieval_model": _pi.MODEL,
         "synthesis_model": getattr(_pi, "SYNTHESIS_MODEL", _pi.MODEL),
         "temperature": 0,
+        "context": cfg,
         "ollama_urls": _pi.OLLAMA_URLS,
         "ollama_instances": len(_pi.OLLAMA_URLS),
         "any_busy": any(v > 0 for v in activity.values()),
@@ -1154,8 +1208,9 @@ def chat(req: ChatRequest):
             response = client.chat(
                 model=getattr(_pi, "SYNTHESIS_MODEL", _pi.MODEL),
                 messages=[{"role": "user", "content": prompt}],
-                options={"temperature": 0},
+                options=app_config.chat_options("agent"),
             )
+            app_tokens.observe(prompt, int(response.get("prompt_eval_count") or 0))
             answer_text = response["message"]["content"]
             # Strip thought blocks
             answer_text = re.sub(r"<thought>.*?(</thought>|$)", "", answer_text, flags=re.S).strip()

@@ -17,6 +17,7 @@ import os
 import re
 import sys
 import threading
+import uuid
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -24,10 +25,16 @@ from typing import Optional
 
 import ollama
 
+import config as app_config
+import tokens as app_tokens
+
 KB_DIR = Path("knowledge_base")
 INDEX_DIR = Path("index")
-MODEL = "gemma3:4b"
-SYNTHESIS_MODEL = "gemma3:4b"
+
+# Kept as module attributes because the server and several modules read/assign
+# them (`_pi.MODEL`), but the source of truth is config.runtime().
+MODEL = app_config.DEFAULT_RETRIEVAL_MODEL
+SYNTHESIS_MODEL = app_config.DEFAULT_SYNTHESIS_MODEL
 
 # ---------------------------------------------------------------------------
 # Ollama instance pool — set OLLAMA_URLS=url1,url2,... for parallelism
@@ -47,20 +54,136 @@ _rr_index = 0
 _activity: dict[str, int] = {url: 0 for url in OLLAMA_URLS}
 _activity_lock = threading.Lock()
 
-# Run-level progress counter
-_prog_lock  = threading.Lock()
-_prog_total = 0
-_prog_done  = 0
+# ---------------------------------------------------------------------------
+# Per-run state
+#
+# This used to be a set of module-level globals, which meant two concurrent
+# retrievals silently overwrote each other's verdicts and progress. Everything
+# now lives in a RunContext threaded through the retrieval call chain; the
+# module-level helpers below delegate to the "current" run so the server's
+# /api/status shape is unchanged.
+# ---------------------------------------------------------------------------
 
-# Live event tracking for circle-pack animation
-_event_lock      = threading.Lock()
-_pruned_ids:     set[str] = set()   # section-pruned (and their descendants)
-_retrieved_ids:  set[str] = set()   # leaves whose LLM verdict was "relevant"
-_kept_ids:       set[str] = set()   # sections that passed the section check
-_rejected_ids:   set[str] = set()   # leaves evaluated but verdict was "not relevant"
-# Per-node decision detail, populated live as verdicts are made, so the doc
-# viewer can show reasons/quotes in real time mid-run: {node_id: {status, reason, quote}}
-_live_meta:      dict[str, dict] = {}
+# Terminal states a node can end a run in.
+#   kept       an internal section survived pruning
+#   pruned     the model judged the section incapable of answering
+#   retrieved  a leaf was evaluated and found relevant
+#   rejected   a leaf was evaluated and found NOT relevant
+#   deferred   a leaf was never evaluated — the agent's context budget ran out
+#   error      the call failed (parse/transport); NOT a judgement
+STATUSES = ("kept", "pruned", "retrieved", "rejected", "deferred", "error")
+
+
+@dataclass
+class BudgetState:
+    """How much of the agent's context the accepted nodes consumed."""
+    tokens_used: int = 0
+    tokens_max: int = 0
+    evaluated: int = 0
+    deferred: int = 0
+    capped_by: str = ""     # "", "context" or "max_evals"
+
+
+class RunContext:
+    """All mutable state for a single retrieval run."""
+
+    def __init__(self, run_id: Optional[str] = None, total_leaves: int = 0):
+        self.run_id = run_id or uuid.uuid4().hex[:12]
+        self.lock = threading.Lock()
+        self.events: dict[str, set[str]] = {s: set() for s in STATUSES}
+        self.meta: dict[str, dict] = {}
+        self.budget = BudgetState()
+        self._total = total_leaves
+        self._done = 0
+
+    # -- verdict recording --------------------------------------------------
+
+    def mark(self, node_id: str, status: str, reason: str = "",
+             quote: str = "", **extra) -> None:
+        """Record a node's verdict. A node may only hold one terminal status,
+        so a re-mark moves it out of its previous set."""
+        with self.lock:
+            for s, bucket in self.events.items():
+                if s != status:
+                    bucket.discard(node_id)
+            self.events.setdefault(status, set()).add(node_id)
+            entry = {"status": status, "reason": reason, "quote": quote}
+            entry.update(extra)
+            self.meta[node_id] = entry
+
+    def get_meta(self, node_id: str) -> dict:
+        with self.lock:
+            return dict(self.meta.get(node_id, {}))
+
+    # -- progress -----------------------------------------------------------
+
+    def set_total(self, total: int) -> None:
+        with self.lock:
+            self._total = total
+
+    def inc_done(self, n: int = 1) -> None:
+        with self.lock:
+            self._done += n
+
+    def progress(self) -> dict:
+        with self.lock:
+            return {"total": self._total, "done": self._done}
+
+    # -- snapshots ----------------------------------------------------------
+
+    def events_snapshot(self) -> dict:
+        with self.lock:
+            snap = {s: sorted(ids) for s, ids in self.events.items()}
+            snap["meta"] = {k: dict(v) for k, v in self.meta.items()}
+            snap["budget"] = dict(self.budget.__dict__)
+            return snap
+
+    def restore(self, snapshot: dict) -> None:
+        """Load a snapshot back in — used by the debug cache to replay a run
+        so the visualisation renders instead of coming up empty."""
+        with self.lock:
+            for s in STATUSES:
+                self.events[s] = set(snapshot.get(s, []))
+            self.meta = {k: dict(v) for k, v in (snapshot.get("meta") or {}).items()}
+            for k, v in (snapshot.get("budget") or {}).items():
+                if hasattr(self.budget, k):
+                    setattr(self.budget, k, v)
+
+
+_runs_lock = threading.Lock()
+_runs: dict[str, RunContext] = {}
+_current_run: Optional[RunContext] = None
+
+
+def new_run(total_leaves: int = 0, *, make_current: bool = True) -> RunContext:
+    """Create a run. Background jobs pass make_current=False so they cannot
+    disturb the live visualisation of a user-facing query."""
+    global _current_run
+    ctx = RunContext(total_leaves=total_leaves)
+    with _runs_lock:
+        _runs[ctx.run_id] = ctx
+        # Keep the registry from growing without bound across a long session.
+        if len(_runs) > 32:
+            for stale in list(_runs)[:-32]:
+                if _current_run is None or stale != _current_run.run_id:
+                    _runs.pop(stale, None)
+        if make_current:
+            _current_run = ctx
+    return ctx
+
+
+def current_run() -> RunContext:
+    global _current_run
+    with _runs_lock:
+        if _current_run is None:
+            _current_run = RunContext()
+            _runs[_current_run.run_id] = _current_run
+        return _current_run
+
+
+def get_run(run_id: str) -> Optional[RunContext]:
+    with _runs_lock:
+        return _runs.get(run_id)
 
 
 def _inc(url: str) -> None:
@@ -73,70 +196,26 @@ def _dec(url: str) -> None:
         _activity[url] = max(0, _activity.get(url, 0) - 1)
 
 
-def _inc_done() -> None:
-    global _prog_done
-    with _prog_lock:
-        _prog_done += 1
-
-
 def get_activity() -> dict[str, int]:
     with _activity_lock:
         return dict(_activity)
 
 
-def start_run(total_leaves: int) -> None:
-    global _prog_total, _prog_done
-    with _prog_lock:
-        _prog_total = total_leaves
-        _prog_done  = 0
-    with _event_lock:
-        _pruned_ids.clear()
-        _retrieved_ids.clear()
-        _kept_ids.clear()
-        _rejected_ids.clear()
-        _live_meta.clear()
+# ---------------------------------------------------------------------------
+# Back-compat façade over the current run (the server polls these).
+# ---------------------------------------------------------------------------
+
+def start_run(total_leaves: int) -> RunContext:
+    """Begin a new user-facing run and make it the one /api/status reports on."""
+    return new_run(total_leaves=total_leaves, make_current=True)
 
 
 def get_progress() -> dict[str, int]:
-    with _prog_lock:
-        return {"total": _prog_total, "done": _prog_done}
-
-
-def _mark_pruned(node_id: str) -> None:
-    with _event_lock:
-        _pruned_ids.add(node_id)
-
-
-def _mark_retrieved(node_id: str) -> None:
-    with _event_lock:
-        _retrieved_ids.add(node_id)
-
-
-def _mark_kept(node_id: str) -> None:
-    with _event_lock:
-        _kept_ids.add(node_id)
-
-
-def _mark_rejected(node_id: str) -> None:
-    with _event_lock:
-        _rejected_ids.add(node_id)
-
-
-def _set_live_meta(node_id: str, status: str, reason: str = "", quote: str = "") -> None:
-    """Record a node's decision detail as it happens, for live doc-viewer hover."""
-    with _event_lock:
-        _live_meta[node_id] = {"status": status, "reason": reason, "quote": quote}
+    return current_run().progress()
 
 
 def get_live_events() -> dict:
-    with _event_lock:
-        return {
-            "pruned":     list(_pruned_ids),
-            "retrieved":  list(_retrieved_ids),
-            "kept":       list(_kept_ids),
-            "rejected":   list(_rejected_ids),
-            "meta":       {k: dict(v) for k, v in _live_meta.items()},
-        }
+    return current_run().events_snapshot()
 
 
 def _round_robin_client() -> tuple[ollama.Client, str]:
@@ -160,6 +239,44 @@ def reconfigure_clients(urls: list[str]) -> None:
         _activity.clear()
         for u in urls:
             _activity[u] = 0
+    _reset_work_pool()
+
+
+# ---------------------------------------------------------------------------
+# Shared bounded worker pool
+#
+# Previously each fan-out built its own ThreadPoolExecutor sized to the number
+# of nodes — one thread per leaf, hundreds of threads all queueing on a couple
+# of Ollama instances. One process-wide pool, sized to what the instances can
+# actually absorb, replaces that; document-level and node-level fan-out share
+# it, so parallelising documents cannot multiply the thread count.
+# ---------------------------------------------------------------------------
+
+_pool_lock = threading.Lock()
+_work_pool: Optional[ThreadPoolExecutor] = None
+
+
+def pool_size() -> int:
+    per = max(1, app_config.runtime().concurrency_per_instance)
+    return max(1, len(_clients) * per)
+
+
+def work_pool() -> ThreadPoolExecutor:
+    global _work_pool
+    with _pool_lock:
+        if _work_pool is None:
+            _work_pool = ThreadPoolExecutor(
+                max_workers=pool_size(), thread_name_prefix="asepsis")
+        return _work_pool
+
+
+def _reset_work_pool() -> None:
+    """Rebuild the pool after the instance count or concurrency changes."""
+    global _work_pool
+    with _pool_lock:
+        old, _work_pool = _work_pool, None
+    if old is not None:
+        old.shutdown(wait=False)
 
 HEADING_RE = re.compile(r"^(#{1,6})\s+(.+)$")
 
@@ -480,26 +597,6 @@ def _node_from_dict(d: dict) -> PageNode:
 # TOC formatting
 # ---------------------------------------------------------------------------
 
-def _flatten_toc(nodes: list[PageNode], depth: int = 0) -> str:
-    """
-    Sections: single line  {indent}SECTION | id={nodeId} | {title}
-    Leaves:   header line + full content indented below
-    Full content lets the LLM read the actual text before deciding and quote verbatim.
-    """
-    lines = []
-    indent = "  " * depth
-    for node in nodes:
-        if node.is_leaf:
-            lines.append(f"{indent}LEAF | id={node.node_id} | {node.title}")
-            if node.content:
-                lines.append(f"{indent}  {node.content}")
-        else:
-            lines.append(f"{indent}SECTION | id={node.node_id} | {node.title}")
-            if node.children:
-                lines.append(_flatten_toc(node.children, depth + 1))
-    return "\n".join(l for l in lines if l)
-
-
 # ---------------------------------------------------------------------------
 # Tree traversal
 # ---------------------------------------------------------------------------
@@ -512,36 +609,6 @@ def _collect_leaves(nodes: list[PageNode]) -> list[PageNode]:
         else:
             leaves.extend(_collect_leaves(node.children))
     return leaves
-
-
-def _find_nodes_by_ids(nodes: list[PageNode], ids: set[str]) -> list[PageNode]:
-    """
-    For each node whose node_id is in ids:
-      - if leaf: return it
-      - if internal: return all its leaf descendants
-    Non-matching nodes are searched recursively.
-    Results are deduplicated by node_id.
-    """
-    seen: set[str] = set()
-    result: list[PageNode] = []
-
-    def _walk(node_list: list[PageNode]) -> None:
-        for node in node_list:
-            if node.node_id in ids:
-                if node.is_leaf:
-                    if node.node_id not in seen:
-                        seen.add(node.node_id)
-                        result.append(node)
-                else:
-                    for leaf in _collect_leaves(node.children):
-                        if leaf.node_id not in seen:
-                            seen.add(leaf.node_id)
-                            result.append(leaf)
-            else:
-                _walk(node.children)
-
-    _walk(nodes)
-    return result
 
 
 # ---------------------------------------------------------------------------
@@ -619,14 +686,34 @@ Output only the JSON object. No other text.
 """
 
 
-def _chat(prompt: str, client: Optional[ollama.Client] = None, url: str = "") -> str:
+# Appended on a retry after unparseable output. Small models sometimes wrap
+# JSON in prose on the first attempt and comply when told twice.
+_JSON_RETRY_SUFFIX = (
+    "\n\nIMPORTANT: your previous response could not be parsed. Reply with the "
+    "raw JSON object ONLY — no prose, no markdown fences, no explanation.\n"
+)
+
+
+def _chat(prompt: str, client: Optional[ollama.Client] = None, url: str = "",
+          *, kind: str = "retrieval", model: Optional[str] = None) -> str:
+    """One LLM call, with an explicit context window.
+
+    Passing `num_ctx` is not optional: without it Ollama applies its own
+    default (4096) and silently truncates anything longer, which loses
+    passages with no error anywhere.
+    """
     if client is None:
         client, url = _round_robin_client()
     response = client.chat(
-        model=MODEL,
+        model=model or MODEL,
         messages=[{"role": "user", "content": prompt}],
-        options={"temperature": 0},
+        options=app_config.chat_options(kind),
     )
+    # Real token count of the prompt we just sent — calibrates the estimator.
+    try:
+        app_tokens.observe(prompt, int(response.get("prompt_eval_count") or 0))
+    except (TypeError, ValueError, AttributeError):
+        pass
     return response["message"]["content"]
 
 
@@ -702,8 +789,15 @@ def _evaluate_leaf(
     parent_summary: str,
     client: Optional[ollama.Client] = None,
     client_url: str = "",
+    ctx: Optional[RunContext] = None,
 ) -> tuple[str, dict]:
-    """Evaluate one leaf. Returns (node_id, {relevant, reason, quote, status})."""
+    """Evaluate one leaf. Returns (node_id, {relevant, reason, quote, status}).
+
+    A call that fails or returns unparseable output is recorded as `error`,
+    never as `rejected`: a transport hiccup is not a judgement that the
+    passage is irrelevant, and silently downgrading it deletes evidence.
+    """
+    ctx = ctx or current_run()
     prompt = (
         LEAF_EVAL_PROMPT
         .replace("QUERY_PLACEHOLDER", query)
@@ -713,45 +807,42 @@ def _evaluate_leaf(
         .replace("CONTENT_PLACEHOLDER", leaf.content or "(no content)")
     )
     _inc(client_url)
+    last_error = ""
     try:
-        raw = _chat(prompt, client, client_url)
-        result = _parse_json_response(raw)
-        
-        if isinstance(result, dict):
-            relevant = bool(result.get("relevant"))
-            reason = str(result.get("reason") or "").strip()
-            quote = str(result.get("quote") or "").strip()
-            
-            if relevant:
-                _mark_retrieved(leaf.node_id)
-                _set_live_meta(leaf.node_id, "retrieved", reason, quote)
+        for attempt in range(2):
+            try:
+                attempt_prompt = prompt if attempt == 0 else prompt + _JSON_RETRY_SUFFIX
+                raw = _chat(attempt_prompt, client, client_url)
+                result = _parse_json_response(raw)
+                if not isinstance(result, dict):
+                    last_error = f"expected a JSON object, got {type(result).__name__}"
+                    continue
+
+                relevant = bool(result.get("relevant"))
+                reason = str(result.get("reason") or "").strip()
+                quote = str(result.get("quote") or "").strip()
+                status = "retrieved" if relevant else "rejected"
+                ctx.mark(leaf.node_id, status, reason, quote if relevant else "")
                 return leaf.node_id, {
-                    "relevant": True,
+                    "relevant": relevant,
                     "reason": reason,
-                    "quote": quote,
-                    "status": "retrieved"
+                    "quote": quote if relevant else "",
+                    "status": status,
                 }
-            else:
-                _mark_rejected(leaf.node_id)
-                _set_live_meta(leaf.node_id, "rejected", reason)
-                return leaf.node_id, {
-                    "relevant": False,
-                    "reason": reason,
-                    "quote": "",
-                    "status": "rejected"
-                }
-    except Exception as exc:
-        print(f"    [warn] leaf eval failed for {leaf.node_id}: {exc}", file=sys.stderr)
+            except Exception as exc:
+                last_error = str(exc)
+                print(f"    [warn] leaf eval attempt {attempt + 1} failed for "
+                      f"{leaf.node_id}: {exc}", file=sys.stderr)
     finally:
         _dec(client_url)
-    
-    _mark_rejected(leaf.node_id)
-    _set_live_meta(leaf.node_id, "rejected")
+
+    ctx.mark(leaf.node_id, "error", f"Evaluation failed: {last_error}")
     return leaf.node_id, {
         "relevant": False,
-        "reason": "",
+        "reason": f"Evaluation failed: {last_error}",
         "quote": "",
-        "status": "rejected"
+        "status": "error",
+        "error": last_error,
     }
 
 
@@ -805,8 +896,15 @@ def _check_section_relevant(
     breadcrumb: str,
     client: Optional[ollama.Client] = None,
     client_url: str = "",
+    ctx: Optional[RunContext] = None,
 ) -> tuple[bool, str]:
-    """Lightweight LLM call: can this section contain a direct answer?"""
+    """Lightweight LLM call: can this section contain a direct answer?
+
+    Errors keep the section (conservative — never prune on a failure), but are
+    recorded as `error` rather than a clean `kept` so the UI can distinguish a
+    decision from a failure.
+    """
+    ctx = ctx or current_run()
     descendants = _format_descendant_outline(node) or "(no subsections)"
     prompt = (
         SECTION_CHECK_PROMPT
@@ -822,15 +920,15 @@ def _check_section_relevant(
         reason = ""
         if isinstance(result, dict):
             reason = str(result.get("reason") or "").strip()
-        
+
         if verdict:
-            _mark_kept(node.node_id)
-            _set_live_meta(node.node_id, "kept", reason)
+            ctx.mark(node.node_id, "kept", reason)
 
         print(f"    [prune-check] {node.node_id}: {'KEEP' if verdict else 'PRUNE'} (raw={raw!r:.120})", file=sys.stderr)
         return verdict, reason
     except Exception as exc:
-        _mark_kept(node.node_id)
+        ctx.mark(node.node_id, "error",
+                 f"Section check failed, section kept as a precaution: {exc}")
         print(f"    [prune-check] {node.node_id}: ERROR ({exc}) — keeping", file=sys.stderr)
         return True, f"Error checking section: {exc}"  # conservative: never prune on error
     finally:
@@ -898,14 +996,17 @@ def _prune_and_collect(
     nodes_by_id: dict,
     node_assignment: dict[str, tuple],
     node_meta: dict[str, dict],
+    ctx: Optional[RunContext] = None,
 ) -> list["PageNode"]:
     """
     BFS top-down pruning. At each level, check all internal nodes in parallel;
     recurse only into relevant ones. Leaves always survive to full evaluation.
     Returns the list of leaf candidates that passed pruning.
     """
+    ctx = ctx or current_run()
     candidate_leaves: list["PageNode"] = []
     frontier = list(nodes)
+    pool = work_pool()
 
     while frontier:
         sections = [n for n in frontier if not n.is_leaf]
@@ -914,71 +1015,74 @@ def _prune_and_collect(
         if not sections:
             break
 
-        with ThreadPoolExecutor(max_workers=len(sections)) as pool:
-            futures = {
-                pool.submit(
-                    _check_section_relevant,
-                    node, query,
-                    _make_breadcrumb(node.node_id, parent_map, nodes_by_id),
-                    *node_assignment.get(node.node_id, (_clients[0], OLLAMA_URLS[0])),
-                ): node
-                for node in sections
-            }
-            next_frontier: list["PageNode"] = []
-            for future in as_completed(futures):
-                node = futures[future]
-                verdict, reason = future.result()
-                
-                node_meta[node.node_id] = {
-                    "relevant": verdict,
-                    "reason": reason,
-                    "status": "kept" if verdict else "pruned"
-                }
+        futures = {
+            pool.submit(
+                _check_section_relevant,
+                node, query,
+                _make_breadcrumb(node.node_id, parent_map, nodes_by_id),
+                *node_assignment.get(node.node_id, (_clients[0], OLLAMA_URLS[0])),
+                ctx=ctx,
+            ): node
+            for node in sections
+        }
+        next_frontier: list["PageNode"] = []
+        for future in as_completed(futures):
+            node = futures[future]
+            verdict, reason = future.result()
 
-                if verdict:
-                    next_frontier.extend(node.children)
-                else:
-                    # Pruned: count all leaf descendants toward "done" so the
-                    # progress counter reaches total. They won't be evaluated again.
-                    _prune_reason = f"Pruned because ancestor section '{node.title}' was pruned."
-                    _set_live_meta(node.node_id, "pruned", reason or _prune_reason)
-                    for leaf in _collect_leaves([node]):
-                        _inc_done()
-                        _mark_pruned(leaf.node_id)
-                        _set_live_meta(leaf.node_id, "pruned", _prune_reason)
-                        node_meta[leaf.node_id] = {
+            node_meta[node.node_id] = {
+                "relevant": verdict,
+                "reason": reason,
+                "status": ctx.get_meta(node.node_id).get("status") or
+                          ("kept" if verdict else "pruned"),
+            }
+
+            if verdict:
+                next_frontier.extend(node.children)
+            else:
+                # Pruned: count all leaf descendants toward "done" so the
+                # progress counter reaches total. They won't be evaluated again.
+                _prune_reason = f"Pruned because ancestor section '{node.title}' was pruned."
+                ctx.mark(node.node_id, "pruned", reason or _prune_reason)
+                node_meta[node.node_id]["status"] = "pruned"
+                for leaf in _collect_leaves([node]):
+                    ctx.inc_done()
+                    ctx.mark(leaf.node_id, "pruned", _prune_reason)
+                    node_meta[leaf.node_id] = {
+                        "relevant": False,
+                        "reason": _prune_reason,
+                        "status": "pruned",
+                    }
+                for descendant in _collect_all_nodes([node]):
+                    if descendant.node_id != node.node_id:
+                        ctx.mark(descendant.node_id, "pruned", _prune_reason)
+                        node_meta[descendant.node_id] = {
                             "relevant": False,
                             "reason": _prune_reason,
-                            "status": "pruned"
+                            "status": "pruned",
                         }
-                    for descendant in _collect_all_nodes([node]):
-                        _mark_pruned(descendant.node_id)
-                        if descendant.node_id != node.node_id:
-                            _set_live_meta(descendant.node_id, "pruned", _prune_reason)
-                            node_meta[descendant.node_id] = {
-                                "relevant": False,
-                                "reason": _prune_reason,
-                                "status": "pruned"
-                            }
 
         frontier = next_frontier
 
     return candidate_leaves
 
 
-def retrieve(doc_name: str, query: str) -> list[PageNode]:
+def retrieve(doc_name: str, query: str, ctx: Optional[RunContext] = None) -> list[PageNode]:
     """Return relevant leaf nodes for a query against one document's index."""
-    nodes_result, _ = retrieve_with_metadata(doc_name, query)
+    nodes_result, _ = retrieve_with_metadata(doc_name, query, ctx=ctx)
     return nodes_result
 
 
-def retrieve_with_metadata(doc_name: str, query: str) -> tuple[list[PageNode], dict[str, dict]]:
+def retrieve_with_metadata(
+    doc_name: str, query: str, ctx: Optional[RunContext] = None,
+) -> tuple[list[PageNode], dict[str, dict]]:
     """
     Two-phase retrieval with top-down pruning.
     Phase 1: BFS section checks — prune branches whose sections are irrelevant.
     Phase 2: Full leaf evaluation (reason + quote) on survivors only.
     Returns (selected_leaves_in_doc_order, {node_id: {reason, quote}}).
     """
+    ctx = ctx or current_run()
     index_path = INDEX_DIR / f"{doc_name}.json"
     if not index_path.exists():
         raise FileNotFoundError(f"Index not found: {index_path}. Run build first.")
@@ -1015,7 +1119,8 @@ def retrieve_with_metadata(doc_name: str, query: str) -> tuple[list[PageNode], d
 
     # Phase 1 — top-down pruning
     top = nodes[0].children if (len(nodes) == 1 and nodes[0].children) else nodes
-    surviving = _prune_and_collect(top, query, parent_map, nodes_by_id, node_assignment, node_meta)
+    surviving = _prune_and_collect(top, query, parent_map, nodes_by_id,
+                                   node_assignment, node_meta, ctx=ctx)
     print(
         f"  [prune] {doc_name}: {len(surviving)}/{len(leaves)} leaves after pruning",
         file=sys.stderr,
@@ -1023,23 +1128,24 @@ def retrieve_with_metadata(doc_name: str, query: str) -> tuple[list[PageNode], d
 
     # Phase 2 — full leaf evaluation on survivors
     if surviving:
-        with ThreadPoolExecutor(max_workers=len(surviving)) as pool:
-            futures = {
-                pool.submit(
-                    _evaluate_leaf,
-                    leaf,
-                    query,
-                    doc_name,
-                    _make_breadcrumb(leaf.node_id, parent_map, nodes_by_id),
-                    parent_map[leaf.node_id].summary if leaf.node_id in parent_map else "",
-                    *node_assignment.get(leaf.node_id, (_clients[0], OLLAMA_URLS[0])),
-                ): leaf
-                for leaf in surviving
-            }
-            for future in as_completed(futures):
-                node_id, meta = future.result()
-                node_meta[node_id] = meta
-                _inc_done()
+        pool = work_pool()
+        futures = {
+            pool.submit(
+                _evaluate_leaf,
+                leaf,
+                query,
+                doc_name,
+                _make_breadcrumb(leaf.node_id, parent_map, nodes_by_id),
+                parent_map[leaf.node_id].summary if leaf.node_id in parent_map else "",
+                *node_assignment.get(leaf.node_id, (_clients[0], OLLAMA_URLS[0])),
+                ctx=ctx,
+            ): leaf
+            for leaf in surviving
+        }
+        for future in as_completed(futures):
+            node_id, meta = future.result()
+            node_meta[node_id] = meta
+            ctx.inc_done()
 
     # Preserve original document order
     selected = [l for l in leaves if node_meta.get(l.node_id, {}).get("relevant")]

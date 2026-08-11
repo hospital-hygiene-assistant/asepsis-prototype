@@ -18,8 +18,6 @@ from pageindex import (
     _collect_leaves,
     _extract_leaf_content,
     _extract_preamble,
-    _find_nodes_by_ids,
-    _flatten_toc,
     _generate_summary,
     _parse_headings,
     _populate_content,
@@ -341,51 +339,6 @@ class TestGenerateSummary:
 
 
 # ---------------------------------------------------------------------------
-# _flatten_toc
-# ---------------------------------------------------------------------------
-
-class TestFlattenToc:
-
-    def _build(self, doc: str) -> list[PageNode]:
-        lines = _lines(doc)
-        nodes = _build_tree(_parse_headings(doc))
-        _promote_preambles(nodes, lines)
-        _populate_content(nodes, lines)
-        _populate_summaries(nodes)
-        return nodes
-
-    def test_leaf_marked_as_leaf(self):
-        nodes = self._build("# A\nContent.\n")
-        toc = _flatten_toc(nodes)
-        assert "LEAF" in toc
-
-    def test_internal_marked_as_section(self):
-        nodes = self._build(SIMPLE_DOC)
-        toc = _flatten_toc(nodes)
-        assert "SECTION" in toc
-
-    def test_id_prefix_present(self):
-        nodes = self._build("# A\nContent.\n")
-        toc = _flatten_toc(nodes)
-        assert "id=" in toc
-
-    def test_child_indented_more_than_parent(self):
-        nodes = self._build(SIMPLE_DOC)
-        toc = _flatten_toc(nodes)
-        lines = [l for l in toc.split("\n") if l.strip()]
-        parent_indent = len(lines[0]) - len(lines[0].lstrip())
-        child_indent = len(lines[1]) - len(lines[1].lstrip())
-        assert child_indent > parent_indent
-
-    def test_all_nodes_appear(self):
-        nodes = self._build(SIMPLE_DOC)
-        toc = _flatten_toc(nodes)
-        assert "alpha" in toc
-        assert "beta" in toc or "Beta" in toc
-        assert "gamma" in toc or "Gamma" in toc
-
-
-# ---------------------------------------------------------------------------
 # _clean_node_id
 # ---------------------------------------------------------------------------
 
@@ -415,52 +368,3 @@ class TestCleanNodeId:
     def test_extracts_id_from_toc_line(self):
         assert _clean_node_id("LEAF | id=node-abc | Title | Summary") == "node-abc"
 
-
-# ---------------------------------------------------------------------------
-# _find_nodes_by_ids
-# ---------------------------------------------------------------------------
-
-class TestFindNodesByIds:
-
-    def _tree(self) -> list[PageNode]:
-        """
-        root (internal)
-          ├── leaf-a (leaf)
-          └── branch (internal)
-                ├── leaf-b (leaf)
-                └── leaf-c (leaf)
-        """
-        leaf_a = PageNode("leaf-a", "Leaf A", 2, 1, "sum", content="Content A")
-        leaf_b = PageNode("leaf-b", "Leaf B", 3, 3, "sum", content="Content B")
-        leaf_c = PageNode("leaf-c", "Leaf C", 3, 5, "sum", content="Content C")
-        branch = PageNode("branch", "Branch", 2, 2, "sum", children=[leaf_b, leaf_c])
-        root = PageNode("root", "Root", 1, 0, "sum", children=[leaf_a, branch])
-        return [root]
-
-    def test_select_leaf_returns_leaf(self):
-        result = _find_nodes_by_ids(self._tree(), {"leaf-a"})
-        assert len(result) == 1
-        assert result[0].node_id == "leaf-a"
-
-    def test_select_internal_returns_all_descendants(self):
-        result = _find_nodes_by_ids(self._tree(), {"branch"})
-        ids = {n.node_id for n in result}
-        assert ids == {"leaf-b", "leaf-c"}
-
-    def test_select_root_returns_all_leaves(self):
-        result = _find_nodes_by_ids(self._tree(), {"root"})
-        ids = {n.node_id for n in result}
-        assert ids == {"leaf-a", "leaf-b", "leaf-c"}
-
-    def test_nonexistent_id_ignored(self):
-        result = _find_nodes_by_ids(self._tree(), {"does-not-exist"})
-        assert result == []
-
-    def test_mix_of_leaf_and_internal_no_duplicates(self):
-        # selecting both "branch" and "leaf-b" — leaf-b should appear once
-        result = _find_nodes_by_ids(self._tree(), {"branch", "leaf-a"})
-        ids = [n.node_id for n in result]
-        assert len(ids) == len(set(ids))  # no duplicates
-        assert "leaf-a" in ids
-        assert "leaf-b" in ids
-        assert "leaf-c" in ids

@@ -22,10 +22,20 @@ import pytest
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from pageindex import retrieve, INDEX_DIR
 
+# This module is the live tier: it needs a running Ollama AND a built index.
+# It is deselected from the default offline run and included via
+#   python3 run_tests.py --llm
+pytestmark = pytest.mark.llm
+
 
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
+def _require_index() -> None:
+    if not INDEX_DIR.exists() or not any(INDEX_DIR.glob("*.json")):
+        pytest.skip("No index built — run `python3 pipeline.py index` first")
+
 
 def _retrieved_ids(doc_name: str, query: str) -> set[str]:
     try:
@@ -36,6 +46,7 @@ def _retrieved_ids(doc_name: str, query: str) -> set[str]:
 
 
 def _all_retrieved(query: str) -> dict[str, set[str]]:
+    _require_index()
     result: dict[str, set[str]] = {}
     for idx in sorted(INDEX_DIR.glob("*.json")):
         ids = _retrieved_ids(idx.stem, query)

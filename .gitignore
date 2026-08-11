@@ -10,6 +10,11 @@ venv/
 /knowledge_base/
 /index/
 
+# Machine-local runtime settings (context windows, concurrency) and the
+# debug-only retrieval cache
+/config/runtime.json
+/.debug_cache/
+
 # Rust / Tauri build output
 tauri-app/src-tauri/target/
 tauri-app/src-tauri/gen/*

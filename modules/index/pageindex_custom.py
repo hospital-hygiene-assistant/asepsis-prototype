@@ -9,6 +9,7 @@ summaries. Retrieval sends the TOC to Ollama and gets nodeIds back.
 # Delegate to the root implementation — all logic lives in pageindex.py
 from pageindex import (
     PageNode,
+    RunContext,
     build_index,
     retrieve,
     retrieve_with_metadata,
@@ -19,9 +20,7 @@ from pageindex import (
     _promote_preambles,
     _populate_content,
     _populate_summaries,
-    _flatten_toc,
     _collect_leaves,
-    _find_nodes_by_ids,
     _generate_summary,
     _extract_leaf_content,
     _extract_preamble,

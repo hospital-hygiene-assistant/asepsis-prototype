@@ -14,6 +14,7 @@ from pathlib import Path
 
 import ollama
 
+import config as app_config
 from pageindex import retrieve, PageNode, INDEX_DIR, MODEL as DEFAULT_MODEL
 
 SYNTHESIS_PROMPT_TEMPLATE = """\
@@ -57,7 +58,7 @@ def _synthesise(query: str, nodes_by_doc: dict[str, list[PageNode]]) -> str:
     response = ollama.chat(
         model=MODEL,
         messages=[{"role": "user", "content": prompt}],
-        options={"temperature": 0},
+        options=app_config.chat_options("agent"),
     )
     return response["message"]["content"]
 
