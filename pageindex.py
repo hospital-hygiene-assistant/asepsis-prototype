@@ -12,6 +12,7 @@ Usage:
 """
 
 import argparse
+import hashlib
 import json
 import os
 import re
@@ -343,6 +344,13 @@ class PageNode:
     parent_title: Optional[str] = None  # set on synthetic leaves
     pin: Optional[dict] = None          # provenance pin (page/bbox/asset) if ingested with one
 
+    # Summary provenance — lets a rebuild reuse an unchanged node's summary
+    # instead of paying for it again (see _populate_summaries).
+    content_hash: Optional[str] = None
+    summary_source: Optional[str] = None          # "llm" | "heuristic"
+    summary_model: Optional[str] = None
+    summary_prompt_version: Optional[int] = None
+
     @property
     def is_leaf(self) -> bool:
         return len(self.children) == 0
@@ -536,25 +544,193 @@ def _attach_pins(nodes: list[PageNode], lines: list[str]) -> None:
 # Summary generation
 # ---------------------------------------------------------------------------
 
+LEAF_SUMMARY_PROMPT = """\
+Summarise what the passage below CONTAINS. This summary is used later to
+decide whether the passage is worth reading in full, so it must describe the
+passage's actual subject matter and specifics.
+
+Section title: TITLE_PLACEHOLDER
+Section path: BREADCRUMB_PLACEHOLDER
+
+--- PASSAGE ---
+CONTENT_PLACEHOLDER
+--- END ---
+
+Rules:
+- 1-2 sentences, under 50 words.
+- Name the specific topics, entities, drugs, values or conditions covered.
+- Describe the content only. Do not evaluate it, do not answer any question,
+  do not add commentary.
+- Plain text. No markdown, no bullet points, no preamble.
+
+Write the summary now:"""
+
+SECTION_SUMMARY_PROMPT = """\
+Write a summary of a document section, given summaries of its parts.
+
+Section title: TITLE_PLACEHOLDER
+Section path: BREADCRUMB_PLACEHOLDER
+
+--- SUMMARIES OF THIS SECTION'S PARTS ---
+CHILDREN_PLACEHOLDER
+--- END ---
+
+Rules:
+- 1-2 sentences, under 60 words.
+- State the range of topics this section covers, specifically enough that a
+  reader could tell whether an answer to a question is likely to be inside it.
+- Cover the breadth of the parts; do not fixate on the first one.
+- Plain text. No markdown, no bullet points, no preamble.
+
+Write the summary now:"""
+
+
 def _generate_summary(node: PageNode) -> str:
+    """Heuristic summary — the fallback used when no LLM is reachable at index
+    time. Leaves get their opening words; sections get their child titles.
+
+    This is what the whole index used to run on, and it is why pruning quality
+    was poor: 'Covers: Dosing, Monitoring, and 3 more' carries almost no signal
+    about whether an answer lives inside. The LLM path below replaces it.
+    """
     if node.is_leaf:
         words = (node.content or "").split()
         return " ".join(words[:25]) + ("..." if len(words) > 25 else "")
     else:
-        titles = [c.title for c in node.children if not c.synthetic][:4]
-        extra = node.children[4:] if len(node.children) > 4 else []
-        summary = "Covers: " + ", ".join(titles)
-        if extra:
-            summary += f", and {len(extra)} more"
+        # Synthetic overview leaves are the section's own prose, not a titled
+        # subsection, so they are not listed by title — but they must still be
+        # counted consistently, which the original slice got wrong.
+        real = [c for c in node.children if not c.synthetic]
+        titles = [c.title for c in real[:4]]
+        extra = len(real) - len(titles)
+        summary = "Covers: " + ", ".join(titles) if titles else "Covers: (no subsections)"
+        if extra > 0:
+            summary += f", and {extra} more"
         return summary
 
 
-def _populate_summaries(nodes: list[PageNode]) -> None:
-    """Bottom-up summary generation (leaves first, then internal)."""
+def _summary_input(node: PageNode) -> str:
+    """The exact text a node's summary is derived from.
+
+    Hashing this is what makes rebuilds incremental: a leaf whose content is
+    untouched keeps its summary, and a section is only re-summarised when one
+    of its children's summaries actually changed.
+    """
+    if node.is_leaf:
+        return f"{node.title}\n{node.content or ''}"
+    parts = []
+    for child in node.children:
+        label = "(section prose)" if child.synthetic else child.title
+        parts.append(f"- {label}: {child.summary}")
+    return f"{node.title}\n" + "\n".join(parts)
+
+
+def _summary_hash(node: PageNode) -> str:
+    return hashlib.sha256(_summary_input(node).encode("utf-8")).hexdigest()
+
+
+def _summarise_node(node: PageNode, breadcrumb: str) -> tuple[str, str]:
+    """Return (summary, source). `source` is 'llm' or 'heuristic'."""
+    if node.is_leaf:
+        content = node.content or ""
+        if not content.strip():
+            return _generate_summary(node), "heuristic"
+        # Keep the summariser prompt inside its own window.
+        cfg_ctx = app_config.runtime().resolved_retrieval_ctx()
+        max_content = max(1000, int((cfg_ctx - 512) * 3))  # chars, generous
+        truncated = content[:max_content]
+        prompt = (
+            LEAF_SUMMARY_PROMPT
+            .replace("TITLE_PLACEHOLDER", node.title)
+            .replace("BREADCRUMB_PLACEHOLDER", breadcrumb or node.title)
+            .replace("CONTENT_PLACEHOLDER", truncated)
+        )
+    else:
+        children_block = "\n".join(
+            f"- {'(section prose)' if c.synthetic else c.title}: "
+            f"{c.summary or '(no summary)'}"
+            for c in node.children
+        ) or "(no subsections)"
+        prompt = (
+            SECTION_SUMMARY_PROMPT
+            .replace("TITLE_PLACEHOLDER", node.title)
+            .replace("BREADCRUMB_PLACEHOLDER", breadcrumb or node.title)
+            .replace("CHILDREN_PLACEHOLDER", children_block)
+        )
+
+    raw = _chat(prompt)
+    text = re.sub(r"<think>.*?</think>", "", raw, flags=re.DOTALL)
+    text = re.sub(r"^```.*?$", "", text, flags=re.MULTILINE)
+    text = " ".join(text.split()).strip().strip('"')
+    if not text:
+        return _generate_summary(node), "heuristic"
+    return text, "llm"
+
+
+def _populate_summaries(
+    nodes: list[PageNode],
+    previous: Optional[dict[str, dict]] = None,
+    *,
+    use_llm: bool = False,
+    breadcrumb: str = "",
+    stats: Optional[dict] = None,
+) -> None:
+    """Bottom-up summary generation (leaves first, then internal).
+
+    With `use_llm=False` this is the original deterministic heuristic pass.
+    With `use_llm=True` each node is summarised by the model — but only if its
+    summary input actually changed since `previous`, so re-indexing an
+    unchanged document costs zero LLM calls, and editing one leaf re-summarises
+    that leaf and its ancestor chain alone.
+    """
+    stats = stats if stats is not None else {}
     for node in nodes:
+        path = f"{breadcrumb} > {node.title}" if breadcrumb else node.title
         if node.children:
-            _populate_summaries(node.children)
-        node.summary = _generate_summary(node)
+            _populate_summaries(node.children, previous, use_llm=use_llm,
+                                breadcrumb=path, stats=stats)
+
+        if not use_llm:
+            node.summary = _generate_summary(node)
+            continue
+
+        node.content_hash = _summary_hash(node)
+        prior = (previous or {}).get(node.node_id) or {}
+        reusable = (
+            prior.get("summary")
+            and prior.get("contentHash") == node.content_hash
+            and prior.get("summaryModel") == MODEL
+            and prior.get("summaryPromptVersion") == _summary_prompt_version()
+            and prior.get("summarySource") == "llm"
+        )
+        if reusable:
+            node.summary = prior["summary"]
+            node.summary_source = "llm"
+            node.summary_model = prior.get("summaryModel")
+            node.summary_prompt_version = prior.get("summaryPromptVersion")
+            stats["reused"] = stats.get("reused", 0) + 1
+            continue
+
+        try:
+            summary, source = _summarise_node(node, path)
+        except Exception as exc:
+            # Flagged, never silent: the index stays valid on the heuristic,
+            # and the caller reports that summaries are degraded.
+            summary, source = _generate_summary(node), "heuristic"
+            stats.setdefault("errors", []).append(f"{node.node_id}: {exc}")
+
+        node.summary = summary
+        node.summary_source = source
+        node.summary_model = MODEL if source == "llm" else None
+        node.summary_prompt_version = _summary_prompt_version() if source == "llm" else None
+        stats["generated" if source == "llm" else "heuristic"] = (
+            stats.get("generated" if source == "llm" else "heuristic", 0) + 1)
+
+
+def _summary_prompt_version() -> int:
+    """Both summary prompts move together — bumping either invalidates all."""
+    v = app_config.PROMPT_VERSIONS
+    return v["leaf_summary"] * 1000 + v["section_summary"]
 
 
 # ---------------------------------------------------------------------------
@@ -573,6 +749,10 @@ def _node_to_dict(node: PageNode) -> dict:
         "parentTitle": node.parent_title,
         "content": node.content,
         "pin": node.pin,
+        "contentHash": node.content_hash,
+        "summarySource": node.summary_source,
+        "summaryModel": node.summary_model,
+        "summaryPromptVersion": node.summary_prompt_version,
         "children": [_node_to_dict(c) for c in node.children],
     }
 
@@ -590,7 +770,55 @@ def _node_from_dict(d: dict) -> PageNode:
         synthetic=d.get("synthetic", False),
         parent_title=d.get("parentTitle"),
         pin=d.get("pin"),
+        content_hash=d.get("contentHash"),
+        summary_source=d.get("summarySource"),
+        summary_model=d.get("summaryModel"),
+        summary_prompt_version=d.get("summaryPromptVersion"),
     )
+
+
+# ---------------------------------------------------------------------------
+# Index files
+#
+# v1 was a bare JSON array of nodes, with nowhere to record which model and
+# prompts produced the summaries. v2 wraps it in an object carrying that
+# provenance; readers still accept a bare array and report it as v1 so the
+# migration check can spot a stale index rather than crashing on it.
+# ---------------------------------------------------------------------------
+
+def read_index_file(path: Path) -> dict:
+    data = json.loads(path.read_text(encoding="utf-8"))
+    if isinstance(data, list):
+        return {"formatVersion": 1, "nodes": data}
+    data.setdefault("formatVersion", 1)
+    data.setdefault("nodes", [])
+    return data
+
+
+def index_path_for(doc_name: str) -> Path:
+    return INDEX_DIR / f"{doc_name}.json"
+
+
+def load_index_nodes(doc_name: str) -> list[PageNode]:
+    path = index_path_for(doc_name)
+    if not path.exists():
+        raise FileNotFoundError(f"Index not found: {path}. Run build first.")
+    return [_node_from_dict(d) for d in read_index_file(path)["nodes"]]
+
+
+def index_is_stale(path: Path) -> bool:
+    """True when an index predates the current format and must be rebuilt."""
+    try:
+        return int(read_index_file(path).get("formatVersion", 1)) < app_config.INDEX_FORMAT_VERSION
+    except (OSError, json.JSONDecodeError, ValueError):
+        return True
+
+
+def stale_indexes(index_dir: Optional[Path] = None) -> list[str]:
+    d = index_dir or INDEX_DIR
+    if not d.exists():
+        return []
+    return sorted(p.stem for p in d.glob("*.json") if index_is_stale(p))
 
 
 # ---------------------------------------------------------------------------
@@ -850,8 +1078,48 @@ def _evaluate_leaf(
 # Public API
 # ---------------------------------------------------------------------------
 
-def build_index(doc_name: str) -> None:
-    """Parse and index a single document from knowledge_base/."""
+def _previous_summaries(doc_name: str) -> dict[str, dict]:
+    """{node_id: {summary, contentHash, summaryModel, summaryPromptVersion}}
+    from the existing index, so an unchanged node keeps its summary."""
+    path = index_path_for(doc_name)
+    if not path.exists():
+        return {}
+    try:
+        data = read_index_file(path)
+    except (OSError, json.JSONDecodeError):
+        return {}
+    if int(data.get("formatVersion", 1)) < app_config.INDEX_FORMAT_VERSION:
+        return {}   # old format has no hashes — nothing is safely reusable
+
+    out: dict[str, dict] = {}
+
+    def walk(items):
+        for d in items:
+            out[d["nodeId"]] = {
+                "summary": d.get("summary"),
+                "contentHash": d.get("contentHash"),
+                "summaryModel": d.get("summaryModel"),
+                "summaryPromptVersion": d.get("summaryPromptVersion"),
+                "summarySource": d.get("summarySource"),
+            }
+            walk(d.get("children", []))
+
+    walk(data["nodes"])
+    return out
+
+
+def build_index(doc_name: str, *, use_llm_summaries: bool = True,
+                progress=None) -> dict:
+    """Parse and index a single document from knowledge_base/.
+
+    Structure parsing is deterministic; summaries are LLM-generated, computed
+    once here and persisted. Nodes whose summary input is unchanged since the
+    last build reuse their stored summary, so re-indexing an untouched
+    document makes no LLM calls at all.
+
+    Returns a small report: counts of generated/reused summaries and any
+    summariser errors (which fall back to the heuristic rather than failing).
+    """
     doc_path = KB_DIR / f"{doc_name}.md"
     if not doc_path.exists():
         raise FileNotFoundError(f"Document not found: {doc_path}")
@@ -865,17 +1133,44 @@ def build_index(doc_name: str) -> None:
     _attach_pins(nodes, lines)
     _promote_preambles(nodes, lines)
     _populate_content(nodes, lines)
-    _populate_summaries(nodes)
 
-    INDEX_DIR.mkdir(exist_ok=True)
-    index_path = INDEX_DIR / f"{doc_name}.json"
+    stats: dict = {}
+    previous = _previous_summaries(doc_name) if use_llm_summaries else {}
+    if progress:
+        progress({"phase": "summarise", "doc": doc_name})
+    _populate_summaries(nodes, previous, use_llm=use_llm_summaries, stats=stats)
+
+    INDEX_DIR.mkdir(parents=True, exist_ok=True)
+    index_path = index_path_for(doc_name)
     index_path.write_text(
-        json.dumps([_node_to_dict(n) for n in nodes], indent=2, ensure_ascii=False),
+        json.dumps({
+            "formatVersion": app_config.INDEX_FORMAT_VERSION,
+            "doc": doc_name,
+            "summaryModel": MODEL if use_llm_summaries else None,
+            "summaryPromptVersion": _summary_prompt_version(),
+            "nodes": [_node_to_dict(n) for n in nodes],
+        }, indent=2, ensure_ascii=False),
         encoding="utf-8",
     )
 
     leaves = _collect_leaves(nodes)
-    print(f"    → {index_path} ({len(nodes)} top-level nodes, {len(leaves)} leaves)")
+    report = {
+        "doc": doc_name,
+        "nodes": len(_collect_all_nodes(nodes)),
+        "leaves": len(leaves),
+        "summaries_generated": stats.get("generated", 0),
+        "summaries_reused": stats.get("reused", 0),
+        "summaries_heuristic": stats.get("heuristic", 0),
+        "errors": stats.get("errors", []),
+    }
+    print(f"    → {index_path} ({len(nodes)} top-level nodes, {len(leaves)} leaves; "
+          f"{report['summaries_generated']} summaries generated, "
+          f"{report['summaries_reused']} reused)")
+    if report["summaries_heuristic"]:
+        print(f"    [warn] {report['summaries_heuristic']} summaries fell back to the "
+              f"heuristic — retrieval quality will be degraded for those nodes",
+              file=sys.stderr)
+    return report
 
 
 def _format_descendant_outline(node: "PageNode", depth: int = 0) -> str:
@@ -1083,11 +1378,7 @@ def retrieve_with_metadata(
     Returns (selected_leaves_in_doc_order, {node_id: {reason, quote}}).
     """
     ctx = ctx or current_run()
-    index_path = INDEX_DIR / f"{doc_name}.json"
-    if not index_path.exists():
-        raise FileNotFoundError(f"Index not found: {index_path}. Run build first.")
-
-    nodes = [_node_from_dict(d) for d in json.loads(index_path.read_text(encoding="utf-8"))]
+    nodes = load_index_nodes(doc_name)
     leaves = _collect_leaves(nodes)
 
     if not leaves:

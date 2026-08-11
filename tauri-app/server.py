@@ -313,7 +313,93 @@ def get_status():
         "chat":     chat_phase,
         "pool":     {"workers": _pi.pool_size()},
         "tokens":   app_tokens.calibration(),
+        "index":    _index_state(),
     })
+
+
+# ---------------------------------------------------------------------------
+# Index format migration
+#
+# v1 indexes carry no summaries and no content hashes, so they cannot be
+# upgraded in place — retrieval quality now depends on summaries that simply
+# are not there. A stale corpus blocks retrieval until it is rebuilt; the cost
+# is paid exactly once, and every rebuild after that is incremental.
+# ---------------------------------------------------------------------------
+
+_reindex_lock = threading.Lock()
+_reindex_state: dict = {"state": "idle", "done": 0, "total": 0, "doc": "", "message": ""}
+
+
+def _index_dir() -> Path:
+    index_mod = _load_module("index", _module_defaults()["index"])
+    return getattr(index_mod, "INDEX_DIR", Path("index"))
+
+
+def _index_state() -> dict:
+    stale = _pi.stale_indexes(_index_dir())
+    with _reindex_lock:
+        rebuild = dict(_reindex_state)
+    return {
+        "format_version": app_config.INDEX_FORMAT_VERSION,
+        "stale_docs": stale,
+        "stale": bool(stale),
+        "rebuild": rebuild,
+    }
+
+
+@app.get("/api/index/state")
+def index_state():
+    return JSONResponse(_index_state())
+
+
+@app.post("/api/index/rebuild")
+def rebuild_index():
+    """Rebuild every document's index in the current format."""
+    with _reindex_lock:
+        if _reindex_state["state"] == "running":
+            return JSONResponse({"error": "a rebuild is already in progress"}, status_code=409)
+        _reindex_state.update({"state": "running", "done": 0, "total": 0,
+                               "doc": "", "message": "Starting…"})
+
+    index_mod = _load_module("index", _module_defaults()["index"])
+    ingest_mod = _load_module("ingest", _module_defaults()["ingest"])
+    kb_dir = getattr(ingest_mod, "KB_DIR", Path("knowledge_base"))
+    if not Path(kb_dir).is_absolute():
+        kb_dir = ROOT / kb_dir
+    stems = sorted(p.stem for p in Path(kb_dir).glob("*.md"))
+
+    def work():
+        try:
+            with _reindex_lock:
+                _reindex_state["total"] = len(stems)
+            for i, stem in enumerate(stems):
+                with _reindex_lock:
+                    _reindex_state.update({
+                        "doc": stem, "done": i,
+                        "message": f"Summarising {stem} ({i + 1}/{len(stems)})…"})
+                index_mod.build_index(stem)
+            with _reindex_lock:
+                _reindex_state.update({"state": "done", "done": len(stems),
+                                       "message": "Index rebuilt"})
+        except Exception as exc:
+            with _reindex_lock:
+                _reindex_state.update({"state": "error", "message": str(exc)})
+
+    threading.Thread(target=work, daemon=True).start()
+    return JSONResponse({"started": True, "docs": stems})
+
+
+def _stale_index_response():
+    """409 body shared by the retrieval endpoints when the corpus is stale."""
+    stale = _pi.stale_indexes(_index_dir())
+    if not stale:
+        return None
+    return JSONResponse({
+        "error": "index_stale",
+        "message": ("The index predates the current format and has no summaries. "
+                    "Rebuild it before querying."),
+        "stale_docs": stale,
+    }, status_code=409)
 
 
 @app.get("/api/config")
@@ -401,7 +487,9 @@ def get_documents():
     index_dir = getattr(index_mod, "INDEX_DIR", Path("index"))
     docs = []
     for idx in sorted(index_dir.glob("*.json")):
-        tree = json.loads(idx.read_text(encoding="utf-8"))
+        # The frontend consumes a bare node array; the on-disk format wraps it
+        # with build provenance (see pageindex.read_index_file).
+        tree = _pi.read_index_file(idx)["nodes"]
         nodes = [_node_from_dict(d) for d in tree]
         docs.append({
             "name": idx.stem,
@@ -896,7 +984,7 @@ def explain_node(req: ExplainRequest):
     if not idx.exists():
         return JSONResponse({"error": f"unknown document '{req.stem}'"}, status_code=404)
 
-    nodes = [_node_from_dict(d) for d in json.loads(idx.read_text(encoding="utf-8"))]
+    nodes = [_node_from_dict(d) for d in _pi.read_index_file(idx)["nodes"]]
     nodes_by_id = _pi._build_nodes_by_id(nodes)
     node = nodes_by_id.get(req.node_id)
     if node is None:
@@ -941,7 +1029,7 @@ def _run_retrieval(query: str, index_mod, ctx=None) -> dict:
     trees: dict[str, list] = {}
     for idx in sorted(index_dir.glob("*.json")):
         try:
-            trees[idx.stem] = json.loads(idx.read_text(encoding="utf-8"))
+            trees[idx.stem] = _pi.read_index_file(idx)["nodes"]
         except (OSError, json.JSONDecodeError) as exc:
             print(f"[retrieval] skipping unreadable index {idx.name}: {exc}", file=sys.stderr)
 
@@ -1011,6 +1099,10 @@ def run_query(req: RunRequest):
 
     if not query:
         return JSONResponse({"error": "No query provided"}, status_code=400)
+
+    stale = _stale_index_response()
+    if stale is not None:
+        return stale
 
     # Resolve modules
     defs = _module_defaults()
@@ -1148,6 +1240,10 @@ def chat(req: ChatRequest):
     query = (req.query or "").strip()
     if not query:
         return JSONResponse({"error": "No query provided"}, status_code=400)
+
+    stale = _stale_index_response()
+    if stale is not None:
+        return stale
 
     defs = _module_defaults()
     index_mod_name = req.index_module or defs["index"]
