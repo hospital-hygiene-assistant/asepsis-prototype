@@ -103,3 +103,43 @@ class TestCallSitesPassNumCtx:
         pageindex._evaluate_leaf(leaf, "q", "doc", "crumb", "parent")
         pageindex._check_section_relevant(section, "q", "crumb")
         fake_ollama.assert_every_call_has_num_ctx()
+
+
+class TestRequestModelParity:
+    """/api/run and /api/chat drive the SAME retrieval, so every field that
+    changes what retrieval does must exist on both request models.
+
+    This is not hypothetical: `selected_answers` and `use_cache` were added to
+    ChatRequest but missed on RunRequest, and every /api/run call 500'd on the
+    missing attribute. Offline tests could not see it because they never
+    constructed the request models.
+    """
+
+    @staticmethod
+    def _models():
+        import importlib.util
+        from pathlib import Path
+        root = Path(__file__).parent.parent
+        spec = importlib.util.spec_from_file_location(
+            "asepsis_server", root / "tauri-app" / "server.py")
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return module.RunRequest, module.ChatRequest
+
+    @pytest.mark.parametrize("field", [
+        "tags", "selected_answers", "use_cache", "index_module",
+    ])
+    def test_field_present_on_both(self, field):
+        run_model, chat_model = self._models()
+        assert field in run_model.model_fields, f"RunRequest is missing '{field}'"
+        assert field in chat_model.model_fields, f"ChatRequest is missing '{field}'"
+
+    def test_the_endpoints_can_read_what_they_declare(self):
+        """Construct each model with defaults and touch every attribute the
+        handlers use — an attribute that does not exist raises here."""
+        run_model, chat_model = self._models()
+        run = run_model(query="q")
+        chat = chat_model(query="q")
+        for obj in (run, chat):
+            for attr in ("tags", "selected_answers", "use_cache"):
+                getattr(obj, attr)

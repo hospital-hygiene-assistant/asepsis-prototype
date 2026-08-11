@@ -517,6 +517,31 @@ def facet_precompute_status():
     return JSONResponse(_facet_status())
 
 
+@app.get("/api/choices/candidates")
+def choice_candidates(selected_answers: str = ""):
+    """How many passages the selected answers put in scope.
+
+    Selections are unioned, so this number GROWS as more answers are picked.
+    Surfacing it keeps that direction visible rather than surprising.
+    """
+    picked = [a for a in (selected_answers or "").split(",") if a]
+    index_dir = _index_dir()
+    total = candidates = 0
+    for path in sorted(index_dir.glob("*.json")):
+        try:
+            leaves = _pi._collect_leaves(_pi.load_index_nodes(path.stem))
+        except (OSError, FileNotFoundError, json.JSONDecodeError):
+            continue
+        total += len(leaves)
+        if not picked:
+            candidates += len(leaves)
+            continue
+        store = app_choices.FacetStore(index_dir, path.stem)
+        candidates += len(app_choices.selected_leaf_ids(store, leaves, picked))
+    return JSONResponse({"candidates": candidates, "total": total,
+                         "selected_answers": picked})
+
+
 @app.post("/api/choices/precompute")
 def facet_precompute():
     """Judge every leaf against every question. Resumable and incremental:
@@ -1172,6 +1197,11 @@ class RunRequest(BaseModel):
     query: Optional[str] = None
     # Restrict retrieval to documents carrying ANY of these tags. Empty = all.
     tags: Optional[list[str]] = None
+    # Answer ids from the multiple-choice pre-filter. Unioned: more selections
+    # widen the candidate set.
+    selected_answers: Optional[list[str]] = None
+    # Debug cache: replay a previous identical run instead of re-retrieving.
+    use_cache: bool = False
     # Module selections — default to pipeline defaults when not supplied
     ingest_module: Optional[str] = None
     index_module:  Optional[str] = None

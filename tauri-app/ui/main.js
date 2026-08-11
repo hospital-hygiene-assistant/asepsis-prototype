@@ -64,9 +64,15 @@ async function apiPost(path, body) {
     body: JSON.stringify(body),
   });
   if (!r.ok) {
-    let detail = '';
-    try { detail = (await r.json()).error || ''; } catch { /* not json */ }
-    throw new Error(detail || `${r.status} ${r.statusText}`);
+    let payload = {};
+    try { payload = await r.json(); } catch { /* not json */ }
+    // A stale index makes every query fail identically; surface the rebuild
+    // screen instead of a bare error the user cannot act on.
+    if (r.status === 409 && payload.error === 'index_stale') {
+      showReindexScreen(payload.stale_docs || []);
+      throw new Error(payload.message || 'The index needs rebuilding.');
+    }
+    throw new Error(payload.error || `${r.status} ${r.statusText}`);
   }
   return r.json();
 }
@@ -98,11 +104,111 @@ async function init() {
   initWorkflow();
   initCommandBar();
   refreshCachedQuestions();
+  checkIndexFormat();
+  loadChoiceQuestions();
   initLibrary(docs);
   initResultsChrome();
   initDocViewer();
   initSetupCard(docs);
   setView('library');
+}
+
+/* ── 3b · Index format migration ────────────────────────────
+   v1 indexes have no summaries and no content hashes, so they cannot be
+   upgraded in place — retrieval now depends on summaries that simply are not
+   in them. Rather than letting every query fail with a 409, the app says so
+   and offers the one-time rebuild. */
+
+async function checkIndexFormat() {
+  try {
+    const st = await apiGet('/api/index/state');
+    if (st.stale) showReindexScreen(st.stale_docs || []);
+  } catch { /* backend unreachable — init already reported it */ }
+}
+
+function showReindexScreen(staleDocs) {
+  if (document.getElementById('reindex-overlay')) return;
+
+  const overlay = el('div', 'reindex-overlay');
+  overlay.id = 'reindex-overlay';
+  const box = el('div', 'reindex-box');
+
+  box.appendChild(el('h2', '', 'The index needs rebuilding'));
+  const n = staleDocs.length;
+  box.appendChild(el('p', 'reindex-detail',
+    `${n} document${n === 1 ? '' : 's'} ${n === 1 ? 'was' : 'were'} indexed in the ` +
+    `older format, which has no section summaries. Retrieval now navigates the ` +
+    `document tree using those summaries, so the index has to be rebuilt before ` +
+    `you can ask anything.`));
+  box.appendChild(el('p', 'reindex-detail reindex-muted',
+    'This runs once. Afterwards only documents you actually change are ' +
+    're-summarised, so later rebuilds are near-instant.'));
+
+  const progress = el('div', 'reindex-progress');
+  progress.hidden = true;
+  const bar = el('div', 'reindex-bar');
+  const fill = el('i');
+  bar.appendChild(fill);
+  const label = el('p', 'reindex-status', '');
+  progress.appendChild(bar);
+  progress.appendChild(label);
+  box.appendChild(progress);
+
+  const actions = el('div', 'reindex-actions');
+  const go = el('button', 'primary', 'Rebuild now');
+  actions.appendChild(go);
+  box.appendChild(actions);
+
+  go.addEventListener('click', async () => {
+    go.disabled = true;
+    go.textContent = 'Rebuilding…';
+    progress.hidden = false;
+    try {
+      await apiPost('/api/index/rebuild', {});
+    } catch (e) {
+      label.textContent = `Could not start the rebuild: ${e.message}`;
+      go.disabled = false;
+      go.textContent = 'Retry';
+      return;
+    }
+    pollReindex(fill, label, go, overlay);
+  });
+
+  overlay.appendChild(box);
+  document.body.appendChild(overlay);
+}
+
+function pollReindex(fill, label, button, overlay) {
+  const tick = async () => {
+    let st;
+    try { st = await apiGet('/api/index/state'); }
+    catch { setTimeout(tick, 1500); return; }
+
+    const r = st.rebuild || {};
+    const pct = r.total ? Math.round((r.done / r.total) * 100) : 0;
+    fill.style.width = `${pct}%`;
+    label.textContent = r.message || 'Working…';
+
+    if (r.state === 'done') {
+      fill.style.width = '100%';
+      label.textContent = 'Index rebuilt.';
+      _docsCache = null;
+      setTimeout(async () => {
+        overlay.remove();
+        try { initLibrary(await getDocs()); } catch { /* leave the old view */ }
+        toast('Index rebuilt — summaries are ready.', 'ok');
+      }, 700);
+      return;
+    }
+    if (r.state === 'error') {
+      label.textContent = `Rebuild failed: ${r.message}`;
+      button.disabled = false;
+      button.textContent = 'Retry';
+      return;
+    }
+    setTimeout(tick, 1200);
+  };
+  tick();
 }
 
 /* ── 4 · Workflow: views + topbar ──────────────────────────── */
@@ -205,6 +311,68 @@ function closeAllPopovers() {
 
 /* ── Settings: pipeline modules · corpus source · engine ────── */
 
+/* Engine controls: the agent's context window and the debug cache.
+
+   The context slider is not cosmetic — it is the budget retrieved passages
+   compete for, so widening it reads more of them and narrowing it defers more.
+   The recommended band comes from the backend rather than being hardcoded. */
+
+function initEngineControls(config) {
+  const slider = document.getElementById('agent-ctx');
+  const value  = document.getElementById('agent-ctx-value');
+  const hint   = document.getElementById('agent-ctx-hint');
+  const toggle = document.getElementById('debug-cache-toggle');
+  if (!slider || !config) return;
+
+  const band = config.recommended_ctx_band || [32768, 65536];
+  slider.min = config.min_ctx || 4096;
+  slider.max = config.agent_ctx_max || 131072;
+  slider.value = config.agent_ctx || band[0];
+
+  const fmt = (n) => `${Math.round(n / 1024)}k`;
+  const paint = () => {
+    const v = Number(slider.value);
+    value.textContent = fmt(v);
+    const inBand = v >= band[0] && v <= band[1];
+    value.classList.toggle('ctx-off-band', !inBand);
+    hint.textContent = inBand
+      ? `Recommended range (${fmt(band[0])}–${fmt(band[1])}). More context means ` +
+        `more retrieved passages reach the answer.`
+      : v < band[0]
+        ? `Below the recommended ${fmt(band[0])} — more passages will be deferred unread.`
+        : `Above the recommended ${fmt(band[1])} — the model accepts it, but quality ` +
+          `on multi-passage reasoning tends to fall off.`;
+  };
+  paint();
+  slider.addEventListener('input', paint);
+  slider.addEventListener('change', async () => {
+    try {
+      const updated = await apiPost('/api/config', { agent_ctx: Number(slider.value) });
+      slider.value = updated.agent_ctx;
+      paint();
+      toast(`Agent context set to ${fmt(updated.agent_ctx)}.`, 'ok');
+    } catch (e) {
+      toast(`Could not change the context window: ${e.message}`, 'err', 6000);
+    }
+  });
+
+  if (toggle) {
+    toggle.checked = !!config.debug_cache_enabled;
+    toggle.addEventListener('change', async () => {
+      try {
+        await apiPost('/api/config', { debug_cache_enabled: toggle.checked });
+        toast(toggle.checked
+          ? 'Debug cache on — repeated questions will offer a replay.'
+          : 'Debug cache off.', 'ok');
+        refreshCachedQuestions();
+      } catch (e) {
+        toggle.checked = !toggle.checked;
+        toast(`Could not change the debug cache: ${e.message}`, 'err', 6000);
+      }
+    });
+  }
+}
+
 function initSettings(modulesData, config) {
   const stageMap = { ingest: 'sel-ingest', index: 'sel-index', query: 'sel-query' };
   for (const [stage, { default: def, modules }] of Object.entries(modulesData.stages || {})) {
@@ -223,6 +391,8 @@ function initSettings(modulesData, config) {
     }
     sel.addEventListener('change', () => updateModuleDesc(stage, sel.value));
   }
+
+  initEngineControls(config);
 
   attachPopover('settings-btn', 'settings-popover', (pop, r) => {
     pop.style.top = `${r.bottom + 8}px`;
@@ -592,7 +762,10 @@ async function executeRun(body, message) {
   startStatusPolling();
   updateFlowSteps();
   try {
-    const data = await apiPost('/api/run', { ...body, ...selectedModules() });
+    const data = await apiPost('/api/run', {
+      ...body, ...selectedModules(),
+      selected_answers: selectedAnswers(),
+    });
     state.currentResults = data;
     renderResults(data);
     setView('results');

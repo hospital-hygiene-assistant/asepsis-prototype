@@ -221,6 +221,7 @@ async function sendChat(text) {
     const data = await apiPost('/api/chat', {
       query: text,
       index_module: selectedModules().index_module,
+      selected_answers: selectedAnswers(),
       use_cache: chatState.useCacheForNext,
       replay_answer: chatState.replayAnswerForNext,
     });

@@ -87,6 +87,25 @@
       </div>
     </div>
     <div id="inst-status" class="inst-status"></div>
+
+    <!-- The agent's context window. This is the budget retrieved passages
+         compete for, so it directly decides how many are read vs deferred. -->
+    <div class="settings-row">
+      <span class="settings-label">Agent context</span>
+      <div class="ctx-control">
+        <input id="agent-ctx" type="range" min="4096" max="131072" step="4096">
+        <span id="agent-ctx-value" class="ctx-value">—</span>
+      </div>
+    </div>
+    <p id="agent-ctx-hint" class="settings-hint"></p>
+
+    <label class="settings-row settings-check">
+      <span class="settings-label">Debug cache</span>
+      <input id="debug-cache-toggle" type="checkbox">
+    </label>
+    <p class="settings-hint">Replays a previously-run question instead of
+      retrieving again — for iterating on prompts. Replayed answers are badged
+      CACHED. Off by default.</p>
   </div>
 </div>
 
@@ -120,6 +139,7 @@
           <div id="chat-messages"></div>
         </div>
 
+        <div id="chat-choice-bar" class="choice-bar" hidden></div>
         <form id="chat-form" class="chat-inputbar">
           <textarea id="chat-input" rows="2" spellcheck="false"
                     placeholder="Type your question…"></textarea>
@@ -319,6 +339,9 @@
 
   <div class="command-box">
     <div id="suggestions" class="suggestions" hidden></div>
+    <!-- Pre-filter questions: answered before the query, they narrow the tree
+         the question runs over using judgements precomputed at index time. -->
+    <div id="choice-bar" class="choice-bar" hidden></div>
     <div class="command-input-row">
       <button id="chat-collapse" title="Collapse (Esc)">
         <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
@@ -422,6 +445,7 @@
 
 <script src="/static/marked.min.js"></script>
 <script src="/static/main.js"></script>
+<script src="/static/choices.js"></script>
 <script src="/static/chat.js"></script>
 </body>
 </html>
