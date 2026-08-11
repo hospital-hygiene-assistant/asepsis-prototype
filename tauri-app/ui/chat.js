@@ -297,6 +297,25 @@ function buildPendingCard() {
            seen: new Set(), stats: { retrieved: 0, total: 0 } };
 }
 
+/* How long the model call behind a decision took.
+
+   Two shapes, and conflating them would misreport the cost of retrieval:
+   a leaf evaluation is one call for one passage, while pruning decides a
+   whole sibling group in ONE comparative call — so that duration is shared,
+   and the line says so rather than implying each sibling cost it. Nodes
+   pruned by inheritance carry no timing at all, because they cost no call. */
+function traceTiming(m) {
+  if (!m || typeof m.ms !== 'number') return '';
+  const secs = m.ms >= 1000 ? `${(m.ms / 1000).toFixed(1)}s` : `${m.ms}ms`;
+  if (m.ms_shared > 1) {
+    return ` <span class="trace-ms shared" title="One comparative call decided`
+      + ` ${m.ms_shared} sibling sections; this is that call's total time.">`
+      + `${secs} · 1 call / ${m.ms_shared}</span>`;
+  }
+  return ` <span class="trace-ms" title="Model call for this passage,`
+    + ` retries included.">${secs}</span>`;
+}
+
 // Called from main.js's 250ms status poller during any run.
 function chatOnStatus(status) {
   const p = chatState.pending;
@@ -324,6 +343,7 @@ function chatOnStatus(status) {
     const docTag = info.doc ? ` <span class="trace-doc">· ${escHtml(prettyDoc(info.doc))}</span>` : '';
     line.innerHTML = `<span class="trace-ico">${ico}</span><span>` +
       `<span class="trace-what">${word} — ${escHtml(label)}</span>${docTag}` +
+      traceTiming(m) +
       (m.reason ? ` <span class="trace-why">${escHtml(m.reason)}</span>` : '') +
       `</span>`;
     p.logEl.appendChild(line);

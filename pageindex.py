@@ -1181,6 +1181,7 @@ def _evaluate_leaf(
     )
     _inc(client_url)
     last_error = ""
+    started = time.perf_counter()
     try:
         for attempt in range(2):
             try:
@@ -1195,7 +1196,11 @@ def _evaluate_leaf(
                 reason = str(result.get("reason") or "").strip()
                 quote = str(result.get("quote") or "").strip()
                 status = "retrieved" if relevant else "rejected"
-                ctx.mark(leaf.node_id, status, reason, quote if relevant else "")
+                # Wall-clock for THIS leaf's evaluation, retries included —
+                # what the run actually waited for, not the model's own idea
+                # of how long it took.
+                ctx.mark(leaf.node_id, status, reason, quote if relevant else "",
+                         ms=int((time.perf_counter() - started) * 1000))
                 return leaf.node_id, {
                     "relevant": relevant,
                     "reason": reason,
@@ -1209,7 +1214,8 @@ def _evaluate_leaf(
     finally:
         _dec(client_url)
 
-    ctx.mark(leaf.node_id, "error", f"Evaluation failed: {last_error}")
+    ctx.mark(leaf.node_id, "error", f"Evaluation failed: {last_error}",
+             ms=int((time.perf_counter() - started) * 1000))
     return leaf.node_id, {
         "relevant": False,
         "reason": f"Evaluation failed: {last_error}",
@@ -1453,12 +1459,13 @@ def _select_children(
     """
     ctx = ctx or current_run()
     if not children:
-        return {}, False
+        return {}, False, 0
 
     batches = _child_batches(children, breadcrumb, query)
     kept: dict[str, str] = {}
     errored = False
     valid_ids = {c.node_id for c in children}
+    started = time.perf_counter()
 
     for batch in batches:
         prompt = (
@@ -1505,7 +1512,7 @@ def _select_children(
     # Overriding it here forced every document to be explored in full for every
     # query. The only genuinely suspicious case is EVERY document pruning to
     # nothing, which is checked once at the corpus level by the caller.
-    return kept, errored
+    return kept, errored, int((time.perf_counter() - started) * 1000)
 
 
 def make_client(url: str) -> ollama.Client:
@@ -1580,10 +1587,17 @@ def _prune_and_collect(
     candidate_leaves: list["PageNode"] = []
     pool = work_pool()
 
-    def _prune_subtree(node: "PageNode", reason: str) -> None:
-        """Record a rejected child and everything beneath it."""
-        ctx.mark(node.node_id, "pruned", reason)
-        node_meta[node.node_id] = {"relevant": False, "reason": reason, "status": "pruned"}
+    def _prune_subtree(node: "PageNode", reason: str, timing: Optional[dict] = None) -> None:
+        """Record a rejected child and everything beneath it.
+
+        `timing` belongs to the node the model actually judged. Descendants are
+        pruned by inheritance and cost no call at all, so they carry none —
+        showing a duration against them would invent work that never happened.
+        """
+        timing = timing or {}
+        ctx.mark(node.node_id, "pruned", reason, **timing)
+        node_meta[node.node_id] = {"relevant": False, "reason": reason,
+                                   "status": "pruned", **timing}
         descendant_reason = f"Pruned because ancestor section '{node.title}' was pruned."
         for descendant in _collect_all_nodes([node]):
             if descendant.node_id == node.node_id:
@@ -1619,7 +1633,12 @@ def _prune_and_collect(
         next_groups: list[tuple[Optional["PageNode"], list["PageNode"]]] = []
         for future in as_completed(futures):
             parent, children = futures[future]
-            kept, errored = future.result()
+            kept, errored, call_ms = future.result()
+            # One comparative call decided this whole sibling group, so the
+            # duration is the CALL's, shared by every child in it. Recording it
+            # per child without saying so would read as "this node took 3.2s"
+            # when eight nodes were decided in that one call.
+            timing = {"ms": call_ms, "ms_shared": len(children)}
 
             for child in children:
                 if child.node_id in kept:
@@ -1630,9 +1649,10 @@ def _prune_and_collect(
                         candidate_leaves.append(child)
                     else:
                         status = "error" if errored else "kept"
-                        ctx.mark(child.node_id, status, reason)
+                        ctx.mark(child.node_id, status, reason, **timing)
                         node_meta[child.node_id] = {
-                            "relevant": True, "reason": reason, "status": status}
+                            "relevant": True, "reason": reason, "status": status,
+                            **timing}
                         next_groups.append((child, child.children))
                 else:
                     _prune_subtree(child, reason=(
@@ -1641,7 +1661,8 @@ def _prune_and_collect(
                             "siblings, this branch was not worth opening."
                             if level == 0 else
                             "Not selected: the model judged this branch unlikely "
-                            "to answer the query when compared with its siblings.")))
+                            "to answer the query when compared with its siblings.")),
+                        timing=timing)
 
         groups = next_groups
         level += 1

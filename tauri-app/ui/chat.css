@@ -318,6 +318,20 @@ body[data-tab="chat"] #command-bar { display: none !important; }
 .trace-doc  { color: var(--as-faint); }
 .trace-why  { color: var(--as-muted); }
 
+/* Call duration. Tabular figures so the numbers line up down the scroll and
+   an outlier is visible without reading every row. Monospace-ish and dim: it
+   is diagnostic detail, not part of the reasoning itself. */
+.trace-ms {
+  font-variant-numeric: tabular-nums;
+  font-size: 11px; color: var(--as-faint);
+  background: var(--as-border-2); border-radius: 4px;
+  padding: 0 4px; white-space: nowrap;
+}
+/* A shared prune call gets a marker, so "1 call / 8" cannot be misread as
+   eight calls of that length. */
+.trace-ms.shared { color: var(--as-muted); background: transparent;
+  border: 1px dashed var(--as-border); }
+
 /* ── Sources under an answer ── */
 
 .answer-sources { padding: 4px 16px 12px; }
