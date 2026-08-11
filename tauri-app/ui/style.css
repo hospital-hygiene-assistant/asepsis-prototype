@@ -316,6 +316,45 @@ button { font-family: inherit; }
 .tm-rect:hover { stroke: var(--accent); stroke-width: 1.5; }
 .tm-rect.tm-filter-dim { opacity: 0.15; }
 
+/* A folder is a container, not a document: dashed accent border, a tint
+   rather than a fill, and a caret in the label. It has to read as "there is
+   something inside this" at a glance, since clicking it zooms rather than
+   opening a viewer. */
+.tm-rect.tm-folder {
+  fill: rgba(56, 189, 248, 0.05);
+  stroke: rgba(56, 189, 248, 0.45);
+  stroke-dasharray: 5 3;
+  stroke-width: 1.4;
+}
+.tm-rect.tm-folder:hover {
+  fill: rgba(56, 189, 248, 0.11);
+  stroke: var(--accent); stroke-dasharray: none;
+}
+.tm-folder-label {
+  font-size: 11.5px; font-weight: 700; fill: var(--accent);
+  pointer-events: none; font-family: var(--font-ui);
+  letter-spacing: 0.02em;
+}
+.tm-folder-count {
+  font-size: 10px; fill: var(--muted); pointer-events: none;
+  font-family: var(--font-ui);
+}
+
+/* Breadcrumb — the way back out of a folder. */
+.tm-crumbs {
+  display: flex; align-items: center; gap: 6px;
+  padding: 4px 6px 7px; font-size: 11.5px;
+}
+.tm-crumb {
+  padding: 1px 6px; border-radius: 5px; cursor: pointer;
+  background: transparent; border: 1px solid transparent;
+  color: var(--text-2); font-size: 11.5px; font-family: var(--font-ui);
+}
+.tm-crumb:hover { color: var(--text); border-color: var(--border-strong); }
+.tm-crumb-sep { color: var(--muted); opacity: 0.5; }
+.tm-crumb-current { color: var(--accent); font-weight: 700; }
+.tm-crumb-count { margin-left: auto; color: var(--muted); font-size: 11px; }
+
 .tm-doc-label { font-size: 11px; font-weight: 700; fill: var(--text-2);
   pointer-events: none; font-family: var(--font-ui); }
 .tm-label-text { font-size: 10px; fill: var(--muted); pointer-events: none;

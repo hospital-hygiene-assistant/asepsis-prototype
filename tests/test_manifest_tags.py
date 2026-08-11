@@ -207,3 +207,47 @@ class TestBasicMarkdownIngest:
 
         m = Manifest(kb)
         assert m.tags_of("arxiv__report") == ["arxiv"]
+
+
+class TestFolderPath:
+    """`folder` on /api/documents — the ORDERED path, which `tags` cannot be.
+
+    `effective_tags` is a sorted set unioned with hand-curated tags, so
+    "papers/arxiv" and a manually typed "arxiv" are indistinguishable in it,
+    and the nesting order is gone. The treemap groups documents into folders
+    and zooms into them, which needs the real path.
+    """
+
+    @staticmethod
+    def _server():
+        import sys
+        from pathlib import Path as _P
+        sys.path.insert(0, str(_P(__file__).parent.parent / "tauri-app"))
+        import server
+        return server
+
+    def _folder_of(self, rel_path):
+        return self._server()._folder_of(
+            DocEntry(doc_id="d", title="D", rel_path=rel_path))
+
+    def test_nesting_order_is_outermost_first(self):
+        assert self._folder_of("papers/arxiv/attention.pdf") == ["papers", "arxiv"]
+
+    def test_a_top_level_document_belongs_to_no_folder(self):
+        assert self._folder_of("loose.pdf") == []
+
+    def test_windows_separators_are_understood(self):
+        """The manifest records whatever the ingesting machine wrote, and a
+        library committed to git can be read on either platform."""
+        assert self._folder_of(r"papers\arxiv\attention.pdf") == ["papers", "arxiv"]
+
+    def test_a_missing_entry_is_not_an_error(self):
+        assert self._server()._folder_of(None) == []
+
+    def test_it_does_not_depend_on_tags(self):
+        """A curated tag must not invent a folder — folders are provenance,
+        tags are labels, and conflating them would move documents around the
+        treemap when someone edits a tag."""
+        entry = DocEntry(doc_id="d", title="D", rel_path="loose.pdf",
+                         tags=["invented"], manual_tags=["also-invented"])
+        assert self._server()._folder_of(entry) == []

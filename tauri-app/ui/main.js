@@ -945,6 +945,100 @@ function initLibraryAdd() {
   });
 }
 
+/* ── Folders ──────────────────────────────────────────────────────────
+   Documents are ingested from a folder tree (arxiv/, internal/, guidelines/)
+   and the treemap mirrors it. A folder is a container, not a document: it is
+   drawn differently and clicking it ZOOMS IN rather than opening a viewer,
+   because at library scale a folder's documents are otherwise a few pixels
+   each.
+
+   `_tmFocus` is the folder path currently zoomed into — [] is the whole
+   library. Zooming re-lays out that subtree to fill the viewport, which keeps
+   one code path for every depth: the same render, the same live colouring,
+   the same filter. */
+let _tmFocus = [];
+
+function docFolder(d) {
+  return Array.isArray(d.folder) ? d.folder.filter(Boolean) : [];
+}
+
+function buildTreemapData(docs) {
+  const root = { name: '_root', isFolder: true, path: [], children: [] };
+
+  const folderAt = (parts) => {
+    let node = root;
+    for (const part of parts) {
+      let child = node.children.find(c => c.isFolder && c.name === part);
+      if (!child) {
+        const path = [...node.path, part];
+        child = { name: part, isFolder: true, path,
+                  nodeId: `__folder__${path.join('/')}`, children: [] };
+        node.children.push(child);
+      }
+      node = child;
+    }
+    return node;
+  };
+
+  for (const d of docs) {
+    folderAt(docFolder(d)).children.push({
+      name: d.name, nodeId: `__doc__${d.name}`, isDoc: true,
+      title: d.title || d.name, children: d.tree,
+    });
+  }
+  return root;
+}
+
+/* The focused node, or the root when the focused folder no longer exists —
+   a folder can disappear under you when documents are re-ingested, and a
+   dangling focus would render an empty canvas with no way back. */
+function resolveTreemapFocus(rootData) {
+  let node = rootData;
+  for (const part of _tmFocus) {
+    const child = (node.children || []).find(c => c.isFolder && c.name === part);
+    if (!child) { _tmFocus = []; return rootData; }
+    node = child;
+  }
+  return node;
+}
+
+function focusTreemap(path) {
+  _tmFocus = path;
+  if (_docsCache) renderTreemap(_docsCache);
+}
+
+function countDocsIn(node) {
+  if (node.isDoc) return 1;
+  return (node.children || []).reduce((n, c) => n + countDocsIn(c), 0);
+}
+
+/* Breadcrumb — the only way back out, so it is always present once you are
+   inside a folder. */
+function renderTreemapCrumbs(container, focusNode) {
+  if (!_tmFocus.length) return 0;
+  const bar = el('div', 'tm-crumbs');
+
+  const addCrumb = (label, path, isLast) => {
+    if (isLast) { bar.appendChild(el('span', 'tm-crumb-current', label)); return; }
+    const btn = el('button', 'tm-crumb', label);
+    btn.type = 'button';
+    btn.addEventListener('click', () => focusTreemap(path));
+    bar.appendChild(btn);
+    bar.appendChild(el('span', 'tm-crumb-sep', '/'));
+  };
+
+  addCrumb('Library', [], false);
+  _tmFocus.forEach((part, i) => {
+    addCrumb(part, _tmFocus.slice(0, i + 1), i === _tmFocus.length - 1);
+  });
+
+  const n = countDocsIn(focusNode);
+  bar.appendChild(el('span', 'tm-crumb-count',
+    `${n} document${n === 1 ? '' : 's'}`));
+  container.appendChild(bar);
+  return bar.getBoundingClientRect().height || 26;
+}
+
 function renderTreemap(docs) {
   const container = document.getElementById('treemap-pack');
   container.innerHTML = '';
@@ -954,19 +1048,18 @@ function renderTreemap(docs) {
 
   const rect = container.getBoundingClientRect();
   const width = rect.width || 800;
-  const height = rect.height || 500;
 
-  const rootData = {
-    name: '_root',
-    children: docs.map(d => ({
-      name: d.name, nodeId: `__doc__${d.name}`, isDoc: true, children: d.tree,
-    })),
-  };
-  const root = d3.hierarchy(rootData, n => n.children)
+  const rootData = buildTreemapData(docs);
+  const focusNode = resolveTreemapFocus(rootData);
+  const height = (rect.height || 500) - renderTreemapCrumbs(container, focusNode);
+
+  const root = d3.hierarchy(focusNode, n => n.children)
     .sum(n => n.isLeaf ? 1 : 0)
     .sort((a, b) => b.value - a.value);
 
-  d3.treemap().size([width, height]).paddingOuter(6).paddingTop(20)
+  d3.treemap().size([width, height]).paddingOuter(6)
+    // Folders carry a heavier label than a section heading does.
+    .paddingTop(d => (d.data.isFolder && d.depth > 0) ? 26 : 20)
     .paddingInner(3).round(true)(root);
 
   const svg = d3.select(container).append('svg')
@@ -982,8 +1075,12 @@ function renderTreemap(docs) {
   leafG.append('rect')
     .attr('width', d => d.x1 - d.x0)
     .attr('height', d => d.y1 - d.y0)
-    .attr('class', d => `tm-rect tm-pending ${d.data.isLeaf ? 'tm-leaf' : ''}`)
-    .style('cursor', 'pointer')
+    .attr('class', d => 'tm-rect tm-pending'
+      + (d.data.isLeaf ? ' tm-leaf' : '')
+      + (d.data.isFolder ? ' tm-folder' : '')
+      + (d.data.isDoc ? ' tm-doc' : ''))
+    // zoom-in on a folder, because that is what clicking it does.
+    .style('cursor', d => d.data.isFolder ? 'zoom-in' : 'pointer')
     .each(function (d) {
       this.__d = d;
       if (d.data.nodeId) _tmNodeById[d.data.nodeId] = this;
@@ -998,6 +1095,14 @@ function renderTreemap(docs) {
         else if (elx.classList.contains('tm-rejected')) { statusLabel = '✗ Evaluated & rejected'; statusClass = 'tt-rejected'; }
         else if (elx.classList.contains('tm-pruned')) { statusLabel = '⊘ Pruned'; statusClass = 'tt-pruned-label'; }
       }
+      if (d.data.isFolder) {
+        const n = countDocsIn(d.data);
+        showTooltip(event,
+          `<div class="tt-title">${escHtml(d.data.name)}</div>`
+          + `<div class="tt-label tt-section">Folder · ${n} document${n === 1 ? '' : 's'}</div>`
+          + `<div class="tt-reason tt-muted">Click to zoom in</div>`);
+        return;
+      }
       let html = `<div class="tt-title">${escHtml(d.data.title || id)}</div>`;
       html += `<div class="tt-label ${statusClass}">${statusLabel}</div>`;
       if (!d.data.isLeaf) {
@@ -1010,6 +1115,11 @@ function renderTreemap(docs) {
     .on('mousemove', positionTooltip)
     .on('mouseout', hideTooltip)
     .on('click', (event, d) => {
+      if (d.data.isFolder) {
+        hideTooltip();
+        focusTreemap(d.data.path);
+        return;
+      }
       let curr = d;
       while (curr && !curr.data.isDoc) curr = curr.parent;
       if (!curr) return;
@@ -1017,9 +1127,16 @@ function renderTreemap(docs) {
       openDocViewer(curr.data.name, d.data.isDoc ? null : (d.data.title || null));
     });
 
+  const folderG = leafG.filter(d => d.data.isFolder);
+  folderG.append('text').attr('class', 'tm-folder-label').attr('x', 8).attr('y', 17)
+    .text(d => fitLabel(`▸ ${d.data.name}`, d.x1 - d.x0, d.y1 - d.y0));
+  folderG.append('text').attr('class', 'tm-folder-count')
+    .attr('x', d => d.x1 - d.x0 - 8).attr('y', 17).attr('text-anchor', 'end')
+    .text(d => (d.x1 - d.x0) < 120 ? '' : `${countDocsIn(d.data)} docs`);
+
   leafG.filter(d => d.data.isDoc)
     .append('text').attr('class', 'tm-doc-label').attr('x', 6).attr('y', 14)
-    .text(d => d.data.name.replace(/_/g, ' '));
+    .text(d => fitLabel(d.data.name.replace(/_/g, ' '), d.x1 - d.x0, d.y1 - d.y0));
 
   leafG.filter(d => d.data.isLeaf)
     .append('text').attr('class', 'tm-label-text').attr('x', 4).attr('y', 14)
@@ -1028,6 +1145,9 @@ function renderTreemap(docs) {
   // re-apply an active filter across re-renders
   const needle = document.getElementById('library-filter').value.trim().toLowerCase();
   if (needle) applyLibraryFilter(needle);
+  // ...and the live colours, which a zoom would otherwise reset to pending
+  // in the middle of a running query.
+  if (state.liveStatus) applyTreemapEvents(state.liveStatus);
 }
 
 function fitLabel(label, w, h) {
@@ -1053,8 +1173,13 @@ function applyTreemapEvents(status) {
       if (rejectedSet.has(id)) cls = 'tm-rejected';
       else if (prunedSet.has(id) && cls === 'tm-pending') cls = 'tm-pruned';
     }
-    const isLeaf = elx.classList.contains('tm-leaf');
-    elx.setAttribute('class', `tm-rect ${isLeaf ? 'tm-leaf' : ''} ${cls}`);
+    // Rebuild the class list without dropping what the node IS. Only the
+    // status part changes here; tm-leaf/tm-folder/tm-doc describe structure,
+    // and rewriting the attribute wholesale used to erase them on the first
+    // status tick of a query.
+    const structural = ['tm-leaf', 'tm-folder', 'tm-doc']
+      .filter(c => elx.classList.contains(c));
+    elx.setAttribute('class', ['tm-rect', ...structural, cls].join(' '));
   }
 }
 

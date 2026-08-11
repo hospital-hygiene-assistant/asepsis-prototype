@@ -11,7 +11,7 @@ import sys
 import threading
 import time
 import urllib.request
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Optional
 
 # Add project root so we can import pageindex and modules
@@ -773,6 +773,18 @@ def set_tags(req: TagUpdateRequest):
                          "manual_tags": entry.manual_tags})
 
 
+def _folder_of(entry) -> list[str]:
+    """The folder path a document was ingested from, outermost first.
+
+    Empty for a document at the top level of the source folder — it belongs to
+    the library itself, not to a folder inside it.
+    """
+    if entry is None or not entry.rel_path:
+        return []
+    parts = PurePosixPath(entry.rel_path.replace("\\", "/")).parent.parts
+    return [p for p in parts if p not in (".", "/", "")]
+
+
 @app.get("/api/documents")
 def get_documents():
     # Use the default index module to find where indices live
@@ -791,6 +803,12 @@ def get_documents():
             "doc_id": idx.stem,
             "title": entry.title if entry else idx.stem,
             "tags": entry.effective_tags if entry else [],
+            # The ORDERED folder path this document was ingested from, which
+            # `tags` cannot express: effective_tags is a sorted set unioned
+            # with manual tags, so "papers/arxiv" and a hand-typed "arxiv"
+            # are indistinguishable in it. The treemap groups on this.
+            "folder": _folder_of(entry),
+            "rel_path": entry.rel_path if entry else "",
             "leaf_count": _count_leaves(nodes),
             "tree": tree,
         })
