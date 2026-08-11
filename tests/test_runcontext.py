@@ -146,3 +146,51 @@ class TestWorkPool:
         first = pageindex.work_pool()
         pageindex.reconfigure_clients(["http://a:1", "http://b:2"])
         assert pageindex.work_pool() is not first
+
+
+class TestPoolNesting:
+    """Orchestration and LLM work must not share a pool.
+
+    Per-document retrieval tasks block on the node-level calls they submit.
+    Running both on one bounded pool deadlocks it: N documents occupy all N
+    workers, and each then waits for a worker that can never free up. With 2
+    workers and 5 documents, every query hung forever with no progress and no
+    error — the failure mode is indistinguishable from "the model is slow".
+    """
+
+    def test_pools_are_distinct(self):
+        assert pageindex.work_pool() is not pageindex.coordination_pool()
+
+    def test_coordination_pool_is_large_enough_to_never_be_the_bottleneck(self):
+        assert pageindex.coordination_pool()._max_workers >= 16
+
+    def test_nested_submission_across_pools_completes(self):
+        """The exact shape of _run_retrieval: more documents than workers,
+        each submitting node-level work and blocking on it."""
+        app_config.update(concurrency_per_instance=2)
+        pageindex.reconfigure_clients(["http://a:1"])
+        work, coord = pageindex.work_pool(), pageindex.coordination_pool()
+
+        def node_call():
+            return 1
+
+        def per_document(_):
+            return sum(f.result(timeout=10)
+                       for f in [work.submit(node_call) for _ in range(4)])
+
+        futures = [coord.submit(per_document, i) for i in range(5)]
+        assert [f.result(timeout=20) for f in futures] == [4] * 5
+
+    def test_same_pool_nesting_would_deadlock(self):
+        """Documents the hazard: identical work on ONE pool times out. If this
+        ever stops timing out the guard above has become unnecessary."""
+        import concurrent.futures as cf
+        pool = cf.ThreadPoolExecutor(max_workers=2)
+        try:
+            def outer(_):
+                return pool.submit(lambda: 1).result(timeout=2)
+            futures = [pool.submit(outer, i) for i in range(5)]
+            with pytest.raises(Exception):
+                [f.result(timeout=6) for f in futures]
+        finally:
+            pool.shutdown(wait=False)

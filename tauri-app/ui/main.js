@@ -807,6 +807,39 @@ function updateLibraryCount(docs) {
   const leaves = (docs || []).reduce((n, d) => n + (d.leaf_count || 0), 0);
   document.getElementById('library-count').textContent =
     docs?.length ? `${docs.length} document${docs.length > 1 ? 's' : ''} · ${leaves} sections` : '';
+  renderLibraryTags(docs);
+}
+
+/* Folder tags, as ingested. A document's tags are the folder names on its path
+   under the ingest root, so a flat source folder legitimately produces none —
+   which is worth saying out loud, otherwise an empty tag bar reads as a bug. */
+function renderLibraryTags(docs) {
+  const host = document.getElementById('library-tags');
+  if (!host) return;
+  host.innerHTML = '';
+
+  const counts = new Map();
+  for (const d of docs || []) {
+    for (const t of d.tags || []) counts.set(t, (counts.get(t) || 0) + 1);
+  }
+  if (!docs?.length) { host.hidden = true; return; }
+  host.hidden = false;
+
+  if (!counts.size) {
+    host.appendChild(el('span', 'tag-empty',
+      'No tags — these documents sit at the top level of the source folder. ' +
+      'Ingest from sub-folders (e.g. arxiv/, internal/) and each folder name becomes a tag.'));
+    return;
+  }
+
+  host.appendChild(el('span', 'tag-label', 'Tags'));
+  for (const [tag, n] of [...counts].sort((a, b) => a[0].localeCompare(b[0]))) {
+    const chip = el('span', 'tag-chip');
+    chip.appendChild(el('b', '', tag));
+    chip.appendChild(el('i', '', String(n)));
+    chip.title = `${n} document${n === 1 ? '' : 's'} tagged "${tag}"`;
+    host.appendChild(chip);
+  }
 }
 
 function resetLibraryStatus() {

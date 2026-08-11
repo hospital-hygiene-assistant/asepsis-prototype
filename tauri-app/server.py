@@ -1301,7 +1301,10 @@ def _run_retrieval(query: str, index_mod, ctx=None, tags=None,
     # and budgeted across the whole corpus rather than per file.
     supports_two_phase = (hasattr(index_mod, "prune_document")
                           and hasattr(index_mod, "evaluate_ranked"))
-    pool = _pi.work_pool()
+    # Per-document orchestration goes on the COORDINATION pool. These tasks
+    # block on the node-level calls they submit, so running them on the work
+    # pool deadlocks it (see pageindex.coordination_pool).
+    pool = _pi.coordination_pool()
 
     per_doc: dict[str, tuple] = {}
     if supports_two_phase:

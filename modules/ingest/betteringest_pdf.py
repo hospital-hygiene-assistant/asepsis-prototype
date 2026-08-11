@@ -68,6 +68,21 @@ def _load_sources() -> dict:
         return {}
 
 
+def doc_id_for(pdf: Path, root: Path | None = None) -> str:
+    """The document id for a PDF, and its manifest entry.
+
+    Every ingest path must agree on this. The app's review flow keyed
+    `_active_reviews` on `pdf.stem` while the folder flow used the manifest's
+    path-derived id, so the same file could land under two different ids —
+    and a PDF ingested through the app never reached the manifest at all,
+    which is why it showed no tags.
+    """
+    from modules.ingest._manifest import Manifest
+    root = Path(root or get_source_dir() or pdf.parent)
+    return Manifest(KB_DIR).register(
+        source_path=pdf, root=root, ingest_module=MODULE_INFO["name"]).doc_id
+
+
 # ── the ingest stage ─────────────────────────────────────────────────────────
 
 def run(source_dir: str | None = None, progress=None,
@@ -231,7 +246,7 @@ def prepare_layout_review(pdf_paths: list[str], progress_cb=None) -> list[dict]:
     results = []
     for path_str in pdf_paths:
         pdf = Path(path_str).resolve()
-        stem = pdf.stem
+        stem = doc_id_for(pdf)
         
         cb = None
         if progress_cb:
@@ -383,7 +398,7 @@ def finalize_ingestion(pdf_path: str, confirmed_assets: list[dict], non_assets: 
     from modules.ingest._betteringest.ocr import _load_models
 
     pdf = Path(pdf_path).resolve()
-    stem = pdf.stem
+    stem = doc_id_for(pdf)
 
     bi = BetterIngest(out_dir=OUT_DIR, cache_dir=OCR_CACHE_DIR)
     
@@ -442,6 +457,10 @@ def finalize_ingestion(pdf_path: str, confirmed_assets: list[dict], non_assets: 
     }
     SOURCES_MANIFEST.write_text(
         json.dumps(sources, indent=2, ensure_ascii=False), encoding="utf-8")
+    _manifest.register(source_path=pdf, root=_root, doc_id=stem,
+                       ingest_module=MODULE_INFO["name"],
+                       extra={"pdf": str(pdf.resolve()),
+                              "assets": [a.to_dict() for a in doc.assets]})
 
     return {
         "stem": stem,

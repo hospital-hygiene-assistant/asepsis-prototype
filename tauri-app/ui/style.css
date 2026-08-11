@@ -1219,3 +1219,19 @@ button { font-family: inherit; }
 .ctx-value.ctx-off-band { color: #fbbf24; }
 .settings-check { cursor: pointer; }
 .settings-check input[type="checkbox"] { accent-color: var(--accent, #38bdf8); }
+
+/* Library tag bar — folder-derived provenance, shown as ingested. */
+.library-tags { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 6px; }
+.library-tags .tag-label {
+  font-size: 10px; font-weight: 800; letter-spacing: 0.07em;
+  text-transform: uppercase; color: var(--text-2); opacity: 0.7; margin-right: 2px;
+}
+.library-tags .tag-chip {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 2px 8px; border-radius: 999px; font-size: 11px;
+  background: rgba(56, 189, 248, 0.1);
+  border: 1px solid rgba(56, 189, 248, 0.32); color: var(--text-2);
+}
+.library-tags .tag-chip b { font-weight: 600; color: var(--text); }
+.library-tags .tag-chip i { font-style: normal; opacity: 0.6; font-size: 10px; }
+.library-tags .tag-empty { font-size: 11px; color: var(--text-2); opacity: 0.7; }

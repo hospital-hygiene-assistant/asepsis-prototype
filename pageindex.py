@@ -282,6 +282,34 @@ def _reset_work_pool() -> None:
     if old is not None:
         old.shutdown(wait=False)
 
+
+# ---------------------------------------------------------------------------
+# Coordination pool — SEPARATE from the work pool, and it must stay that way.
+#
+# Orchestration tasks (one per document) spend their time blocked on the
+# node-level LLM calls they submit. Running them on the work pool deadlocks:
+# with N workers, N documents occupy every worker, and each then waits for a
+# worker that can never free up. That is not theoretical — it is exactly what
+# made every query hang after documents started retrieving in parallel.
+#
+# INVARIANT: nothing running on WORK_POOL may submit to WORK_POOL and block.
+# Coordinators run here; only leaf LLM calls run there.
+# ---------------------------------------------------------------------------
+
+_coord_lock = threading.Lock()
+_coord_pool: Optional[ThreadPoolExecutor] = None
+
+
+def coordination_pool() -> ThreadPoolExecutor:
+    global _coord_pool
+    with _coord_lock:
+        if _coord_pool is None:
+            # These threads block rather than compute, so the size only needs
+            # to cover the corpus, not the hardware.
+            _coord_pool = ThreadPoolExecutor(
+                max_workers=32, thread_name_prefix="asepsis-coord")
+        return _coord_pool
+
 HEADING_RE = re.compile(r"^(#{1,6})\s+(.+)$")
 
 # ---------------------------------------------------------------------------
