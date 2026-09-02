@@ -1623,6 +1623,8 @@ def run_query(req: RunRequest):
 
 _chat_lock = threading.Lock()
 _chat_phase: dict = {"phase": "idle", "detail": ""}
+# The retrieved passages of the run in flight, for the evidence deck.
+_chat_cards: list = []
 
 
 def _set_chat_phase(phase: str, detail: str = "", **extra) -> None:
@@ -1690,6 +1692,19 @@ def _breadcrumbs_for(results: dict) -> dict:
             for nid in doc_data["retrieved_ids"]
         }
     return crumbs
+
+
+@app.get("/api/chat/cards")
+def chat_cards():
+    """The passages retrieved by the run in flight.
+
+    Fetched once when the status poll reports them, so the poll itself stays
+    small: these carry the full excerpt and page pin, which is what lets a
+    card show the same highlight and open the same document as the source
+    cards under the finished answer.
+    """
+    with _chat_lock:
+        return JSONResponse({"cards": list(_chat_cards)})
 
 
 @app.get("/api/chat/config")
@@ -1799,21 +1814,18 @@ def chat(req: ChatRequest):
             answer_text = cached.answer.get("content", "")
             sections = {k: v for k, v in cached.answer.items() if k != "content"}
         elif sources:
-            # Trimmed deliberately: this rides the 250ms status poll, so the
-            # excerpt and page image stay out. The full source objects reach
-            # the UI once in the final response.
+            # The deck needs the full passages — excerpt, page, pin — to show
+            # the same highlight and open the same document the finished
+            # answer's source cards do. Those are too big for a 250ms poll,
+            # so the poll only says they EXIST and the UI fetches them once.
             manifest = _manifest()
-            _set_chat_phase(
-                "synthesis", f"Composing an answer from {len(sources)} passages…",
-                cards=[{
-                    "n": s_["n"],
-                    "doc": s_["doc"],
-                    "folder": _folder_of(manifest.get(s_["doc"])),
-                    "title": s_["title"],
-                    "breadcrumb": s_["breadcrumb"],
-                    "quote": s_["quote"],
-                    "reason": s_["reason"],
-                } for s_ in sources])
+            with _chat_lock:
+                _chat_cards.clear()
+                _chat_cards.extend({**s_, "folder": _folder_of(manifest.get(s_["doc"]))}
+                                   for s_ in sources)
+            _set_chat_phase("synthesis",
+                            f"Composing an answer from {len(sources)} passages…",
+                            cards_ready=len(sources))
             passages = "\n\n".join(
                 f"[{s['n']}] {s['doc'].replace('_', ' ')} › {s['breadcrumb'] or s['title']}\n{s['excerpt'] or '(no content)'}"
                 for s in sources

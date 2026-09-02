@@ -25,7 +25,7 @@
   --as-border-2:  var(--surface2);
   --as-teal:      var(--accent);
   --as-teal-dark: var(--accent);
-  --as-teal-deep: var(--text);
+  --as-teal-deep: var(--accent);
   --as-teal-soft: var(--accent-soft);
   --as-teal-ring: var(--border-strong);
   --as-amber-bg:  color-mix(in oklab, var(--amber) 12%, var(--surface));
@@ -41,6 +41,9 @@
 :root[data-theme="dark"], :root:not([data-theme="light"]) {
   --as-shadow-card: 0 8px 24px rgba(0, 0, 0, 0.45);
   --as-shadow-head: 0 6px 18px rgba(0, 0, 0, 0.5);
+  /* A wash tuned for paper disappears on a dark ground — the deciding quote
+     is the one thing on the card that must not be missable. */
+  --as-quote: color-mix(in oklab, var(--amber) 34%, transparent);
 }
 
 /* ═══ Topbar app tabs (shared chrome — dark theme) ═══ */
@@ -224,7 +227,10 @@ body[data-tab="chat"] #command-bar { display: none !important; }
 .chat-row { display: flex; }
 .chat-row.user { justify-content: flex-end; }
 .chat-user-bubble {
-  max-width: 86%; background: var(--as-text); color: #fff;
+  max-width: 86%;
+  /* Inverted against the page rather than painted a literal colour, so the
+     bubble stays legible in both themes instead of white-on-white. */
+  background: var(--as-text); color: var(--as-bg);
   border-radius: 8px; padding: 9px 15px;
   font-size: 13.5px; line-height: 1.55; white-space: pre-wrap;
 }
@@ -275,7 +281,7 @@ body[data-tab="chat"] #command-bar { display: none !important; }
   font-size: 11.5px; font-weight: 600; border: 1px solid;
 }
 .grounding-badge svg { flex: none; }
-.grounding-badge.grounded { background: var(--as-teal-soft); border-color: #99f6e4; color: var(--as-teal-deep); }
+.grounding-badge.grounded { background: var(--as-teal-soft); border-color: color-mix(in oklab, var(--as-teal) 40%, transparent); color: var(--as-teal); }
 .grounding-badge.partially_grounded,
 .grounding-badge.insufficient_evidence,
 .grounding-badge.not_connected { background: var(--as-amber-bg); border-color: var(--as-amber-bd); color: var(--as-amber-tx); }
@@ -629,7 +635,7 @@ body[data-tab="chat"] #command-bar { display: none !important; }
 
 /* Fixed height: cards in a stack must be the same size, and a height that
    changed per card would make the composer jump on every click. */
-.deck-stack { position: relative; height: clamp(230px, 30vh, 310px); }
+.deck-stack { position: relative; height: clamp(292px, 40vh, 400px); }
 
 .ev-card {
   position: absolute; inset: 0; display: flex; flex-direction: column;
@@ -725,4 +731,104 @@ body[data-tab="chat"] #command-bar { display: none !important; }
   color: var(--folder);
   background: color-mix(in oklab, var(--folder) 13%, transparent);
   border-color: color-mix(in oklab, var(--folder) 38%, transparent);
+}
+
+/* ═══ Composing widget ════════════════════════════════════════════
+   No progress bar: nothing here knows how long the model will take, and a
+   bar that fills at an invented rate is a lie the user will catch. Activity
+   plus honest elapsed time instead. */
+.composing {
+  display: flex; align-items: center; gap: 11px;
+  padding: 9px 13px; border-radius: 10px;
+  background: color-mix(in oklab, var(--as-teal) 7%, var(--as-surface));
+  border: 1px solid color-mix(in oklab, var(--as-teal) 26%, transparent);
+  transition: background .4s ease, border-color .4s ease;
+}
+.composing-viz { display: flex; align-items: flex-end; gap: 3px; height: 18px; flex: none; }
+.composing-viz i {
+  display: block; width: 3px; height: 100%; border-radius: 2px;
+  background: var(--as-teal); transform-origin: 50% 100%;
+  animation: breathe 1.15s ease-in-out infinite;
+}
+@keyframes breathe {
+  0%, 100% { transform: scaleY(.28); opacity: .5; }
+  50%      { transform: scaleY(1);   opacity: 1; }
+}
+.composing-text { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.composing-text b { font-size: 12.5px; font-weight: 600; color: var(--as-text); }
+.composing-sub { font-size: 11.5px; color: var(--as-muted); }
+.composing-clock {
+  margin-left: auto; flex: none; font-size: 12px; color: var(--as-muted);
+  font-variant-numeric: tabular-nums;
+}
+/* Resolved: the bars settle rather than vanishing mid-breath. */
+.composing.done {
+  background: color-mix(in oklab, var(--as-green) 9%, var(--as-surface));
+  border-color: color-mix(in oklab, var(--as-green) 32%, transparent);
+}
+.composing.done .composing-viz i { animation: none; transform: scaleY(.4); background: var(--as-green); }
+.composing.done .composing-clock { color: var(--as-green); }
+
+/* ═══ Verdict trail ═══════════════════════════════════════════════
+   Each decision arrives by floating up into place. Saturation encodes how
+   much the verdict matters: retrieved is the find and gets the colour,
+   rejected is a real judgement but a negative one, pruned is bulk and stays
+   almost grey — otherwise 150 prunes shout down the 11 finds. */
+.trace-line.arriving { animation: verdict-in .34s cubic-bezier(.2,.85,.3,1) both; }
+@keyframes verdict-in {
+  from { opacity: 0; transform: translateY(9px); }
+  to   { opacity: 1; transform: none; }
+}
+.trace-line {
+  border-left: 2px solid transparent; padding: 3px 6px 3px 8px;
+  border-radius: 0 5px 5px 0; margin-bottom: 2px;
+}
+.trace-line.retrieved {
+  border-left-color: var(--as-green);
+  background: color-mix(in oklab, var(--as-green) 9%, transparent);
+}
+.trace-line.rejected {
+  border-left-color: color-mix(in oklab, var(--as-rose) 55%, transparent);
+  background: color-mix(in oklab, var(--as-rose) 5%, transparent);
+}
+.trace-line.pruned  { border-left-color: var(--as-border); opacity: .72; }
+.trace-line.kept    { border-left-color: color-mix(in oklab, var(--as-blue) 45%, transparent); }
+.trace-line.error   { border-left-color: var(--as-amber-tx); }
+
+.trace-line.inspectable { cursor: pointer; transition: background .14s ease, transform .1s ease; }
+.trace-line.inspectable:hover {
+  background: color-mix(in oklab, var(--as-teal) 9%, transparent);
+  transform: translateX(2px);
+}
+.trace-line.inspectable:focus-visible { outline: 2px solid var(--as-teal); outline-offset: 1px; }
+
+/* The trail is scrollable, and stays scrollable after the answer arrives. */
+.trace-log { max-height: 210px; overflow-y: auto; scrollbar-width: thin; }
+.trace-block.frozen .trace-toggle { cursor: pointer; }
+
+/* ═══ Deck: excerpt + actions ════════════════════════════════════ */
+.ev-excerpt {
+  margin: 0; font-size: 13px; line-height: 1.55; color: var(--as-text-2);
+  border-left: 2px solid var(--as-border); padding-left: 10px;
+}
+.ev-excerpt mark {
+  background: var(--as-quote); color: var(--as-text);
+  padding: .05em .12em; border-radius: 2px;
+}
+.ev-acts { flex: none; display: flex; align-items: center; gap: 7px; margin-top: 9px; }
+.ev-act {
+  font: inherit; font-size: 11px; padding: 3px 9px; border-radius: 6px;
+  cursor: pointer; background: transparent; color: var(--as-text-3);
+  border: 1px solid var(--as-border);
+}
+.ev-act:hover { color: var(--folder); border-color: var(--folder); }
+.ev-advance { margin-left: auto; font-size: 10.5px; color: var(--as-faint); }
+
+/* Source cards carry the same provenance stripe the deck used. */
+.source-card.tinted { border-left: 3px solid var(--folder); }
+.source-card.tinted .source-eyebrow { color: var(--folder); }
+
+@media (prefers-reduced-motion: reduce) {
+  .trace-line.arriving { animation: none; }
+  .composing-viz i { animation: none; transform: scaleY(.6); }
 }

@@ -148,6 +148,22 @@ function renderChatEmptyState() {
   empty.appendChild(wrap);
 }
 
+/* Bring the TOP of a card into view and then leave the scroll alone, so an
+   answer writes itself downward from where the reader is looking. Jumping to
+   the bottom put the typing off-screen above and landed the reader in the
+   source list, which is the one part that was not being written. */
+function revealCardTop(card, smooth = true) {
+  const sc = document.getElementById('chat-scroll');
+  if (!sc || !card) return;
+  // Measured against the SCROLLER, not the offset parent: offsetTop is
+  // relative to whichever ancestor happens to be positioned, which put the
+  // card's header just above the fold.
+  const target = Math.max(0,
+    card.getBoundingClientRect().top - sc.getBoundingClientRect().top + sc.scrollTop - 14);
+  if (Math.abs(sc.scrollTop - target) < 6) return;
+  sc.scrollTo({ top: target, behavior: smooth ? 'smooth' : 'auto' });
+}
+
 function scrollChatToBottom(smooth = true) {
   const sc = document.getElementById('chat-scroll');
   sc.scrollTo({ top: sc.scrollHeight, behavior: smooth ? 'smooth' : 'auto' });
@@ -366,6 +382,41 @@ function folderLabel(folder) {
 /* Source colour by node id, so citation chips and source cards in the finished
    answer carry the same hue the deck used. Populated when the deck mounts. */
 const sourceHues = new Map();
+let deckComposer = null;
+
+/* The model is thinking for ~27s and says nothing while it does. A progress
+   bar would be a lie — nothing here knows how long it will take — so this
+   shows ACTIVITY and elapsed time instead of a fake percentage: a row of
+   bars that breathe, and the passage count it is working from. */
+function buildComposer(count) {
+  const w = el('div', 'composing');
+  const viz = el('div', 'composing-viz');
+  for (let i = 0; i < 5; i++) {
+    const b = el('i');
+    b.style.animationDelay = `${i * 0.13}s`;
+    viz.appendChild(b);
+  }
+  w.appendChild(viz);
+
+  const txt = el('div', 'composing-text');
+  txt.appendChild(el('b', null, 'Writing the answer'));
+  txt.appendChild(el('span', 'composing-sub', `reading ${count} passage${count === 1 ? '' : 's'}`));
+  w.appendChild(txt);
+
+  const clock = el('span', 'composing-clock', '0s');
+  w.appendChild(clock);
+
+  const t0 = performance.now();
+  w.__timer = setInterval(() => {
+    clock.textContent = Math.round((performance.now() - t0) / 1000) + 's';
+  }, 1000);
+  return w;
+}
+
+function stopComposer(w) {
+  if (w && w.__timer) clearInterval(w.__timer);
+  if (w) w.remove();
+}
 
 function mountDeck(p, cards) {
   if (!cards || !cards.length || p.deck) return;
@@ -387,6 +438,9 @@ function mountDeck(p, cards) {
     `${cards.length} passage${cards.length === 1 ? '' : 's'} · read them while the answer is written`));
   wrap.appendChild(head);
 
+  deckComposer = buildComposer(cards.length);
+  wrap.appendChild(deckComposer);
+
   const stack = el('div', 'deck-stack');
   cards.forEach((c, i) => {
     const card = el('article', 'ev-card');
@@ -406,7 +460,13 @@ function mountDeck(p, cards) {
     if (c.breadcrumb) card.appendChild(el('div', 'ev-crumb', c.breadcrumb));
 
     const body = el('div', 'ev-body');
-    body.appendChild(el('p', 'ev-quote', c.quote || '(no verbatim quote was returned)'));
+    const excerpt = el('blockquote', 'ev-excerpt');
+    // Same highlighter the finished answer's source cards use, so a passage
+    // looks the same wherever it is read.
+    excerpt.innerHTML = (c.excerpt || '').trim()
+      ? highlightRelevantContent(c.excerpt, c.quote || '')
+      : escHtml(c.quote || '(no verbatim quote was returned)');
+    body.appendChild(excerpt);
     card.appendChild(body);
 
     if (c.reason) {
@@ -415,6 +475,23 @@ function mountDeck(p, cards) {
       why.appendChild(document.createTextNode(c.reason));
       card.appendChild(why);
     }
+    const acts = el('div', 'ev-acts');
+    const open = el('button', 'ev-act', 'Open document');
+    open.type = 'button';
+    open.addEventListener('click', e => {
+      e.stopPropagation();
+      openDocViewer(c.doc, c.title || null);
+    });
+    acts.appendChild(open);
+    if (c.page && c.has_source_pdf) {
+      const pg = el('button', 'ev-act', `Original page ${c.page}`);
+      pg.type = 'button';
+      pg.addEventListener('click', e => { e.stopPropagation(); openSourceView(c.doc, c.pin); });
+      acts.appendChild(pg);
+    }
+    acts.appendChild(el('span', 'ev-advance', 'click anywhere to advance'));
+    card.appendChild(acts);
+
     card.addEventListener('click', () => deckGo(deck, 1));
     stack.appendChild(card);
   });
@@ -429,7 +506,7 @@ function mountDeck(p, cards) {
   deck.stack = stack;
   p.deck = deck;
   layoutDeck(deck);
-  scrollChatToBottom();
+  revealCardTop(p.card);
 }
 
 function layoutDeck(deck) {
@@ -541,8 +618,12 @@ function chatOnStatus(status) {
 
   // Retrieval is done and synthesis has started: the passages exist now, so
   // show them rather than spinning for the ~27s the model spends reasoning.
-  if (status.chat?.phase === 'synthesis' && status.chat.cards && !p.deck) {
-    mountDeck(p, status.chat.cards);
+  if (status.chat?.phase === 'synthesis' && status.chat.cards_ready
+      && !p.deck && !p.deckFetching) {
+    p.deckFetching = true;
+    apiGet('/api/chat/cards')
+      .then(r => mountDeck(p, r.cards || []))
+      .catch(() => { p.deckFetching = false; });
   }
 
   const meta = status.live?.meta || {};
@@ -551,8 +632,21 @@ function chatOnStatus(status) {
     if (p.seen.has(nodeId)) continue;
     p.seen.add(nodeId);
     const [ico, word] = TRACE_META[m.status] || ['·', m.status];
-    const line = el('div', `trace-line ${m.status}`);
+    const line = el('div', `trace-line ${m.status} arriving`);
     const info = chatState.nodeInfo[nodeId] || {};
+    // Clicking a verdict opens the passage it was about. A decision you
+    // cannot inspect is an assertion, not a trace.
+    if (info.doc) {
+      line.classList.add('inspectable');
+      line.tabIndex = 0;
+      line.title = 'Open this section in the document';
+      const open = () => openDocViewer(info.doc, info.title || null);
+      line.addEventListener('click', open);
+      line.addEventListener('keydown', ev => {
+        if (ev.key === 'Enter' || ev.key === ' ') { ev.preventDefault(); open(); }
+      });
+    }
+
     const label = info.title || nodeId;
     const docTag = info.doc ? ` <span class="trace-doc">· ${escHtml(prettyDoc(info.doc))}</span>` : '';
     line.innerHTML = `<span class="trace-ico">${ico}</span><span>` +
@@ -568,7 +662,11 @@ function chatOnStatus(status) {
   if (added) {
     p.logEl.hidden = false;
     p.countEl.textContent = `· ${p.stats.total} decisions · ${p.stats.retrieved} retrieved`;
-    p.logEl.scrollTop = p.logEl.scrollHeight;
+    // Follow only if the reader is already at the bottom — otherwise they are
+    // reading back through the trail and should not be dragged forward.
+    const nearBottom =
+      p.logEl.scrollHeight - p.logEl.clientHeight - p.logEl.scrollTop < 90;
+    if (nearBottom) p.logEl.scrollTop = p.logEl.scrollHeight;
   }
 }
 
@@ -731,6 +829,13 @@ function finalizeAnswerCard(p, data) {
   // reader who has actually flipped through the deck gets a button instead.
   // A passive one — deck untouched — sees the answer immediately, because for
   // them the deck was never more than a progress indicator.
+  if (deckComposer) {
+    clearInterval(deckComposer.__timer);
+    deckComposer.classList.add('done');
+    deckComposer.querySelector('b').textContent = 'Answer ready';
+    const sub = deckComposer.querySelector('.composing-sub');
+    if (sub) sub.textContent = 'written from the passages behind this card';
+  }
   if (p.deck && p.deck.engaged) {
     p.deck.held = () => { p.deck.held = null; applyAnswer(p, data); };
     renderDeckControls(p.deck);
@@ -742,6 +847,7 @@ function finalizeAnswerCard(p, data) {
 }
 
 function applyAnswer(p, data) {
+  stopComposer(deckComposer); deckComposer = null;
   // No deck mounted (a cached replay never reaches the synthesis phase), so
   // there is no provenance to show. Untinted beats wrongly tinted.
   if (!p.deck) sourceHues.clear();
@@ -801,10 +907,17 @@ function applyAnswer(p, data) {
   const budgetNotice = buildBudgetNotice(data.budget);
   if (budgetNotice) body.appendChild(budgetNotice);
 
-  // Trace: freeze into a collapsed audit block
+  // Trace: freeze into a collapsed audit block. It stays in the card — the
+  // toggle below is how the trail is reopened once the answer is here.
   p.progressEl.remove();
   p.trace.classList.remove('open');
+  p.trace.classList.add('frozen');
   if (p.stats.total === 0) p.trace.remove();
+  else {
+    const count = p.trace.querySelector('.trace-count');
+    if (count) count.textContent =
+      `· ${p.stats.total} decisions · ${p.stats.retrieved} retrieved · click any to open it`;
+  }
 
   // Sources
   const srcWrap = el('div', 'answer-sources');
@@ -838,12 +951,14 @@ function applyAnswer(p, data) {
 
   chatState.messages.push({ role: 'assistant', id: answerId, query: data.query, data });
   updateEvidenceLibrary();
-  scrollChatToBottom();
+  revealCardTop(p.card);
 }
 
 function buildSourceCard(s, answerId) {
   const card = el('article', 'source-card');
   card.id = `src-${answerId}-${s.n}`;
+  const hue = sourceHues.get(s.n);
+  if (hue) { card.style.setProperty('--folder', hue); card.classList.add('tinted'); }
 
   const eyebrow = el('p', 'source-eyebrow');
   eyebrow.innerHTML = `[${s.n}] ${escHtml(prettyDoc(s.doc))}` +
