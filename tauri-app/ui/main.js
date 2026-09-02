@@ -305,6 +305,11 @@ function attachPopover(btnId, popId, place) {
     pop.hidden = false;
     const r = btn.getBoundingClientRect();
     place(pop, r);
+    // A popover taller than the space under its button used to run off the
+    // bottom of the window with no way to reach the end of it. Cap it to what
+    // is actually left and let the overflow scroll, measured after `place`
+    // so the cap follows wherever the caller put it.
+    pop.style.maxHeight = `${Math.max(160, window.innerHeight - pop.getBoundingClientRect().top - 12)}px`;
   });
   document.addEventListener('mousedown', (e) => {
     if (!pop.hidden && !pop.contains(e.target) && e.target !== btn && !btn.contains(e.target)) {
@@ -903,28 +908,83 @@ function renderLibraryTags(docs) {
     return;
   }
 
+  _docTags = new Map((docs || []).map(d => [d.name, d.tags || []]));
+  // A tag that no longer exists must not keep dimming the map.
+  for (const t of [..._activeTags]) if (!counts.has(t)) _activeTags.delete(t);
+
   host.appendChild(el('span', 'tag-label', 'Tags'));
   for (const [tag, n] of [...counts].sort((a, b) => a[0].localeCompare(b[0]))) {
-    const chip = el('span', 'tag-chip');
+    // A button, not a span: these now filter the map below, the same way the
+    // search box does — a label that changes what you see should be pressable.
+    const chip = el('button', 'tag-chip' + (_activeTags.has(tag) ? ' active' : ''));
+    chip.type = 'button';
+    chip.setAttribute('aria-pressed', String(_activeTags.has(tag)));
     chip.appendChild(el('b', '', tag));
     chip.appendChild(el('i', '', String(n)));
-    chip.title = `${n} document${n === 1 ? '' : 's'} tagged "${tag}"`;
+    chip.title = `${n} document${n === 1 ? '' : 's'} tagged "${tag}" — `
+      + `click to ${_activeTags.has(tag) ? 'stop highlighting' : 'highlight'} them below`;
+    chip.addEventListener('click', () => toggleLibraryTag(tag));
     host.appendChild(chip);
   }
+
+  // Several tags read as "any of these", not "all of them": a document has one
+  // folder path, so requiring two tags at once would always select nothing.
+  if (_activeTags.size) {
+    const clear = el('button', 'tag-chip tag-clear', 'Clear');
+    clear.type = 'button';
+    clear.title = 'Stop highlighting and show the whole library again';
+    clear.addEventListener('click', () => { _activeTags.clear(); renderLibraryTags(docs); applyLibraryDimming(); });
+    host.appendChild(clear);
+  }
+}
+
+function toggleLibraryTag(tag) {
+  if (_activeTags.has(tag)) _activeTags.delete(tag);
+  else _activeTags.add(tag);
+  renderLibraryTags(_docsCache || []);
+  applyLibraryDimming();
 }
 
 function resetLibraryStatus() {
   document.getElementById('library-status').textContent = (_docsCache || []).length
-    ? 'Click any section to read it — or press ⌘K and ask a question.'
+    ? 'Click any section to read it.'
     : 'Your library is empty.';
 }
 
+/* Two filters now dim the map — the search box and the tag pills — so they
+   share one pass. Applying them separately meant whichever ran last decided
+   every rect, and clearing one un-dimmed what the other was still hiding. */
+let _libNeedle = '';
+const _activeTags = new Set();
+let _docTags = new Map();          // doc name -> tags, for the tag filter
+
 function applyLibraryFilter(needle) {
+  _libNeedle = needle || '';
+  applyLibraryDimming();
+}
+
+/* The documents a rect belongs to: itself if it IS a document, the document
+   above it if it sits inside one, and every document beneath it if it is a
+   folder — so a folder stays lit while anything in it matches. */
+function docsForNode(d) {
+  const up = d.ancestors().find(a => a.data.isDoc);
+  if (up) return [up.data.name];
+  return d.descendants().filter(x => x.data.isDoc).map(x => x.data.name);
+}
+
+function nodeMatchesTags(d) {
+  if (!_activeTags.size) return true;
+  return docsForNode(d).some(name =>
+    (_docTags.get(name) || []).some(t => _activeTags.has(t)));
+}
+
+function applyLibraryDimming() {
   for (const [, rect] of Object.entries(_tmNodeById)) {
     if (!rect?.__d) continue;
     const d = rect.__d;
     const hay = `${d.data.title || ''} ${d.data.nodeId || ''}`.toLowerCase();
-    rect.classList.toggle('tm-filter-dim', !!needle && !hay.includes(needle));
+    const missesNeedle = !!_libNeedle && !hay.includes(_libNeedle);
+    rect.classList.toggle('tm-filter-dim', missesNeedle || !nodeMatchesTags(d));
   }
 }
 
@@ -1229,9 +1289,11 @@ function renderTreemap(docs) {
     .append('text').attr('class', 'tm-label-text').attr('x', 4).attr('y', 14)
     .text(d => fitLabel(d.data.title || d.data.nodeId || '', d.x1 - d.x0, d.y1 - d.y0));
 
-  // re-apply an active filter across re-renders
-  const needle = document.getElementById('library-filter').value.trim().toLowerCase();
-  if (needle) applyLibraryFilter(needle);
+  // re-apply BOTH active filters across re-renders — read the search box back
+  // rather than trusting the cached needle, so a re-render never disagrees
+  // with what is actually typed in it.
+  _libNeedle = document.getElementById('library-filter').value.trim().toLowerCase();
+  applyLibraryDimming();
   // ...and the live colours, which a zoom would otherwise reset to pending
   // in the middle of a running query.
   if (state.liveStatus) applyTreemapEvents(state.liveStatus);

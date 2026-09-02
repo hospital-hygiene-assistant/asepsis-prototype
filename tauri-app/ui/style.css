@@ -242,6 +242,7 @@ button { font-family: inherit; }
   background: var(--surface2); border: 1px solid var(--border-strong);
   border-radius: var(--r-lg); box-shadow: var(--shadow-pop);
   padding: 6px; animation: pop-in 0.16s var(--ease);
+  overflow-y: auto; overscroll-behavior: contain;
 }
 @keyframes pop-in { from { opacity: 0; transform: translateY(-4px) scale(0.98); } }
 .popover-section { padding: 10px 10px 12px; }
@@ -1324,50 +1325,122 @@ button { font-family: inherit; }
 
 .choice-summary {
   display: flex; align-items: center; gap: 8px; width: 100%;
-  padding: 5px 10px; border-radius: 8px; cursor: pointer; text-align: left;
+  padding: 5px 8px 5px 6px; border-radius: 8px;
   background: rgba(15, 23, 42, 0.45);
   border: 1px solid rgba(148, 163, 184, 0.16);
-  transition: border-color 0.12s ease, background 0.12s ease;
+  transition: border-color 0.14s ease, background 0.14s ease;
 }
 .choice-summary:hover { border-color: rgba(148, 163, 184, 0.34); }
 .choice-bar.open .choice-summary {
   border-bottom-left-radius: 0; border-bottom-right-radius: 0;
   border-bottom-color: transparent;
 }
-.choice-caret { font-size: 9px; color: var(--text-2); opacity: 0.7; width: 8px; }
+
+/* The handle is the only part that opens the panel; the chips beside it are
+   their own controls. */
+.choice-toggle {
+  display: inline-flex; align-items: center; gap: 6px; flex: none;
+  padding: 2px 6px; border-radius: 6px; cursor: pointer;
+  background: none; border: none;
+}
+.choice-toggle:hover { background: rgba(148, 163, 184, 0.12); }
+.choice-caret {
+  font-size: 9px; color: var(--text-2); opacity: 0.7; width: 8px;
+  transition: transform 0.16s ease;
+}
+.choice-bar.open .choice-caret { transform: rotate(90deg); }
 .choice-eyebrow {
   font-size: 10px; font-weight: 800; letter-spacing: 0.08em;
   text-transform: uppercase; color: var(--text-2); opacity: 0.75;
 }
+.choice-count {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 16px; height: 16px; padding: 0 4px; border-radius: 999px;
+  font-size: 10px; font-weight: 700; font-variant-numeric: tabular-nums;
+  background: var(--accent-soft); color: var(--accent);
+}
+
 .choice-chips {
   display: flex; flex-wrap: wrap; gap: 4px; align-items: center;
   flex: 1; min-width: 0;
 }
 .choice-chip {
-  display: inline-flex; align-items: center;
-  padding: 1px 8px; border-radius: 999px; font-size: 11px; color: var(--text);
+  display: inline-flex; align-items: center; gap: 2px;
+  padding: 1px 3px 1px 9px; border-radius: 999px; font-size: 11px;
+  color: var(--text);
   background: rgba(56, 189, 248, 0.12);
   border: 1px solid rgba(56, 189, 248, 0.32);
+  transition: border-color 0.12s ease;
 }
-.choice-empty { font-size: 11px; color: var(--text-2); opacity: 0.6; }
+.choice-chip:hover { border-color: var(--accent); }
+.choice-chip b { font-weight: 500; }
+/* Undoing one filter is the commonest thing wanted from this bar, so it does
+   not require opening the panel to find which question the answer came from. */
+.choice-chip-x {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 15px; height: 15px; border: none; border-radius: 50%;
+  background: none; color: var(--text-2); font-size: 8px; cursor: pointer;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+.choice-chip-x:hover { background: var(--accent); color: var(--bg); }
+.choice-empty {
+  font-size: 11px; color: var(--text-2); opacity: 0.6;
+  background: none; border: none; padding: 0; cursor: pointer; text-align: left;
+}
+.choice-empty:hover { opacity: 0.9; }
+
+/* Scope: the number, plus how hard the filter is biting. */
 .choice-scope {
-  font-size: 11px; color: var(--text-2); opacity: 0.85;
-  white-space: nowrap; font-variant-numeric: tabular-nums;
+  display: inline-flex; align-items: center; gap: 7px; flex: none;
+  white-space: nowrap;
 }
+.choice-scope-text {
+  font-size: 11px; color: var(--text-2); opacity: 0.85;
+  font-variant-numeric: tabular-nums;
+}
+.choice-meter {
+  display: block; width: 54px; height: 5px; border-radius: 3px;
+  background: rgba(148, 163, 184, 0.2); overflow: hidden;
+}
+.choice-meter i {
+  display: block; height: 100%; background: var(--accent);
+  transition: width 0.25s ease, background 0.2s ease;
+}
+/* Past a certain narrowing the filter, not the library, is the likely reason
+   an answer comes back thin — so it stops looking neutral. */
+.choice-meter.tight i { background: var(--amber); }
 
 .choice-panel {
-  padding: 8px 10px 6px; border-radius: 0 0 8px 8px;
+  padding: 10px 12px 8px; border-radius: 0 0 8px 8px;
   background: rgba(15, 23, 42, 0.45);
   border: 1px solid rgba(148, 163, 184, 0.16); border-top: none;
+  animation: choice-open 0.16s ease-out;
 }
-.choice-row { display: flex; align-items: baseline; gap: 10px; margin: 4px 0; }
-.choice-q {
-  flex: 0 0 30%; font-size: 11.5px; color: var(--text-2);
-  text-align: right; opacity: 0.9;
+@keyframes choice-open {
+  from { opacity: 0; transform: translateY(-3px); }
+  to   { opacity: 1; transform: none; }
 }
+
+.choice-row { padding: 6px 0; }
+.choice-row + .choice-row { border-top: 1px solid rgba(148, 163, 184, 0.1); }
+.choice-row-head {
+  display: flex; align-items: baseline; gap: 7px; margin-bottom: 5px;
+}
+.choice-q { font-size: 11.5px; color: var(--text-2); opacity: 0.9; }
+.choice-row.answered .choice-q { color: var(--text); opacity: 1; }
+.choice-multi {
+  font-size: 9.5px; letter-spacing: 0.06em; text-transform: uppercase;
+  color: var(--text-2); opacity: 0.5;
+}
+.choice-row-clear {
+  margin-left: auto; padding: 0 4px; border: none; background: none;
+  font-size: 10.5px; color: var(--text-2); opacity: 0.65; cursor: pointer;
+}
+.choice-row-clear:hover { opacity: 1; color: var(--accent); }
+
 .choice-opts { display: flex; flex-wrap: wrap; gap: 5px; }
 .choice-opt {
-  padding: 2px 10px; border-radius: 999px; cursor: pointer; font-size: 11.5px;
+  padding: 3px 11px; border-radius: 999px; cursor: pointer; font-size: 11.5px;
   color: var(--text-2); background: transparent;
   border: 1px solid rgba(148, 163, 184, 0.28);
   transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
@@ -1378,22 +1451,30 @@ button { font-family: inherit; }
   color: var(--text); font-weight: 600;
 }
 
-/* Fast mode sits with an explanation of its COST, never on its own — the
-   speed is visible in the count, the missed passages are not. */
+/* The combining rule sits with an explanation of its COST, never on its own —
+   the speed is visible in the count, the missed passages are not. */
 .choice-foot {
-  display: flex; align-items: center; gap: 8px;
-  margin-top: 7px; padding-top: 6px;
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+  margin-top: 8px; padding-top: 7px;
   border-top: 1px solid rgba(148, 163, 184, 0.12);
 }
-.choice-fast {
-  display: inline-flex; align-items: center; gap: 5px; cursor: pointer;
-  font-size: 11.5px; color: var(--text);
+.choice-modeseg {
+  display: inline-flex; gap: 2px; padding: 2px; flex: none;
+  border-radius: 7px; background: rgba(148, 163, 184, 0.12);
 }
-.choice-fast input[type="checkbox"] { accent-color: var(--accent, #38bdf8); margin: 0; }
-.choice-fast-label { font-weight: 600; }
+.choice-mode {
+  padding: 3px 9px; border: none; border-radius: 5px; cursor: pointer;
+  font-size: 11px; font-weight: 600; color: var(--text-2); background: none;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+.choice-mode:hover { color: var(--text); }
+.choice-mode.on {
+  background: var(--surface); color: var(--accent);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.22);
+}
 .choice-explain { font-size: 11px; color: var(--text-2); opacity: 0.7; }
 .choice-clear {
-  margin-left: auto; padding: 2px 8px; border-radius: 5px; cursor: pointer;
+  margin-left: auto; padding: 3px 9px; border-radius: 6px; cursor: pointer;
   font-size: 11px; color: var(--text-2);
   background: transparent; border: 1px solid rgba(148, 163, 184, 0.3);
 }
@@ -1429,12 +1510,23 @@ button { font-family: inherit; }
   font-size: 10px; font-weight: 800; letter-spacing: 0.07em;
   text-transform: uppercase; color: var(--text-2); opacity: 0.7; margin-right: 2px;
 }
+/* Pressable: these filter the map below, the same way the search box does. */
 .library-tags .tag-chip {
   display: inline-flex; align-items: center; gap: 5px;
   padding: 2px 8px; border-radius: 999px; font-size: 11px;
   background: rgba(56, 189, 248, 0.1);
   border: 1px solid rgba(56, 189, 248, 0.32); color: var(--text-2);
+  cursor: pointer; transition: background .15s, border-color .15s;
 }
+.library-tags .tag-chip:hover { background: rgba(56, 189, 248, 0.2); }
+/* An active tag is the lit one — the map dims around it, so the pill has to
+   read as "on" rather than merely hovered. */
+.library-tags .tag-chip.active {
+  background: var(--accent-soft); border-color: var(--accent);
+}
+.library-tags .tag-chip.active b { color: var(--accent); }
+.library-tags .tag-clear { background: none; border-color: var(--border-strong); }
+.library-tags .tag-clear:hover { background: none; border-color: var(--text-2); }
 .library-tags .tag-chip b { font-weight: 600; color: var(--text); }
 .library-tags .tag-chip i { font-style: normal; opacity: 0.6; font-size: 10px; }
 .library-tags .tag-empty { font-size: 11px; color: var(--text-2); opacity: 0.7; }

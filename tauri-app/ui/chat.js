@@ -25,6 +25,15 @@ const chatState = {
   useCacheForNext: false,
   replayAnswerForNext: false,
   cancelled: false,
+  // 'followup' talks over the passages already retrieved; 'search' runs a new
+  // retrieval. Chosen by the reader, never inferred — there is no router.
+  mode: 'search',
+  ctx: null,               // last /api/chat/context payload, for the meter
+  activeRunId: null,       // server-side run the composer is talking to
+  // A deck waiting on "Read the answer" outlives the run that built it:
+  // sendChat's `finally` clears chatState.pending while the deck is still on
+  // screen, which is what left ↵ pointing at nothing.
+  heldDeck: null,
 };
 
 function setAppTab(tab) {
@@ -125,12 +134,18 @@ function setSendEnabled(enabled) {
   // nothing and left them no way out of a slow run.
   btn.classList.toggle('stopping', !enabled);
   btn.disabled = enabled && !input.value.trim();
-  document.getElementById('chat-send-label').textContent = enabled ? 'Send' : 'Stop';
+  // The label names the mode, not a generic "Send": the two buttons above do
+  // materially different things and the reader should be able to tell which
+  // one ↵ is about to fire.
+  document.getElementById('chat-send-label').textContent = !enabled ? 'Stop'
+    : (chatState.mode === 'followup' && chatState.activeAnswerId) ? 'Ask' : 'Search';
 }
 
 async function cancelRun() {
   chatState.cancelled = true;
-  const label = document.getElementById('chat-send-label');
+  // A rewrite is stopped from its own card, with the composer sitting idle —
+  // relabelling the send button "Stopping" there would name the wrong control.
+  const label = state.running ? document.getElementById('chat-send-label') : null;
   if (label) label.textContent = 'Stopping';
   try { await apiPost('/api/chat/cancel', {}); }
   catch (e) { toast(`Could not stop the run: ${e.message}`, 'err', 6000); }
@@ -220,6 +235,11 @@ async function sendChat(text) {
 
   chatState.messages.push({ role: 'user', content: text });
   renderChatEmptyState();
+  chatState.heldDeck = null;
+  // The server drops the follow-up thread when a new run lands; the meter
+  // stops describing it here so the two never disagree.
+  chatState.ctx = null;
+  renderContextMeter();
 
   const messagesEl = document.getElementById('chat-messages');
   const userRow = el('div', 'chat-row user');
@@ -278,6 +298,254 @@ async function sendChat(text) {
     setSendEnabled(true);
     updateFlowSteps();
     if (chatState.tab === 'chat') document.getElementById('chat-input').focus();
+  }
+}
+
+/* ── 3b · Follow-up conversation ──────────────────────────────
+   The second half of the pair the composer offers. Retrieval is NOT re-run:
+   these turns reason over the passages the last answer was built from, which
+   is what lets [n] keep meaning the same passage and lets a chip jump to a
+   source card that is already on screen. Asking for something the passages do
+   not hold is answered with "a new search would be needed" rather than a
+   guess — which is why the other button exists. */
+
+function setChatMode(mode) {
+  chatState.mode = mode;
+  document.querySelectorAll('.mode-tab').forEach(b =>
+    b.classList.toggle('active', b.dataset.mode === mode));
+  const input = document.getElementById('chat-input');
+  input.placeholder = mode === 'followup'
+    ? 'Ask about this answer — the passages above are the evidence…'
+    : 'Ask a new question — this searches the library again…';
+  const label = document.getElementById('chat-send-label');
+  if (!state.running) label.textContent = mode === 'followup' ? 'Ask' : 'Search';
+  document.getElementById('ctx-meter').hidden = mode !== 'followup' || !chatState.ctx;
+}
+
+/* The mode bar only appears once there IS an answer to talk about — before
+   that "ask about this answer" would be an affordance for nothing. */
+function updateModeBar() {
+  const bar = document.getElementById('chat-modebar');
+  const has = !!chatState.activeAnswerId;
+  bar.hidden = !has;
+  if (!has && chatState.mode === 'followup') setChatMode('search');
+}
+
+async function refreshContextMeter() {
+  try {
+    const q = chatState.activeRunId
+      ? `?run_id=${encodeURIComponent(chatState.activeRunId)}` : '';
+    const r = await apiGet(`/api/chat/context${q}`);
+    chatState.ctx = (r && r.available) ? r : null;
+    if (r && r.run_id) chatState.activeRunId = r.run_id;
+  } catch { chatState.ctx = null; }
+  renderContextMeter();
+}
+
+function renderContextMeter() {
+  const meter = document.getElementById('ctx-meter');
+  const c = chatState.ctx;
+  if (!c || chatState.mode !== 'followup') { meter.hidden = true; return; }
+  meter.hidden = false;
+
+  const seg = c.segments || {};
+  const bar = document.getElementById('ctx-bar');
+  bar.innerHTML = '';
+  // Segments in the order they are pinned: what can never be dropped first,
+  // what gets dropped last. The bar is a picture of the drop order.
+  const parts = [
+    ['instructions', seg.instructions || 0],
+    ['passages',     seg.passages || 0],
+    ['answer',       seg.answer || 0],
+    ['conversation', seg.conversation || 0],
+  ];
+  for (const [name, tok] of parts) {
+    if (!tok) continue;
+    const i = el('i', `ctx-seg ctx-${name}`);
+    i.style.width = `${Math.min(100, (tok / c.max) * 100)}%`;
+    bar.appendChild(i);
+  }
+  const pct = Math.round((c.used / c.max) * 100);
+  meter.classList.toggle('tight', pct >= 80);
+  document.getElementById('ctx-label').textContent =
+    `${fmtTokens(c.used)} / ${fmtTokens(c.max)}` + (c.dropped_turns ? ' · trimmed' : '');
+  meter.title = c.dropped_turns
+    ? `${c.dropped_turns} earlier turn${c.dropped_turns === 1 ? '' : 's'} dropped to fit`
+    : 'What this conversation is holding in the model’s context window';
+}
+
+function fmtTokens(n) {
+  return n >= 1000 ? `${(n / 1000).toFixed(n >= 10000 ? 0 : 1)}k` : String(n);
+}
+
+function toggleContextPopover() {
+  const pop = document.getElementById('ctx-popover');
+  const c = chatState.ctx;
+  if (!pop.hidden || !c) { pop.hidden = true; return; }
+
+  pop.innerHTML = '';
+  pop.appendChild(el('p', 'ctx-pop-eyebrow', 'Context window'));
+  pop.appendChild(el('p', 'ctx-pop-sub',
+    `${fmtTokens(c.used)} of ${fmtTokens(c.max)} tokens, with ${fmtTokens(c.reserve)} `
+    + `held back for the reply. Counts are estimates, calibrated against the `
+    + `real token counts the model reports.`));
+
+  const rows = [
+    ['Instructions', c.segments.instructions, 'ctx-instructions', 'The follow-up prompt itself. Pinned.'],
+    ['Retrieved passages', c.segments.passages, 'ctx-passages', 'The evidence the answer was built from. Pinned — dropping one would break its [n].'],
+    ['The answer', c.segments.answer, 'ctx-answer', 'What is being discussed. Pinned.'],
+    ['This conversation', c.segments.conversation, 'ctx-conversation',
+      `${c.turns} turn${c.turns === 1 ? '' : 's'} kept. Oldest are dropped first when the window fills.`],
+  ];
+  const list = el('div', 'ctx-pop-rows');
+  for (const [label, tok, cls, note] of rows) {
+    const row = el('div', 'ctx-pop-row');
+    row.appendChild(el('i', `ctx-swatch ${cls}`));
+    const t = el('div', 'ctx-pop-text');
+    t.appendChild(el('b', null, `${label} · ${fmtTokens(tok || 0)}`));
+    t.appendChild(el('span', null, note));
+    row.appendChild(t);
+    list.appendChild(row);
+  }
+  pop.appendChild(list);
+
+  if (c.dropped_turns) {
+    pop.appendChild(el('p', 'ctx-pop-warn',
+      `${c.dropped_turns} earlier turn${c.dropped_turns === 1 ? '' : 's'} no longer `
+      + `fit and ${c.dropped_turns === 1 ? 'was' : 'were'} dropped from the model's `
+      + `view. The passages and the answer are never dropped, so citations stay valid.`));
+  }
+  const cleared = c.restorable;
+  const reset = el('button', 'ctx-pop-reset',
+    cleared ? 'Restore the conversation' : 'Clear the conversation');
+  reset.type = 'button';
+  reset.title = cleared
+    ? 'Bring the cleared turns back into the model’s context.'
+    : 'Keeps the answer and its passages; sets the follow-up turns aside. '
+      + 'They stay on screen, greyed, and can be brought back.';
+  reset.addEventListener('click', async () => {
+    const runId = chatState.activeRunId;
+    try {
+      await apiPost(`/api/chat/followup/${cleared ? 'restore' : 'reset'}`,
+                    { run_id: runId });
+    } catch (e) {
+      toast(`Could not ${cleared ? 'restore' : 'clear'}: ${e.message}`, 'err', 6000);
+      return;
+    }
+    pop.hidden = true;
+    setFollowupCleared(runId, !cleared);
+    await refreshContextMeter();
+    updateEvidenceLibrary();
+    toast(cleared
+      ? 'Conversation restored — the model can see those turns again.'
+      : 'Conversation cleared. The turns are greyed out and can be restored.',
+      'info', 5000);
+  });
+  pop.appendChild(reset);
+  pop.hidden = false;
+}
+
+/* Grey (or un-grey) a run's follow-up turns. They are still readable — the
+   point is that the MODEL can no longer see them, which is a different thing
+   from the user no longer having them. */
+function setFollowupCleared(runId, cleared) {
+  if (!runId) return;
+  chatState.clearedRuns = chatState.clearedRuns || new Set();
+  if (cleared) chatState.clearedRuns.add(runId);
+  else chatState.clearedRuns.delete(runId);
+  document.querySelectorAll(`[data-followup-run="${runId}"]`).forEach(row =>
+    row.classList.toggle('followup-cleared', cleared));
+}
+
+/* The sources the follow-up cites are the active answer's, so a chip can
+   point at a source card that is already rendered rather than re-rendering
+   the evidence under every turn. */
+function activeAnswerSources() {
+  const m = chatState.messages.find(
+    x => x.role === 'assistant' && x.id === chatState.activeAnswerId);
+  return m ? (m.data?.grounding?.sources || []) : [];
+}
+
+function appendFollowupBubble(role, text, { pending = false } = {}) {
+  const messagesEl = document.getElementById('chat-messages');
+  const row = el('div', `chat-row ${role === 'user' ? 'user' : 'assistant'}`);
+  // Which conversation this turn belongs to — clearing greys these, and only
+  // these, rather than every bubble on the page.
+  if (chatState.activeRunId) row.dataset.followupRun = chatState.activeRunId;
+  if (role === 'user') {
+    row.appendChild(el('div', 'chat-user-bubble', text));
+  } else {
+    const bubble = el('div', 'chat-reply' + (pending ? ' pending' : ''));
+    if (pending) {
+      // Same widget the deck uses while an answer is written: activity and an
+      // elapsed clock, not a fake percentage. A follow-up call costs the same
+      // ~20-30s as the first answer, and a button that merely stops responding
+      // does not tell anyone whether the model is working or wedged.
+      bubble.appendChild(buildComposer(activeAnswerSources().length,
+        { title: 'Thinking it over',
+          sub: 'reading the passages already retrieved' }));
+    } else {
+      bubble.innerHTML = renderRichText(text, activeAnswerSources(),
+                                        chatState.activeAnswerId);
+      bubble.addEventListener('click', (e) => {
+        const chip = e.target.closest('.cite-chip');
+        if (chip) focusSourceCard(chip.dataset.answer, parseInt(chip.dataset.cite, 10));
+      });
+      const foot = el('p', 'reply-foot',
+        'From the passages already retrieved — no new search was run.');
+      bubble.appendChild(foot);
+    }
+    row.appendChild(bubble);
+  }
+  messagesEl.appendChild(row);
+  scrollChatToBottom();
+  return row;
+}
+
+async function sendFollowup(text) {
+  if (state.running) { toast('A run is already in progress.', 'warn'); return; }
+  if (!chatState.activeAnswerId) { toast('There is no answer to discuss yet.', 'warn'); return; }
+
+  chatState.messages.push({ role: 'user', content: text, followup: true });
+  appendFollowupBubble('user', text);
+  const waiting = appendFollowupBubble('assistant', '', { pending: true });
+
+  const input = document.getElementById('chat-input');
+  input.value = ''; input.style.height = '';
+  state.running = true;
+  setRunPill('Answering…');
+  setSendEnabled(false);
+
+  try {
+    const data = await apiPost('/api/chat/followup',
+                               { message: text, run_id: chatState.activeRunId });
+    stopComposer(waiting.querySelector('.composing'));
+    waiting.remove();
+    appendFollowupBubble('assistant', data.reply || '(no reply)');
+    chatState.messages.push({ role: 'assistant', content: data.reply, followup: true });
+    chatState.ctx = { ...(chatState.ctx || {}), ...(data.context || {}), available: true };
+    renderContextMeter();
+    if (data.context && data.context.dropped_turns) {
+      toast(`${data.context.dropped_turns} earlier turn${data.context.dropped_turns === 1 ? '' : 's'} `
+            + `dropped — the context window is full.`, 'warn', 6000);
+    }
+  } catch (e) {
+    stopComposer(waiting.querySelector('.composing'));
+    waiting.remove();
+    if (chatState.cancelled || /\b499\b/.test(e.message || '')) {
+      appendFollowupBubble('assistant', '_Stopped before the reply was written._');
+    } else {
+      const row = appendFollowupBubble('assistant', '');
+      row.querySelector('.chat-reply').innerHTML =
+        `<p class="chat-error">The follow-up failed: ${escHtml(e.message)}</p>`;
+    }
+  } finally {
+    chatState.cancelled = false;
+    state.running = false;
+    setRunPill(null);
+    setSendEnabled(true);
+    setChatMode(chatState.mode);          // restores the send label
+    if (chatState.tab === 'chat') input.focus();
   }
 }
 
@@ -366,7 +634,69 @@ function typeInto(node, text, sources, answerId, done) {
   });
 }
 
-function buildNoEvidenceCard(data) {
+/* The one place the app asks the clinician for something rather than telling
+   them something. Shared by both outcomes that can use it: an answer the
+   model called incomplete, and a search that found nothing at all. The run is
+   named explicitly so the rewrite lands on THIS answer — the composer may
+   have moved on to a later one since. */
+function buildRewriteForm(p, runId, { placeholder, action }) {
+  const form = el('form', 'gap-form');
+  const input = document.createElement('textarea');
+  input.rows = 2;
+  input.placeholder = placeholder;
+  input.className = 'gap-input';
+  const send = el('button', 'deck-btn primary', action);
+  send.type = 'submit';
+  form.appendChild(input);
+  form.appendChild(send);
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const extra = input.value.trim();
+    if (!extra) return;
+
+    // A rewrite is a full model call — the same ~20-30s the first answer took.
+    // A button that greys out says nothing about whether it is working, and
+    // left no way out of a slow one, so the form is replaced by the same
+    // activity widget the rest of the app uses, with a Stop beside it.
+    const wait = el('div', 'gap-waiting');
+    const composer = buildComposer(0, {
+      title: 'Rewriting the answer',
+      sub: 'reading the passages again with your context',
+    });
+    wait.appendChild(composer);
+    const stop = el('button', 'deck-btn gap-stop', 'Stop');
+    stop.type = 'button';
+    stop.title = 'Stop the rewrite and keep the answer as it is';
+    stop.addEventListener('click', () => { stop.disabled = true; cancelRun(); });
+    wait.appendChild(stop);
+    form.replaceWith(wait);
+
+    const restore = () => { stopComposer(composer); wait.replaceWith(form); };
+    try {
+      // Named explicitly: a rewrite must hit the answer whose form was
+      // submitted, not whichever run happens to be most recent.
+      const r = await apiPost('/api/chat/refine',
+                              { context: extra, run_id: runId || chatState.activeRunId });
+      stopComposer(composer);
+      applyRefinedAnswer(p, r, extra);
+    } catch (err) {
+      const stopped = chatState.cancelled || /\b499\b/.test(err.message || '');
+      restore();
+      // What was typed is not thrown away — it is the whole point of the form.
+      input.value = extra;
+      input.disabled = false;
+      toast(stopped ? 'Rewrite stopped — the answer is unchanged.'
+                    : `Could not rewrite: ${err.message}`,
+            stopped ? 'info' : 'err', 6000);
+    } finally {
+      chatState.cancelled = false;
+    }
+  });
+  return form;
+}
+
+function buildNoEvidenceCard(data, pending, runId) {
   const wrap = el('div', 'outcome-card empty');
   wrap.appendChild(el('b', null, 'No passage in the library answered this'));
 
@@ -385,13 +715,25 @@ function buildNoEvidenceCard(data) {
   list.appendChild(el('li', null, 'Try naming the condition and the decision explicitly ("which drug class", "what dose").'));
   list.appendChild(el('li', null, 'The library may simply not contain this topic — the retrieval trace below shows what was considered.'));
   wrap.appendChild(list);
+
+  // Finding nothing is not the same as having nothing to say. The clinician
+  // can still add what they know and have the answer rewritten around it —
+  // which, with no passages to cite, will say honestly that the library holds
+  // nothing rather than filling the gap from the model's own training.
+  wrap.appendChild(el('p', 'outcome-aside',
+    'You can still add what you know — the rewrite will be explicit that it '
+    + 'has no document evidence behind it.'));
+  wrap.appendChild(buildRewriteForm(pending, runId, {
+    placeholder: 'Add context — what you already know about this case',
+    action: 'Rewrite with my context',
+  }));
   return wrap;
 }
 
 /* The evidence was thin, and the model said so. This is the one place the app
    asks the clinician for something rather than telling them something: what is
    missing is usually patient detail the documents cannot contain. */
-function buildGapCard(a, p) {
+function buildGapCard(a, p, runId) {
   const wrap = el('div', 'outcome-card gap');
   wrap.appendChild(el('b', null, 'This answer is incomplete'));
 
@@ -407,45 +749,44 @@ function buildGapCard(a, p) {
       'The retrieved passages did not cover every part of the question.'));
   }
 
-  const form = el('form', 'gap-form');
-  const input = document.createElement('textarea');
-  input.rows = 2;
-  input.placeholder = 'Add the missing detail — e.g. the patient\'s age, renal function, or allergies';
-  input.className = 'gap-input';
-  const send = el('button', 'deck-btn primary', 'Rewrite the answer');
-  send.type = 'submit';
-  form.appendChild(input);
-  form.appendChild(send);
-  form.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const extra = input.value.trim();
-    if (!extra) return;
-    send.disabled = true; input.disabled = true;
-    send.textContent = 'Rewriting…';
-    try {
-      const r = await apiPost('/api/chat/refine', { context: extra });
-      applyRefinedAnswer(p, r, extra);
-    } catch (err) {
-      send.disabled = false; input.disabled = false;
-      send.textContent = 'Rewrite the answer';
-      toast(`Could not rewrite: ${err.message}`, 'err', 6000);
-    }
-  });
-  wrap.appendChild(form);
+  wrap.appendChild(buildRewriteForm(p, runId, {
+    placeholder: 'Add the missing detail — e.g. the patient\'s age, renal function, or allergies',
+    action: 'Rewrite the answer',
+  }));
   return wrap;
 }
 
-/* Only the ANSWER is replaced. The passages are the same ones — retrieval was
-   not re-run — so the sources below stay exactly where the reader left them. */
+/* Retrieval was not re-run, so the document passages stay exactly where the
+   reader left them. What DOES change is the source list: the context the
+   clinician supplied becomes a numbered source of its own, because the
+   rewritten answer cites it — and an answer that leans on something with no
+   card behind it cannot be checked. */
 function applyRefinedAnswer(p, r, extra) {
   const body = p.card.querySelector('.answer-body');
   const a = r.answer || {};
-  const answerId = chatState.activeAnswerId || 'a1';
+  // The card this answer lives in, not whichever is active now: a rewrite of
+  // an earlier answer must renumber ITS chips, not the latest one's.
+  const answerId = (p.card.id || '').replace(/^answer-/, '')
+    || chatState.activeAnswerId || 'a1';
+  const sources = r.sources || [];
   body.innerHTML = '';
 
   const note = el('div', 'outcome-card refined');
   note.appendChild(el('b', null, 'Rewritten with your context'));
   note.appendChild(el('p', null, extra));
+  // What the revision actually changed. The whole point of adding context is
+  // that the answer may now differ — saying so beats making the reader diff
+  // two paragraphs from memory.
+  if ((a.what_changed || '').trim()) {
+    const ch = el('p', 'refined-changed');
+    ch.innerHTML = `<b>What changed</b> ${escHtml(a.what_changed.trim())}`;
+    note.appendChild(ch);
+  }
+  if (r.context_source_n) {
+    note.appendChild(el('p', 'outcome-aside',
+      `Your context is source [${r.context_source_n}] below — the answer cites `
+      + `it wherever it relies on it.`));
+  }
   body.appendChild(note);
 
   const queue = [];
@@ -458,8 +799,43 @@ function applyRefinedAnswer(p, r, extra) {
     body.appendChild(sec);
     queue.push([txt, a[key]]);
   }
-  typeSequence(queue, r.sources || [], answerId, () => {});
+  if (!queue.length && (a.content || '').trim()) {
+    const div = el('div', 'answer-fallback');
+    div.innerHTML = renderRichText(a.content, sources, answerId);
+    body.appendChild(div);
+  }
+  typeSequence(queue, sources, answerId, () => {});
+
+  // Re-render the source list so the new context card is actually there for
+  // its [n] to jump to.
+  rerenderSources(p.card, sources, answerId);
+
+  // Keep the in-memory record in step, or the follow-up would cite a source
+  // list the reader can no longer see.
+  const msg = chatState.messages.find(m => m.role === 'assistant' && m.id === answerId);
+  if (msg) {
+    msg.data.grounding = { ...(msg.data.grounding || {}), sources };
+    msg.data.answer = a;
+    updateEvidenceLibrary();
+  }
   p.card.classList.remove('partial');
+}
+
+/* Replace an answer card's source list in place. */
+function rerenderSources(card, sources, answerId) {
+  const rule = card.querySelector('.answer-sources-rule');
+  if (!rule) return;
+  // An answer that retrieved nothing has no list at all, only the "no sources"
+  // line — so a rewrite that adds a context card has to build one.
+  let list = card.querySelector('.sources-list');
+  if (!list) { list = el('div', 'sources-list'); rule.appendChild(list); }
+  list.innerHTML = '';
+  for (const s of sources) list.appendChild(buildSourceCard(s, answerId));
+  const none = card.querySelector('.sources-none');
+  if (none && sources.length) none.remove();
+  const summary = card.querySelector('.sources-summary');
+  if (summary) summary.textContent =
+    `${sources.length} source${sources.length === 1 ? '' : 's'} under this answer.`;
 }
 
 /* A stopped run keeps whatever it had found — the passages were retrieved and
@@ -482,7 +858,7 @@ function renderStoppedCard(p) {
 /* Keys belong to the deck only while one is on screen and the composer does
    not have focus — otherwise ← and → would fight the text cursor. */
 document.addEventListener('keydown', (e) => {
-  const deck = chatState.pending && chatState.pending.deck;
+  const deck = (chatState.pending && chatState.pending.deck) || chatState.heldDeck;
   if (!deck || chatState.tab !== 'chat') return;
   const typing = document.activeElement
     && /^(INPUT|TEXTAREA)$/.test(document.activeElement.tagName);
@@ -536,7 +912,7 @@ let deckComposer = null;
    bar would be a lie — nothing here knows how long it will take — so this
    shows ACTIVITY and elapsed time instead of a fake percentage: a row of
    bars that breathe, and the passage count it is working from. */
-function buildComposer(count) {
+function buildComposer(count, copy = {}) {
   const w = el('div', 'composing');
   const viz = el('div', 'composing-viz');
   for (let i = 0; i < 5; i++) {
@@ -547,8 +923,9 @@ function buildComposer(count) {
   w.appendChild(viz);
 
   const txt = el('div', 'composing-text');
-  txt.appendChild(el('b', null, 'Writing the answer'));
-  txt.appendChild(el('span', 'composing-sub', `reading ${count} passage${count === 1 ? '' : 's'}`));
+  txt.appendChild(el('b', null, copy.title || 'Writing the answer'));
+  txt.appendChild(el('span', 'composing-sub',
+    copy.sub || `reading ${count} passage${count === 1 ? '' : 's'}`));
   w.appendChild(txt);
 
   const clock = el('span', 'composing-clock', '0s');
@@ -827,12 +1204,17 @@ function renderRichText(text, sources, answerId) {
     ? (marked.parse ? marked.parse(text || '') : marked(text || ''))
     : escHtml(text || '').replace(/\n/g, '<br>');
 
-  html = html.replace(/\[(\d+)\]/g, (whole, n) => {
-    const num = parseInt(n, 10);
-    if (!sources || num < 1 || num > sources.length) return whole;
-    const hue = sourceHues.get(num);
-    const tint = hue ? ` style="--folder:${hue}"` : '';
-    return `<button type="button" class="cite-chip${hue ? ' tinted' : ''}"${tint} data-cite="${num}" data-answer="${answerId}" title="Jump to source [${num}]">${num}</button>`;
+  // Models write grouped citations as [2][3] AND as [2, 3]; the second form
+  // was left as literal text with no chip and nothing to click. One chip per
+  // number, whichever way they were written.
+  html = html.replace(/\[(\d+(?:\s*,\s*\d+)*)\]/g, (whole, group) => {
+    const nums = group.split(',').map(x => parseInt(x, 10));
+    if (!sources || nums.some(n => !n || n < 1 || n > sources.length)) return whole;
+    return nums.map(num => {
+      const hue = sourceHues.get(num);
+      const tint = hue ? ` style="--folder:${hue}"` : '';
+      return `<button type="button" class="cite-chip${hue ? ' tinted' : ''}"${tint} data-cite="${num}" data-answer="${answerId}" title="Jump to source [${num}]">${num}</button>`;
+    }).join('');
   });
   return html;
 }
@@ -986,7 +1368,12 @@ function finalizeAnswerCard(p, data) {
     if (sub) sub.textContent = 'written from the passages behind this card';
   }
   if (p.deck && p.deck.engaged) {
-    p.deck.held = () => { p.deck.held = null; applyAnswer(p, data); };
+    chatState.heldDeck = p.deck;
+    p.deck.held = () => {
+      p.deck.held = null;
+      chatState.heldDeck = null;
+      applyAnswer(p, data);
+    };
     renderDeckControls(p.deck);
     const txt = p.progressEl.querySelector('.trace-progress-text');
     if (txt) txt.textContent = 'Answer ready';
@@ -1032,7 +1419,7 @@ function applyAnswer(p, data) {
   // outcome that says what was searched and what to try, because "no result"
   // with a filter on usually means the filter, not the library.
   const noEvidence = !sources.length;
-  if (noEvidence) body.appendChild(buildNoEvidenceCard(data));
+  if (noEvidence) body.appendChild(buildNoEvidenceCard(data, p, data.run_id));
   const present = noEvidence
     ? [] : chatCopy.sections.filter(([key]) => (a[key] || '').trim());
   const typeQueue = [];
@@ -1064,7 +1451,7 @@ function applyAnswer(p, data) {
   const insufficient = !noEvidence && /^\s*no\b/i.test(a.evidence_sufficient || '');
   if (insufficient) {
     p.card.classList.add('partial');
-    body.appendChild(buildGapCard(a, p));
+    body.appendChild(buildGapCard(a, p, data.run_id));
   }
 
   // What the evidence set was narrowed by, before and during retrieval.
@@ -1118,12 +1505,55 @@ function applyAnswer(p, data) {
     if (chip) focusSourceCard(chip.dataset.answer, parseInt(chip.dataset.cite, 10));
   });
 
-  chatState.messages.push({ role: 'assistant', id: answerId, query: data.query, data });
+  chatState.messages.push({ role: 'assistant', id: answerId, query: data.query,
+                            runId: data.run_id || null, data });
+  chatState.activeRunId = data.run_id || null;
   updateEvidenceLibrary();
+  // There is now something to talk about, so the composer offers it — and
+  // defaults to it, since the next message after reading an answer is far
+  // more often about that answer than a fresh trip to the library.
+  // Offered even when nothing was retrieved: "why did this find nothing?" is
+  // the most likely next question there, not the least.
+  updateModeBar();
+  setChatMode('followup');
+  refreshContextMeter();
   revealCardTop(p.card);
 }
 
+function buildContextSourceCard(s, answerId) {
+  const card = el('article', 'source-card context-source');
+  card.id = `src-${answerId}-${s.n}`;
+
+  const eyebrow = el('p', 'source-eyebrow');
+  eyebrow.innerHTML = `<span class="source-num">${s.n}</span> You` +
+    ` <span class="source-page-pill">not from a document</span>`;
+  card.appendChild(eyebrow);
+  card.appendChild(el('h3', 'source-title', s.title || 'Context you provided'));
+
+  const quote = el('blockquote', 'source-excerpt');
+  quote.textContent = s.excerpt || '';
+  card.appendChild(quote);
+
+  const why = el('div', 'source-why');
+  why.appendChild(el('p', 'source-why-label', 'Why this is here'));
+  why.appendChild(el('p', '', s.reason
+    || 'You supplied this when the retrieved passages were not enough.'));
+  card.appendChild(why);
+
+  const note = el('p', 'context-source-note');
+  note.textContent = 'This is your own input, not evidence from the library. '
+    + 'Claims resting on it are only as good as the detail you gave.';
+  card.appendChild(note);
+  return card;
+}
+
 function buildSourceCard(s, answerId) {
+  // Context the clinician typed is evidence the answer cites, so it gets a
+  // card and a number like everything else — but it has no document behind
+  // it, so none of the "open the source" affordances apply. Showing them
+  // greyed or broken would imply a provenance that does not exist.
+  if (s.user_context) return buildContextSourceCard(s, answerId);
+
   const card = el('article', 'source-card');
   card.id = `src-${answerId}-${s.n}`;
   const hue = sourceHues.get(s.n);
@@ -1252,14 +1682,18 @@ function focusSourceCard(answerId, n) {
 
 function evidenceGroups() {
   return chatState.messages
-    .filter(m => m.role === 'assistant' && (m.data?.grounding?.sources || []).length)
+    // Zero-source answers are listed too: "this found nothing" is a run you
+    // may well want to come back to and ask about.
+    .filter(m => m.role === 'assistant' && m.data && m.id)
     .map((m, i) => ({
       answerId: m.id,
+      runId: m.runId || null,
+      run: m.data?.run || null,
       label: `Answer ${i + 1}`,
       query: m.query,
-      status: m.data.grounding.status,
-      summary: m.data.grounding.summary,
-      sources: m.data.grounding.sources,
+      status: m.data.grounding?.status || 'not_connected',
+      summary: m.data.grounding?.summary || '',
+      sources: m.data.grounding?.sources || [],
     }));
 }
 
@@ -1291,15 +1725,48 @@ function updateEvidenceLibrary() {
     head.appendChild(titleBtn);
     head.appendChild(el('p', 'ev-group-q', g.query));
     head.appendChild(groundingBadge(g.status));
+
+    // Pick this answer's evidence back up. The composer follows the run it is
+    // pointed at, so without this an answer three questions back was readable
+    // but no longer answerable — its passages were still on the server.
+    const resume = el('button', 'ev-resume');
+    resume.type = 'button';
+    const isActive = g.answerId === chatState.activeAnswerId;
+    const wasCleared = (chatState.clearedRuns || new Set()).has(g.runId);
+    if (isActive && wasCleared) {
+      // The button comes back to life: with the conversation cleared there IS
+      // something left to do to this answer, and this is where the user is
+      // already looking at the greyed-out turns.
+      resume.textContent = 'Restore this conversation';
+      resume.classList.add('restore');
+      resume.title = 'Bring the cleared turns back into the model’s context.';
+      resume.addEventListener('click', () => restoreConversation(g));
+    } else if (isActive) {
+      resume.textContent = 'Talking to this answer';
+      resume.disabled = true;
+      resume.title = 'The composer is already pointed at this answer.';
+    } else {
+      resume.textContent = 'Continue from this answer';
+      resume.title = 'Point the composer at this answer — follow-ups and '
+        + 'rewrites will use its passages.';
+      resume.addEventListener('click', () => resumeAnswer(g));
+    }
+    head.appendChild(resume);
     group.appendChild(head);
 
     const list = el('div', 'ev-sources');
+    if (!g.sources.length) {
+      list.appendChild(el('p', 'ev-empty', 'Nothing was retrieved for this question.'));
+    }
     for (const s of g.sources) {
       const btn = el('button', 'ev-source');
       btn.type = 'button';
       btn.dataset.answer = g.answerId;
       btn.dataset.n = s.n;
-      const eyebrow = `<p class="ev-source-eyebrow"><span>[${s.n}] ${escHtml(prettyDoc(s.doc))}</span>` +
+      // Context the clinician typed is labelled as theirs, not dressed up as
+      // a document name the library does not contain.
+      const origin = s.user_context ? 'You' : prettyDoc(s.doc);
+      const eyebrow = `<p class="ev-source-eyebrow"><span>[${s.n}] ${escHtml(origin)}</span>` +
         (s.page ? `<span class="ev-page">p. ${escHtml(String(s.page))}</span>` : '') + `</p>`;
       btn.innerHTML = eyebrow +
         `<p class="ev-source-title">${escHtml(s.title)}</p>` +
@@ -1311,6 +1778,54 @@ function updateEvidenceLibrary() {
     timeline.appendChild(group);
   }
   wrap.appendChild(timeline);
+}
+
+/* Point the composer back at an earlier answer's evidence. */
+async function resumeAnswer(g) {
+  if (!g.runId) {
+    toast('That answer was not recorded on the server and cannot be resumed.',
+          'warn', 6000);
+    return;
+  }
+  try {
+    const r = await apiPost('/api/chat/activate', { run_id: g.runId });
+    chatState.activeRunId = g.runId;
+    chatState.activeAnswerId = g.answerId;
+    chatState.ctx = { ...r, available: true };
+    setFollowupCleared(g.runId, !!r.restorable);
+    // The Retrieval tab shows ONE run, and every later question overwrote it —
+    // so resuming an answer here had to bring its decision map back too, or
+    // the two tabs would be describing different questions.
+    if (g.run) {
+      state.currentResults = g.run;
+      renderResults(g.run);
+    }
+    updateModeBar();
+    setChatMode('followup');
+    renderContextMeter();
+    updateEvidenceLibrary();
+    document.getElementById(`answer-${g.answerId}`)
+      ?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    toast(`Now talking to ${g.label} — ${g.sources.length} passage`
+          + `${g.sources.length === 1 ? '' : 's'} in context.`, 'info', 5000);
+    document.getElementById('chat-input').focus();
+  } catch (e) {
+    toast(`Could not resume that answer: ${e.message}`, 'err', 6000);
+  }
+}
+
+async function restoreConversation(g) {
+  try {
+    const r = await apiPost('/api/chat/followup/restore', { run_id: g.runId });
+    chatState.ctx = { ...(chatState.ctx || {}), ...r, available: true };
+    setFollowupCleared(g.runId, false);
+    renderContextMeter();
+    updateEvidenceLibrary();
+    toast(`Restored ${r.turns} turn${r.turns === 1 ? '' : 's'} — the model can `
+          + `see them again.`, 'info', 5000);
+  } catch (e) {
+    toast(`Could not restore the conversation: ${e.message}`, 'err', 6000);
+  }
 }
 
 function selectEvidenceSource(answerId, n) {
@@ -1449,10 +1964,25 @@ function initChatTab() {
     // Mid-run the same button stops it, which is why it is never disabled.
     if (state.running) { cancelRun(); return; }
     const text = input.value.trim();
-    if (text) sendChat(text);
+    if (!text) return;
+    if (chatState.mode === 'followup' && chatState.activeAnswerId) sendFollowup(text);
+    else sendChat(text);
   });
   input.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    // The composer keeps focus for the whole run, so the document-level deck
+    // keys never fired: ↵ went here instead and submitted an empty composer,
+    // which looked like a dead key. With nothing typed the deck owns them.
+    const deck = (chatState.pending && chatState.pending.deck) || chatState.heldDeck;
+    const idle = !input.value.trim();
+    if (deck && idle) {
+      if (e.key === 'Enter' && !e.shiftKey && deck.held) {
+        e.preventDefault(); deck.held(); return;
+      }
+      if (e.key === 'ArrowRight') { e.preventDefault(); deckGo(deck, 1); return; }
+      if (e.key === 'ArrowLeft')  { e.preventDefault(); deckGo(deck, -1); return; }
+    }
+    // ⌘/Ctrl+↵ belongs to the force-a-new-search handler below.
+    if (e.key === 'Enter' && !e.shiftKey && !e.metaKey && !e.ctrlKey) {
       e.preventDefault();
       form.requestSubmit();
     }
@@ -1464,6 +1994,26 @@ function initChatTab() {
 
   initChatConfig();
 
+  document.querySelectorAll('.mode-tab').forEach(b => {
+    b.addEventListener('click', () => { setChatMode(b.dataset.mode); input.focus(); });
+  });
+  document.getElementById('ctx-meter').addEventListener('click', toggleContextPopover);
+  // ⌘/Ctrl+↵ is the escape hatch: force a new search without leaving the
+  // composer to click a tab.
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+      e.preventDefault();
+      const text = input.value.trim();
+      if (text && !state.running) sendChat(text);
+    }
+  });
+  document.addEventListener('click', (e) => {
+    const pop = document.getElementById('ctx-popover');
+    if (!pop.hidden && !pop.contains(e.target)
+        && !e.target.closest('#ctx-meter')) pop.hidden = true;
+  });
+  updateModeBar();
+
   document.querySelectorAll('.ev-mode-btn').forEach(b => {
     b.addEventListener('click', () => {
       chatState.evMode = b.dataset.mode;
@@ -1473,7 +2023,11 @@ function initChatTab() {
     });
   });
 
-  setAppTab(prefs.get('appTab', 'chat'));
+  // Always the chat tab, never the last one used: this is the tab someone
+  // asks a question in, and the retrieval views only make sense once there is
+  // a run to look at. The stored value is kept for anything that wants to
+  // know where you were, but it no longer decides where you land.
+  setAppTab('chat');
 }
 
 document.addEventListener('DOMContentLoaded', initChatTab);

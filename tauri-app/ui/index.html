@@ -7,6 +7,7 @@
   <link rel="icon" type="image/png" href="/static/asepsis-icon.png">
   <link rel="stylesheet" href="/static/style.css">
   <link rel="stylesheet" href="/static/chat.css">
+  <link rel="stylesheet" href="/static/tutorial.css">
   <script src="/static/d3.v7.min.js"></script>
 </head>
 <body>
@@ -53,6 +54,26 @@
 
 <!-- ══ Settings popover ══ -->
 <div id="settings-popover" class="popover" hidden>
+  <!-- Help sits first: someone who opens settings looking for "how does this
+       work?" should not have to read the pipeline selectors to find out. -->
+  <div class="popover-section">
+    <div class="popover-title">Help</div>
+    <button id="tour-btn" class="tour-open-btn" type="button">
+      <span class="tour-open-q">?</span>
+      <span>
+        <b>Take the guided tour</b>
+        <i>A walk-through of every tab on example data. Nothing runs.</i>
+      </span>
+    </button>
+    <button id="guide-btn" class="tour-open-btn" type="button">
+      <span class="tour-open-q">📖</span>
+      <span>
+        <b>Open the user guide</b>
+        <i>The full written guide — how it works, and what to do when it doesn't.</i>
+      </span>
+    </button>
+  </div>
+
   <div class="popover-section">
     <div class="popover-title">Pipeline</div>
     <label class="settings-row">
@@ -151,6 +172,31 @@
         </div>
 
         <div id="chat-choice-bar" class="choice-bar" hidden></div>
+
+        <!-- Two intents, stated rather than guessed at: keep talking over the
+             passages already retrieved, or go back to the library. There is no
+             router deciding for the reader. -->
+        <div id="chat-modebar" class="chat-modebar" hidden>
+          <div class="mode-tabs" role="tablist" aria-label="What the next message does">
+            <button type="button" class="mode-tab active" id="mode-followup"
+                    role="tab" data-mode="followup"
+                    title="Answers from the passages already retrieved. No new search.">
+              Ask about this answer
+            </button>
+            <button type="button" class="mode-tab" id="mode-search"
+                    role="tab" data-mode="search"
+                    title="Runs a fresh retrieval over the whole library.">
+              New search
+            </button>
+          </div>
+          <!-- Context meter: what the follow-up model is actually holding. -->
+          <button type="button" id="ctx-meter" class="ctx-meter" hidden
+                  title="What this conversation is holding in the model's context window">
+            <span class="ctx-bar" id="ctx-bar"></span>
+            <span class="ctx-label" id="ctx-label"></span>
+          </button>
+        </div>
+
         <form id="chat-form" class="chat-inputbar">
           <textarea id="chat-input" rows="2" spellcheck="false"
                     placeholder="Type your question…"></textarea>
@@ -159,6 +205,9 @@
             <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
           </button>
         </form>
+
+        <!-- Context breakdown, opened from the meter -->
+        <div id="ctx-popover" class="ctx-popover" hidden></div>
       </div>
 
       <!-- Chatbot inspector: model, engine, and the exact prompts in use -->
@@ -433,5 +482,6 @@
 <script src="/static/main.js"></script>
 <script src="/static/choices.js"></script>
 <script src="/static/chat.js"></script>
+<script src="/static/tutorial.js"></script>
 </body>
 </html>

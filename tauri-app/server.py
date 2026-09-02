@@ -222,19 +222,32 @@ def _warm_models() -> None:
     app from starting, and the first real call would load the model anyway.
     """
     def work():
-        models = {getattr(_pi, "MODEL", None), getattr(_pi, "SYNTHESIS_MODEL", None)}
+        # Warm each (model, num_ctx) pair the app will actually ask for.
+        #
+        # num_ctx is a property of the loaded runner, not of the request:
+        # preloading with Ollama's default window and then asking for a 48k one
+        # does not reuse the resident model, it EVICTS it and loads a second
+        # copy — which is the model drop-and-respawn you can watch in Activity
+        # Monitor on the first real call. Warming with the wrong window is
+        # worse than not warming at all, because it pays the load cost twice.
+        cfg = app_config.runtime()
+        wanted = {
+            (getattr(_pi, "MODEL", None), cfg.resolved_retrieval_ctx()),
+            (getattr(_pi, "SYNTHESIS_MODEL", None), cfg.resolved_agent_ctx()),
+        }
         for url in list(getattr(_pi, "OLLAMA_URLS", []))[:1]:
-            for model in filter(None, models):
+            for model, ctx in sorted(w for w in wanted if w[0]):
                 try:
                     req = urllib.request.Request(
                         f"{url.rstrip('/')}/api/generate",
                         data=json.dumps({"model": model, "prompt": "ok",
                                          "stream": False, "think": False,
                                          "keep_alive": app_config.keep_alive(),
-                                         "options": {"num_predict": 1}}).encode(),
+                                         "options": {"num_predict": 1,
+                                                     "num_ctx": ctx}}).encode(),
                         headers={"Content-Type": "application/json"})
-                    urllib.request.urlopen(req, timeout=300).read()
-                    print(f"[warm] {model} resident", file=sys.stderr)
+                    urllib.request.urlopen(req, timeout=600).read()
+                    print(f"[warm] {model} resident at num_ctx={ctx}", file=sys.stderr)
                 except Exception as exc:
                     print(f"[warm] could not preload {model}: {exc}", file=sys.stderr)
 
@@ -274,6 +287,13 @@ app.mount("/static", StaticFiles(directory=UI_DIR), name="static")
 # as /assets/<stem>/<file>. check_dir=False: the dir appears on first ingest.
 KB_ASSETS_DIR = ROOT / "knowledge_base" / "assets"
 app.mount("/assets", StaticFiles(directory=KB_ASSETS_DIR, check_dir=False), name="assets")
+
+# Images the user guide references. Kept OUT of /assets, which serves knowledge-
+# base figures: a guide screenshot appearing among the corpus's own artwork
+# would be indistinguishable from a document's figure.
+GUIDE_ASSETS_DIR = Path(__file__).parent.parent / "assets"
+app.mount("/guide-assets", StaticFiles(directory=GUIDE_ASSETS_DIR, check_dir=False),
+          name="guide-assets")
 
 SOURCES_MANIFEST = ROOT / "knowledge_base" / ".sources.json"
 
@@ -371,6 +391,26 @@ def root():
     html = (UI_DIR / "index.html").read_text(encoding="utf-8")
     html = re.sub(r"/static/[\w.\-]+", lambda m: _versioned(m.group(0)), html)
     return HTMLResponse(html)
+
+
+@app.get("/api/guide")
+def user_guide():
+    """The user guide, as markdown, for the in-app reader.
+
+    Served rather than duplicated into the UI so there is exactly one copy:
+    the file that ships in the repo IS the one the app renders, and it cannot
+    drift out of date behind a hand-maintained help panel.
+    """
+    path = Path(__file__).parent.parent / "USER_GUIDE.md"
+    try:
+        text = path.read_text(encoding="utf-8")
+    except OSError as exc:
+        return JSONResponse({"error": f"The user guide could not be read: {exc}"},
+                            status_code=404)
+    # The markdown uses repo-relative image paths so it renders on GitHub too;
+    # in the app those same paths have to resolve against the served mount.
+    text = text.replace("](assets/", "](/guide-assets/")
+    return JSONResponse({"markdown": text})
 
 
 @app.get("/api/tests")
@@ -1713,10 +1753,31 @@ _chat_lock = threading.Lock()
 _chat_phase: dict = {"phase": "idle", "detail": ""}
 # The retrieved passages of the run in flight, for the evidence deck.
 _chat_cards: list = []
-# The last completed run, so an answer can be rewritten against the SAME
-# passages once the clinician supplies the missing context. Single-user
-# desktop app, so one slot is enough; a shared deployment would key this.
-_last_run: dict = {}
+# Every completed run, keyed by run id, so an answer can be rewritten or
+# discussed against the SAME passages it was built from — including an answer
+# from earlier in the session. A single slot could only ever describe the most
+# recent run, which silently refined answer 1 against answer 3's passages and
+# made "no passages retrieved" indistinguishable from "no run yet".
+# Each run holds: query, sources, passages, answer, thread.
+_runs: dict[str, dict] = {}
+_active_run_id: str = ""
+_run_seq = 0
+
+
+def _new_run_id() -> str:
+    global _run_seq
+    _run_seq += 1
+    return f"r{_run_seq}"
+
+
+def _get_run(run_id: str | None) -> tuple[str, dict]:
+    """The requested run, or the active one. Returns ('', {}) when there is
+    nothing to work from at all — which is different from a run that retrieved
+    nothing, and is the only case the endpoints refuse."""
+    with _chat_lock:
+        rid = run_id or _active_run_id
+        run = _runs.get(rid)
+        return (rid, dict(run)) if run else ("", {})
 
 
 def _set_chat_phase(phase: str, detail: str = "", **extra) -> None:
@@ -1751,7 +1812,7 @@ the other sections brief.
 """
 
 _SECTION_KEYS = ["SHORT_ANSWER", "RECOMMENDED_ACTION", "RATIONALE", "LIMITATIONS",
-                 "EVIDENCE_SUFFICIENT", "STILL_NEEDED"]
+                 "EVIDENCE_SUFFICIENT", "STILL_NEEDED", "WHAT_CHANGED"]
 
 
 def _parse_answer_sections(text: str) -> dict:
@@ -1773,6 +1834,19 @@ def _parse_answer_sections(text: str) -> dict:
     return sections
 
 
+def _cited_numbers(text: str) -> list[int]:
+    """Source numbers cited in an answer.
+
+    Both [2][3] and [2, 3] appear in practice — counting only the first form
+    made a correctly-cited answer look ungrounded, which downgrades the
+    grounding badge on the very answers that cite the most.
+    """
+    out: list[int] = []
+    for group in re.findall(r"\[(\d+(?:\s*,\s*\d+)*)\]", text or ""):
+        out.extend(int(part) for part in group.split(","))
+    return out
+
+
 def _breadcrumbs_for(results: dict) -> dict:
     """{doc: {node_id: 'Doc › Section › Leaf'}} for every retrieved node."""
     crumbs: dict[str, dict] = {}
@@ -1787,49 +1861,429 @@ def _breadcrumbs_for(results: dict) -> dict:
     return crumbs
 
 
+CHAT_FOLLOWUP_PROMPT = """\
+You are a clinical knowledge assistant, in conversation about an answer you
+have already given. The retrieval has ALREADY happened: the numbered passages
+below are the only evidence available, and no more can be fetched in this
+exchange.
+
+Rules:
+- Answer from the passages, the answer already given, and the conversation so
+  far. Cite passages inline as [n], exactly as the original answer did — the
+  numbers mean the same passages, so never renumber or invent one.
+- You may explain, compare, restate or narrow what the evidence says. You may
+  not add clinical facts the passages do not contain.
+- If the question needs evidence these passages do not hold, say so plainly
+  and say that a new search would be needed. Do not guess to fill the gap.
+- Write plain prose — no SHORT_ANSWER/RATIONALE labels, no markdown headers.
+  This is a conversation, not a second answer card. Be brief: a few sentences
+  unless genuinely more is needed.
+
+The question that was originally asked: {query}
+
+Source passages:
+{passages}
+
+The answer you gave from those passages:
+{answer}
+"""
+
+# The same conversation, but over a search that came back empty. Without this
+# the model is handed "Source passages: (none)" under instructions that assume
+# passages exist, and fills the silence from its own training — the one thing
+# a grounded assistant must not do when the library said nothing.
+CHAT_FOLLOWUP_EMPTY_PROMPT = """\
+You are a clinical knowledge assistant. A search of the clinician's document
+library found NO passages relevant to their question, and no further search
+can be run in this exchange.
+
+You therefore have NO evidence to answer from. You must not answer the
+clinical question from your own knowledge — the whole point of this tool is
+that answers are traceable to the clinician's own documents.
+
+What you CAN do, and should:
+- Discuss why the search may have come back empty.
+- Suggest how the question could be rephrased, narrowed or widened.
+- Say what kind of document or topic would need to be in the library.
+- Answer questions about the search itself.
+
+If asked the clinical question again, say plainly that the library holds
+nothing on it, and that a new search — or a different library — is what is
+needed. Write brief plain prose, no labels or markdown headers.
+
+The question that was asked and found nothing: {query}
+
+What the clinician was told:
+{answer}
+"""
+
+# The label a clinician's own added context carries once it becomes citable
+# evidence. Named, not silently blended into the document passages: an answer
+# that leans on something the reader typed should show that it did.
+USER_CONTEXT_DOC = "__clinician_context__"
+
+
+CHAT_REWRITE_PROMPT = """\
+You are a clinical knowledge assistant REVISING an answer you already gave,
+now that the clinician has told you something the documents could not.
+
+Here is the answer you gave before:
+---
+{previous}
+---
+
+Sources (the same passages as before, plus the clinician's context as [{ctx_n}]):
+{sources}
+
+The question: {query}
+
+Source [{ctx_n}] is context the clinician typed in, not a document. Cite it as
+[{ctx_n}] whenever you rely on it, exactly as you would a passage.
+
+This is a REVISION, not a repeat. The added context is there precisely because
+it might change the answer, so:
+- If it changes the recommendation, the verdict, or the reasoning, CHANGE THEM.
+  Do not restate the previous answer out of caution. A dose, a drug choice, a
+  contraindication or a "do not" that the new context rules in or out should
+  come through as a different answer, not a footnote.
+- If it genuinely changes nothing, say so plainly and keep the answer as it was.
+- Either way, state what changed in WHAT_CHANGED.
+
+What the added context CANNOT do is create clinical evidence. It tells you
+about this patient or setting; the document passages remain the only source of
+clinical fact. So it can narrow, select between, or rule out options the
+passages describe — it cannot support a claim no passage makes. If the right
+answer for this patient is not covered by the passages, say that.
+
+Respond in EXACTLY this format:
+
+SHORT_ANSWER: <the direct answer, revised>
+RECOMMENDED_ACTION: <what the clinician should do now>
+RATIONALE: <why, citing the sources>
+LIMITATIONS: <what is still uncertain, including anything the context does not resolve>
+WHAT_CHANGED: <one or two sentences: what this revision changed versus the previous answer, and why — or "Nothing changed" and why not>
+
+Plain text under each label. No markdown.
+"""
+
+
+def _with_context_source(run: dict, extra: str) -> tuple[list, str, int]:
+    """The run's sources plus the clinician's added context as a numbered one.
+
+    Returns (sources, passage_block, context_n). A rewrite REPLACES any context
+    card from a previous rewrite rather than stacking another: two of them
+    would compete for the same role and push the document passages' numbers
+    around, which would silently invalidate the citations already on screen.
+    """
+    sources = [dict(s) for s in (run.get("sources") or [])
+               if s.get("doc") != USER_CONTEXT_DOC]
+    for i, s in enumerate(sources, start=1):
+        s["n"] = i
+        s["id"] = f"s{i}"
+    ctx_n = len(sources) + 1
+    sources.append({
+        "id": f"s{ctx_n}", "n": ctx_n, "doc": USER_CONTEXT_DOC,
+        "node_id": None, "title": "Context you provided",
+        "breadcrumb": "", "excerpt": extra, "quote": extra,
+        "reason": "Supplied by the clinician when the retrieved passages were "
+                  "not enough to answer fully.",
+        "synthetic": True, "user_context": True,
+        "pin": None, "page": None, "image": None, "has_source_pdf": False,
+    })
+
+    # Rebuilt from the surviving document passages, so a re-rewrite does not
+    # leave the previous context block buried in the text.
+    passages = run.get("passages") or ""
+    doc_block = "\n\n".join(
+        p for p in passages.split("\n\n")
+        if not p.startswith("[") or "Context supplied by the clinician" not in p)
+    combined = (doc_block + "\n\n" if doc_block.strip() else "") + (
+        f"[{ctx_n}] Context supplied by the clinician (NOT from a document)\n{extra}")
+    return sources, combined, ctx_n
+
+
 class RefineRequest(BaseModel):
     context: str
+    run_id: Optional[str] = None
+
+
+def _followup_frame(run: dict) -> str:
+    """The fixed part of every follow-up prompt: instructions, passages and
+    the answer under discussion. Pinned — only turns are ever dropped."""
+    answer = (run.get("answer") or "").strip() or "(the answer is not available)"
+    if not run.get("sources"):
+        return CHAT_FOLLOWUP_EMPTY_PROMPT.format(
+            query=run.get("query", ""), answer=answer)
+    return CHAT_FOLLOWUP_PROMPT.format(
+        query=run.get("query", ""),
+        passages=run.get("passages") or "(no passages)",
+        answer=answer,
+    )
+
+
+def _followup_context(run: dict, thread: list) -> dict:
+    """What the follow-up window currently holds, and what had to be dropped.
+
+    The frame is pinned because dropping passages would silently invalidate
+    the [n] citations the conversation is built on; turns are dropped oldest
+    first instead, and the count is reported rather than hidden.
+    """
+    ctx_max = app_config.runtime().resolved_agent_ctx()
+    reserve = app_config.NUM_PREDICT.get("agent", 2048)
+    budget = max(0, ctx_max - reserve)
+
+    frame = _followup_frame(run)
+    frame_tokens = app_tokens.estimate_tokens(frame)
+    passage_tokens = app_tokens.estimate_tokens(run.get("passages") or "")
+    answer_tokens = app_tokens.estimate_tokens(run.get("answer") or "")
+
+    # Newest-first so the turns that survive are the recent ones.
+    kept: list = []
+    used = frame_tokens
+    dropped = 0
+    for turn in reversed(thread):
+        cost = app_tokens.estimate_tokens(turn.get("content"))
+        if dropped or used + cost > budget:
+            dropped += 1
+            continue
+        used += cost
+        kept.append(turn)
+    kept.reverse()
+
+    return {
+        "used": used,
+        "max": ctx_max,
+        "budget": budget,
+        "reserve": reserve,
+        "dropped_turns": dropped,
+        "turns": len(kept),
+        "empty_retrieval": not run.get("sources"),
+        "restorable": bool(run.get("thread_archived")),
+        "segments": {
+            "instructions": max(0, frame_tokens - passage_tokens - answer_tokens),
+            "passages": passage_tokens,
+            "answer": answer_tokens,
+            "conversation": used - frame_tokens,
+        },
+        "calibration": app_tokens.calibration(),
+        "_kept": kept,
+        "_frame": frame,
+    }
+
+
+def _public_context(ctx: dict) -> dict:
+    return {k: v for k, v in ctx.items() if not k.startswith("_")}
+
+
+def _run_summary(rid: str, run: dict) -> dict:
+    return {"run_id": rid, "query": run.get("query", ""),
+            "sources": len(run.get("sources") or []),
+            "turns": len(run.get("thread") or []),
+            "active": rid == _active_run_id}
+
+
+@app.get("/api/chat/runs")
+def chat_runs():
+    """Every run this session can still be resumed from."""
+    with _chat_lock:
+        return JSONResponse({
+            "active": _active_run_id,
+            "runs": [_run_summary(rid, r) for rid, r in _runs.items()],
+        })
+
+
+class ActivateRequest(BaseModel):
+    run_id: str
+
+
+@app.post("/api/chat/activate")
+def chat_activate(req: ActivateRequest):
+    """Make an earlier answer's evidence the one the composer talks to.
+
+    The conversation and the rewrite both act on 'the current run'; without
+    this, that could only ever mean the most recent one, and an answer three
+    questions back was unreachable even though its passages were still here.
+    """
+    global _active_run_id
+    with _chat_lock:
+        if req.run_id not in _runs:
+            return JSONResponse({"error": "That answer is no longer available."},
+                                status_code=404)
+        _active_run_id = req.run_id
+        run = dict(_runs[req.run_id])
+    return JSONResponse({"ok": True, "run_id": req.run_id,
+                         "query": run.get("query", ""),
+                         **_public_context(_followup_context(run, run.get("thread") or []))})
+
+
+@app.get("/api/chat/context")
+def chat_context(run_id: Optional[str] = None):
+    """The follow-up window's current occupancy, for the context meter.
+
+    Available before a turn is sent, so the meter shows what asking would
+    cost rather than only what it cost afterwards.
+    """
+    rid, run = _get_run(run_id)
+    if not run:
+        return JSONResponse({"available": False})
+    ctx = _followup_context(run, run.get("thread") or [])
+    return JSONResponse({"available": True, "run_id": rid,
+                         "query": run.get("query", ""), **_public_context(ctx)})
+
+
+class FollowupRequest(BaseModel):
+    message: str
+    run_id: Optional[str] = None
+
+
+@app.post("/api/chat/followup")
+def chat_followup(req: FollowupRequest):
+    """Converse about the answer that was just given.
+
+    Deliberately does NOT retrieve: this is the 'iterate on what we found'
+    half of the pair, and re-retrieving would move the evidence out from under
+    a conversation whose [n] citations point at the passages on screen. The
+    other half is /api/chat, which the UI's second button calls.
+    """
+    message = (req.message or "").strip()
+    if not message:
+        return JSONResponse({"error": "No message provided"}, status_code=400)
+    rid, run = _get_run(req.run_id)
+    if not run:
+        return JSONResponse({"error": "Ask a question first — there is no run to "
+                                      "discuss yet."}, status_code=409)
+
+    thread = list(run.get("thread") or []) + [{"role": "user", "content": message}]
+    # Asking again is choosing to move on: an archived thread that could still
+    # be restored would otherwise sit there forever, and restoring it after new
+    # turns had been added would interleave two conversations.
+    with _chat_lock:
+        if rid in _runs:
+            _runs[rid].pop("thread_archived", None)
+    ctx = _followup_context(run, thread)
+
+    _chat_cancel.clear()
+    _set_chat_phase("synthesis", "Answering from the passages already found…")
+    try:
+        messages = [{"role": "system", "content": ctx["_frame"]}] + [
+            {"role": t["role"], "content": t["content"]} for t in ctx["_kept"]
+        ]
+        client = _pi.make_client(_pi.OLLAMA_URLS[0])
+        chunks, prompt_eval = [], 0
+        for part in client.chat(
+            model=getattr(_pi, "SYNTHESIS_MODEL", _pi.MODEL),
+            messages=messages,
+            options=app_config.chat_options("agent"),
+            keep_alive=app_config.keep_alive(),
+            stream=True,
+        ):
+            if _chat_cancel.is_set():
+                raise ChatCancelled()
+            chunks.append((part.get("message") or {}).get("content") or "")
+            prompt_eval = int(part.get("prompt_eval_count") or prompt_eval)
+        app_tokens.observe("".join(m["content"] for m in messages), prompt_eval)
+        reply = re.sub(r"<thought>.*?(</thought>|$)", "", "".join(chunks),
+                       flags=re.S).strip()
+
+        thread.append({"role": "assistant", "content": reply})
+        with _chat_lock:
+            if rid in _runs:
+                _runs[rid]["thread"] = thread
+        after = _followup_context(run, thread)
+        # Which passage numbers this turn leaned on, so the UI can point the
+        # chips at source cards that are already rendered.
+        n_sources = len(run.get("sources") or [])
+        cited = sorted({n for n in _cited_numbers(reply) if 1 <= n <= n_sources})
+        return JSONResponse({"reply": reply, "cited": cited, "run_id": rid,
+                             "context": _public_context(after)})
+    except ChatCancelled:
+        _set_chat_phase("cancelled", "Stopped")
+        return JSONResponse({"cancelled": True}, status_code=499)
+    except Exception as exc:
+        _set_chat_phase("error", str(exc))
+        return JSONResponse({"error": str(exc)}, status_code=500)
+    finally:
+        with _chat_lock:
+            if _chat_phase["phase"] not in ("error", "cancelled"):
+                _chat_phase.update({"phase": "idle", "detail": ""})
+
+
+class FollowupResetRequest(BaseModel):
+    run_id: Optional[str] = None
+
+
+@app.post("/api/chat/followup/reset")
+def chat_followup_reset(req: FollowupResetRequest = FollowupResetRequest()):
+    """Clear the conversation but keep the answer and its passages.
+
+    Set aside, not destroyed. The turns stay on screen greyed out and can be
+    brought back — clearing is usually "give the model a clean slate", not
+    "I never want to see that again", and a destructive read of it throws away
+    work the user may still be reading.
+    """
+    rid, _ = _get_run(req.run_id)
+    with _chat_lock:
+        if rid in _runs:
+            run = _runs[rid]
+            if run.get("thread"):
+                run["thread_archived"] = run["thread"]
+            run["thread"] = []
+            restorable = bool(run.get("thread_archived"))
+    return JSONResponse({"ok": True, "run_id": rid, "restorable": restorable})
+
+
+@app.post("/api/chat/followup/restore")
+def chat_followup_restore(req: FollowupResetRequest = FollowupResetRequest()):
+    """Bring a cleared conversation back."""
+    rid, _ = _get_run(req.run_id)
+    with _chat_lock:
+        run = _runs.get(rid)
+        if not run or not run.get("thread_archived"):
+            return JSONResponse({"error": "There is no cleared conversation to "
+                                          "restore."}, status_code=409)
+        run["thread"] = run.pop("thread_archived")
+        thread = list(run["thread"])
+        snapshot = dict(run)
+    return JSONResponse({"ok": True, "run_id": rid, "turns": len(thread),
+                         **_public_context(_followup_context(snapshot, thread))})
 
 
 @app.post("/api/chat/refine")
 def chat_refine(req: RefineRequest):
-    """Rewrite the last answer with context the clinician supplied.
+    """Rewrite an answer with context the clinician supplied.
 
     Retrieval is NOT re-run: the passages are the same ones, and the point of
     the exchange is that the model was missing patient detail, not documents.
     Re-retrieving would also change the evidence under an answer the user is
     in the middle of reading.
+
+    The added context becomes a numbered source of its own. It is evidence the
+    answer leans on, and an answer that leans on something invisible cannot be
+    checked — so it is cited like everything else, and labelled as having come
+    from the clinician rather than from a document.
     """
     extra = (req.context or "").strip()
     if not extra:
         return JSONResponse({"error": "No context provided"}, status_code=400)
-    with _chat_lock:
-        run = dict(_last_run)
-    if not run.get("sources"):
+    rid, run = _get_run(req.run_id)
+    if not run:
         return JSONResponse({"error": "There is no answer to revise yet."},
                             status_code=409)
+
+    sources, combined, ctx_n = _with_context_source(run, extra)
 
     _chat_cancel.clear()
     _set_chat_phase("synthesis", "Rewriting the answer with your context…")
     try:
-        prompt = (
-            "You are a clinical knowledge assistant. Answer the question using ONLY the "
-            "provided source passages, plus the clinician's added context below. "
-            "Every claim from a passage must cite it inline as [n].\n\n"
-            f"Question: {run['query']}\n\n"
-            f"Clinician's added context: {extra}\n\n"
-            f"Source passages:\n{run['passages']}\n\n"
-            "The added context is what the passages were missing, so use it to give a "
-            "more specific answer than before. It is NOT a source: do not cite it as "
-            "[n], and do not treat it as evidence for a claim the passages do not "
-            "support.\n\n"
-            "Respond in EXACTLY this format:\n\n"
-            "SHORT_ANSWER: <the direct answer>\n"
-            "RECOMMENDED_ACTION: <what the clinician should do>\n"
-            "RATIONALE: <why, grounded in the cited passages>\n"
-            "LIMITATIONS: <what is still uncertain, including anything the added "
-            "context does not resolve>\n\n"
-            "Plain text under each label. No markdown."
+        # The previous answer is IN the prompt. Without it this was not a
+        # rewrite at all — just the original synthesis prompt run again with
+        # one extra passage, which is why a good answer came back unchanged:
+        # the model had nothing to revise and no licence to revise it.
+        prompt = CHAT_REWRITE_PROMPT.format(
+            previous=(run.get("answer") or "(no previous answer)").strip(),
+            sources=combined,
+            query=run["query"],
+            ctx_n=ctx_n,
         )
         client = _pi.make_client(_pi.OLLAMA_URLS[0])
         chunks = []
@@ -1845,9 +2299,17 @@ def chat_refine(req: RefineRequest):
             chunks.append((part.get("message") or {}).get("content") or "")
         text = re.sub(r"<thought>.*?(</thought>|$)", "", "".join(chunks), flags=re.S).strip()
         sections = _parse_answer_sections(text)
+        # The rewrite IS the answer now, and its context card is one of its
+        # sources — so a follow-up discusses the answer actually on screen.
+        with _chat_lock:
+            if rid in _runs:
+                _runs[rid].update({"sources": sources, "passages": combined,
+                                   "answer": text})
         return JSONResponse({
             "answer": {"content": text, **sections},
-            "sources": run["sources"],
+            "sources": sources,
+            "run_id": rid,
+            "context_source_n": ctx_n,
             "refined_with": extra,
         })
     except ChatCancelled:
@@ -1907,6 +2369,9 @@ def chat_config():
         "pipeline": defs,
         "prompts": {
             "synthesis": CHAT_SYNTHESIS_PROMPT,
+            "rewrite": CHAT_REWRITE_PROMPT,
+            "followup": CHAT_FOLLOWUP_PROMPT,
+            "followup_empty": CHAT_FOLLOWUP_EMPTY_PROMPT,
             "section_pruning": getattr(_pi, "SECTION_CHECK_PROMPT", ""),
             "leaf_evaluation": getattr(_pi, "LEAF_EVAL_PROMPT", ""),
             "why_not_explainer": getattr(_pi, "EXPLAIN_PROMPT", ""),
@@ -2072,11 +2537,19 @@ def chat(req: ChatRequest):
                        tags=req.tags, selected_answers=req.selected_answers,
                        index_dir=_index_dir())
 
+        global _active_run_id
         with _chat_lock:
-            _last_run.clear()
-            _last_run.update({"query": query, "sources": sources, "passages": passages})
+            run_id = _new_run_id()
+            # Stored even when nothing was retrieved: "the library has nothing
+            # on this" is a result worth discussing, and dropping it left the
+            # chat with nothing to talk about at exactly the moment the user
+            # most wants to ask why.
+            _runs[run_id] = {"query": query, "sources": sources,
+                             "passages": passages, "answer": answer_text,
+                             "thread": []}
+            _active_run_id = run_id
 
-        cited = set(int(n) for n in re.findall(r"\[(\d+)\]", answer_text))
+        cited = set(_cited_numbers(answer_text))
         valid_cited = {n for n in cited if 1 <= n <= len(sources)}
         if not sources:
             status = "insufficient_evidence"
@@ -2103,6 +2576,7 @@ def chat(req: ChatRequest):
 
         return JSONResponse({
             "query": query,
+            "run_id": run_id,
             # Spread the parsed sections rather than naming four of them: the
             # completeness labels were being parsed correctly and then dropped
             # here, by a whitelist written when there were only four.

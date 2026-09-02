@@ -89,33 +89,87 @@ function renderChoiceBar(host) {
 /* ── The collapsed line: what is filtering, and how much it leaves ── */
 
 function buildChoiceSummary() {
-  const bar = el('button', 'choice-summary');
-  bar.type = 'button';
-  bar.setAttribute('aria-expanded', String(choiceState.open));
-  bar.addEventListener('click', () => {
-    choiceState.open = !choiceState.open;
-    renderChoiceBars();
-  });
+  // A row, not one big button: the chips inside it are individually removable,
+  // and a button nested in a button is neither valid nor clickable.
+  const bar = el('div', 'choice-summary');
+  const toggle = () => { choiceState.open = !choiceState.open; renderChoiceBars(); };
 
+  const handle = el('button', 'choice-toggle');
+  handle.type = 'button';
+  handle.setAttribute('aria-expanded', String(choiceState.open));
+  handle.title = choiceState.open ? 'Collapse the filters' : 'Choose what to search';
+  handle.addEventListener('click', toggle);
   const caret = el('span', 'choice-caret');
-  caret.textContent = choiceState.open ? '▾' : '▸';
-  bar.appendChild(caret);
-  bar.appendChild(el('span', 'choice-eyebrow', 'Filters'));
+  caret.textContent = '▸';
+  handle.appendChild(caret);
+  handle.appendChild(el('span', 'choice-eyebrow', 'Filters'));
+  if (choiceState.selected.size) {
+    handle.appendChild(el('span', 'choice-count', String(choiceState.selected.size)));
+  }
+  bar.appendChild(handle);
 
   const chips = el('span', 'choice-chips');
   if (!choiceState.selected.size) {
-    chips.appendChild(el('span', 'choice-empty', 'none — the whole library'));
+    const none = el('button', 'choice-empty', 'none — searching the whole library');
+    none.type = 'button';
+    none.title = 'Choose what to search';
+    none.addEventListener('click', toggle);
+    chips.appendChild(none);
   } else {
     for (const id of choiceState.selected) {
       const answer = choiceAnswerById(id);
-      chips.appendChild(el('span', 'choice-chip', answer ? answer.label : id));
+      // Removable in place. Undoing one filter is the commonest thing anyone
+      // wants from this bar, and it should not require opening the panel and
+      // hunting for which question the answer belonged to.
+      const chip = el('span', 'choice-chip');
+      chip.appendChild(el('b', null, answer ? answer.label : id));
+      const x = el('button', 'choice-chip-x', '✕');
+      x.type = 'button';
+      x.title = `Remove “${answer ? answer.label : id}”`;
+      x.setAttribute('aria-label', `Remove filter ${answer ? answer.label : id}`);
+      x.addEventListener('click', (e) => {
+        e.stopPropagation();
+        choiceState.selected.delete(id);
+        if (!choiceState.selected.size) choiceState.count = null;
+        renderChoiceBars();
+        refreshChoiceCount();
+      });
+      chip.appendChild(x);
+      chips.appendChild(chip);
     }
   }
   bar.appendChild(chips);
-
-  const scope = el('span', 'choice-scope', choiceScopeText());
-  bar.appendChild(scope);
+  bar.appendChild(buildChoiceScope());
   return bar;
+}
+
+/* How much of the library the next question will actually read.
+   A number alone ("148 of 512") does not convey how hard a filter is biting;
+   the bar does, at a glance, and turns amber once it is biting hard enough to
+   be the likely reason an answer comes back thin. */
+function buildChoiceScope() {
+  const wrap = el('span', 'choice-scope');
+  const count = choiceState.count;
+  if (!choiceState.selected.size) return wrap;
+  if (!count) { wrap.appendChild(el('span', 'choice-scope-text', 'counting…')); return wrap; }
+
+  const total = count.total || 0;
+  const frac = total ? Math.max(0, Math.min(1, count.candidates / total)) : 0;
+  const meter = el('span', 'choice-meter');
+  const fill = el('i');
+  fill.style.width = `${Math.max(frac * 100, count.candidates ? 1.5 : 0)}%`;
+  meter.appendChild(fill);
+  if (frac <= 0.12) meter.classList.add('tight');
+  wrap.appendChild(meter);
+
+  const pct = Math.round(frac * 100);
+  const text = el('span', 'choice-scope-text',
+    `${count.candidates} of ${total}` + (choiceState.mode === 'all' ? ' · fast' : ''));
+  wrap.appendChild(text);
+  wrap.title = `${count.candidates} of ${total} passages (${pct}%) will be searched`
+    + (count.unjudged ? ` · ${count.unjudged} not yet judged, searched unfiltered` : '')
+    + (choiceState.mode === 'all' ? ' · Fast mode: a passage must match every answer' : '');
+  return wrap;
 }
 
 /* The count is the honest description of what the query will read. It is
@@ -135,10 +189,30 @@ function buildChoicePanel() {
   const panel = el('div', 'choice-panel');
 
   for (const q of choiceState.questions) {
-    const row = el('div', 'choice-row');
+    const answeredHere = q.answers.filter(a => choiceState.selected.has(a.id));
+    const row = el('div', 'choice-row' + (answeredHere.length ? ' answered' : ''));
+
+    // The prompt sits ABOVE its options rather than in a right-aligned column:
+    // the column forced every question to the same width, so a long prompt
+    // wrapped to three lines beside two short chips.
+    const head = el('div', 'choice-row-head');
     const label = el('span', 'choice-q', q.prompt);
     if (q.help_text) label.title = q.help_text;
-    row.appendChild(label);
+    head.appendChild(label);
+    if (q.multi_select) head.appendChild(el('span', 'choice-multi', 'pick any'));
+    if (answeredHere.length) {
+      const undo = el('button', 'choice-row-clear', 'clear');
+      undo.type = 'button';
+      undo.title = `Unset this question`;
+      undo.addEventListener('click', () => {
+        for (const a of q.answers) choiceState.selected.delete(a.id);
+        if (!choiceState.selected.size) choiceState.count = null;
+        renderChoiceBars();
+        refreshChoiceCount();
+      });
+      head.appendChild(undo);
+    }
+    row.appendChild(head);
 
     const opts = el('div', 'choice-opts');
     for (const a of q.answers) {
@@ -177,37 +251,46 @@ function buildChoiceFooter() {
   /* Fast mode. Off by default and described in terms of what it COSTS, not
      what it saves — the saving is obvious from the count, the cost is not. */
   const answered = answeredQuestions().length;
-  const toggle = el('label', 'choice-fast');
-  const box = document.createElement('input');
-  box.type = 'checkbox';
-  box.checked = choiceState.mode === 'all';
-  box.addEventListener('change', () => {
-    choiceState.mode = box.checked ? 'all' : 'any';
-    renderChoiceBars();
-    refreshChoiceCount();
-  });
-  toggle.appendChild(box);
-  toggle.appendChild(el('span', 'choice-fast-label', 'Fast mode'));
-  toggle.title = answered > 1
-    ? 'A passage must match EVERY question you answered, not just one of them. '
-      + 'Much faster and far more focused — and it will drop passages that only '
-      + 'matched some of your answers.'
-    : 'Requires a passage to match every question you answer. Answer a second '
-      + 'question to see the difference.';
-  foot.appendChild(toggle);
+  // A checkbox labelled "Fast mode" said what it turns ON and nothing about
+  // what it turns OFF. Two named states say what the search IS either way,
+  // and the wider one being the left-hand default is the point.
+  const seg = el('div', 'choice-modeseg');
+  seg.setAttribute('role', 'group');
+  seg.setAttribute('aria-label', 'How the answers combine');
+  for (const [mode, label, tip] of [
+    ['any', 'Any answer',
+     'A passage matching ANY of your answers is searched. Wider, and the '
+     + 'default — a passage excluded here can never reach the answer.'],
+    ['all', 'Every answer',
+     'A passage must match EVERY question you answered. Much faster and far '
+     + 'more focused — and it will drop passages that only matched some.'],
+  ]) {
+    const b = el('button', 'choice-mode' + (choiceState.mode === mode ? ' on' : ''), label);
+    b.type = 'button';
+    b.title = tip;
+    b.setAttribute('aria-pressed', String(choiceState.mode === mode));
+    b.addEventListener('click', () => {
+      if (choiceState.mode === mode) return;
+      choiceState.mode = mode;
+      renderChoiceBars();
+      refreshChoiceCount();
+    });
+    seg.appendChild(b);
+  }
+  foot.appendChild(seg);
 
   // Describes the state the toggle is IN, never the state it would move to —
   // sitting beside the checkbox, an unlabelled description reads as a
   // description of Fast mode itself.
   const explain = el('span', 'choice-explain', choiceState.mode === 'all'
     ? (answered > 1
-        ? `on · a passage must match all ${answered} questions — may miss some`
-        : 'on · it starts narrowing once you answer a second question')
-    : 'off · a passage matching any answer is searched');
+        ? `a passage must match all ${answered} questions — may miss some`
+        : 'starts narrowing once you answer a second question')
+    : 'a passage matching any one of your answers is searched');
   foot.appendChild(explain);
 
   if (choiceState.selected.size) {
-    const clear = el('button', 'choice-clear', 'Clear');
+    const clear = el('button', 'choice-clear', 'Clear all');
     clear.type = 'button';
     clear.addEventListener('click', () => {
       choiceState.selected.clear();

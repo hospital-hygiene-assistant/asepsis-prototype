@@ -37,6 +37,10 @@
   --as-amber-bg:  color-mix(in oklab, var(--amber) 12%, var(--surface));
   --as-amber-bd:  color-mix(in oklab, var(--amber) 40%, transparent);
   --as-amber-tx:  var(--amber);
+  /* Ink for text ON an amber tint. Amber-800 reads on the pale light-mode
+     wash but is invisible on the dark one, so it is a token with a dark
+     value rather than the hardcode it was in three places. */
+  --as-amber-ink: #92400e;
   --as-quote:     var(--quote-bg);
   --as-green:     var(--green);
   --as-rose:      var(--red);
@@ -44,14 +48,39 @@
   --as-shadow-card: 0 8px 24px rgba(8, 20, 18, 0.07);
   --as-shadow-head: 0 6px 18px rgba(8, 20, 18, 0.09);
 }
-:root[data-theme="dark"], :root:not([data-theme="light"]) {
+:root[data-theme="dark"] {
   --as-shadow-card: 0 8px 24px rgba(0, 0, 0, 0.45);
   --as-shadow-head: 0 6px 18px rgba(0, 0, 0, 0.5);
   /* Recessed, not raised: on a dark ground a lighter fill reads as a grey
      block, while going darker reads as a well cut into the card. */
   --as-inset:     rgba(0, 0, 0, 0.30);
   --as-border-2:  color-mix(in oklab, var(--text) 11%, transparent);
+  /* Amber at 12% of a bright yellow over a near-black card went olive, and
+     the amber-800 ink on top was unreadable. A deeper tint plus the light end
+     of the ramp for the ink carries the same warning weight as on white. */
+  --as-amber-bg:  color-mix(in oklab, var(--amber) 16%, var(--surface));
+  --as-amber-bd:  color-mix(in oklab, var(--amber) 45%, transparent);
+  --as-amber-ink: color-mix(in oklab, var(--amber) 86%, var(--text));
   /* --quote-bg already carries its own dark value. */
+}
+/* Bare `:root:not([data-theme="light"])` would have applied these on a
+   LIGHT OS too, because "system" stamps no attribute at all. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --as-shadow-card: 0 8px 24px rgba(0, 0, 0, 0.45);
+    --as-shadow-head: 0 6px 18px rgba(0, 0, 0, 0.5);
+    /* Recessed, not raised: on a dark ground a lighter fill reads as a grey
+       block, while going darker reads as a well cut into the card. */
+    --as-inset:     rgba(0, 0, 0, 0.30);
+    --as-border-2:  color-mix(in oklab, var(--text) 11%, transparent);
+    /* Amber at 12% of a bright yellow over a near-black card went olive, and
+       the amber-800 ink on top was unreadable. A deeper tint plus the light end
+       of the ramp for the ink carries the same warning weight as on white. */
+    --as-amber-bg:  color-mix(in oklab, var(--amber) 16%, var(--surface));
+    --as-amber-bd:  color-mix(in oklab, var(--amber) 45%, transparent);
+    --as-amber-ink: color-mix(in oklab, var(--amber) 86%, var(--text));
+    /* --quote-bg already carries its own dark value. */
+  }
 }
 
 /* ═══ Topbar app tabs (shared chrome — dark theme) ═══ */
@@ -85,7 +114,8 @@ body[data-tab="chat"] #command-bar { display: none !important; }
 #view-chat { background: var(--as-bg); color: var(--as-text); animation: none; }
 
 .chat-shell { display: flex; flex: 1; min-height: 0; }
-.chat-main  { flex: 1; display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+/* `position` so the context popover can anchor above the composer. */
+.chat-main  { position: relative; flex: 1; display: flex; flex-direction: column; min-width: 0; min-height: 0; }
 
 .chat-eyebrow {
   font-size: 11px; font-weight: 600; text-transform: uppercase;
@@ -441,8 +471,14 @@ body[data-tab="chat"] #command-bar { display: none !important; }
   cursor: pointer; transition: background .15s, color .15s;
 }
 .source-action:hover { background: var(--as-teal-soft); color: var(--as-teal-dark); }
-.source-action.warn { background: var(--as-amber-bg); color: #92400e; border: 1px solid var(--as-amber-bd); }
-.source-action.warn:hover { background: color-mix(in oklab, var(--amber) 20%, transparent); color: var(--as-amber-tx); }
+.source-action.warn {
+  background: var(--as-amber-bg); color: var(--as-amber-ink);
+  border: 1px solid var(--as-amber-bd);
+}
+.source-action.warn:hover {
+  background: color-mix(in oklab, var(--amber) 12%, var(--as-amber-bg));
+  border-color: var(--amber); color: var(--as-amber-ink);
+}
 
 /* AI disclaimer — a quiet, separated strip at the foot of every answer */
 .answer-disclaimer {
@@ -577,7 +613,9 @@ body[data-tab="chat"] #command-bar { display: none !important; }
   background: var(--as-surface);
   border-color: var(--as-border);
 }
-#view-chat .choice-summary:hover { border-color: #d4d4d8; }
+#view-chat .choice-summary:hover { border-color: var(--as-border-strong, var(--as-teal-ring)); }
+#view-chat .choice-toggle:hover { background: var(--as-inset); }
+#view-chat .choice-count { background: var(--as-teal-soft); color: var(--as-teal-dark); }
 #view-chat .choice-eyebrow { color: var(--as-muted); opacity: 1; }
 #view-chat .choice-caret { color: var(--as-faint); opacity: 1; }
 #view-chat .choice-empty { color: var(--as-faint); opacity: 1; }
@@ -586,6 +624,13 @@ body[data-tab="chat"] #command-bar { display: none !important; }
   background: var(--as-teal-soft); border-color: var(--as-teal-ring);
   color: var(--as-teal-dark); font-weight: 600;
 }
+#view-chat .choice-chip:hover { border-color: var(--as-teal); }
+#view-chat .choice-chip-x { color: var(--as-teal-dark); }
+#view-chat .choice-chip-x:hover { background: var(--as-teal); color: var(--as-surface); }
+#view-chat .choice-meter { background: var(--as-inset); }
+#view-chat .choice-meter i { background: var(--as-teal); }
+#view-chat .choice-meter.tight i { background: var(--amber); }
+#view-chat .choice-scope-text { color: var(--as-muted); opacity: 1; }
 
 #view-chat .choice-panel {
   background: var(--as-surface); border-color: var(--as-border);
@@ -600,9 +645,17 @@ body[data-tab="chat"] #command-bar { display: none !important; }
   color: var(--as-teal-dark);
 }
 
+#view-chat .choice-row + .choice-row { border-top-color: var(--as-border-2); }
+#view-chat .choice-row.answered .choice-q { color: var(--as-text); }
+#view-chat .choice-multi { color: var(--as-faint); opacity: 1; }
+#view-chat .choice-row-clear { color: var(--as-muted); opacity: 1; }
+#view-chat .choice-row-clear:hover { color: var(--as-teal); }
+
 #view-chat .choice-foot { border-top-color: var(--as-border-2); }
-#view-chat .choice-fast { color: var(--as-text-2); }
-#view-chat .choice-fast input[type="checkbox"] { accent-color: var(--as-teal); }
+#view-chat .choice-modeseg { background: var(--as-inset); }
+#view-chat .choice-mode { color: var(--as-muted); }
+#view-chat .choice-mode:hover { color: var(--as-text); }
+#view-chat .choice-mode.on { background: var(--as-surface); color: var(--as-teal); }
 #view-chat .choice-explain { color: var(--as-muted); opacity: 1; }
 #view-chat .choice-clear {
   color: var(--as-muted); border-color: var(--as-border);
@@ -610,7 +663,7 @@ body[data-tab="chat"] #command-bar { display: none !important; }
 #view-chat .choice-clear:hover { color: var(--as-text); border-color: var(--as-teal); }
 
 #view-chat .choice-note { color: var(--as-muted); opacity: 1; }
-#view-chat .choice-note.warn { color: #92400e; }   /* amber-800 on white */
+#view-chat .choice-note.warn { color: var(--as-amber-ink); }
 #view-chat .choice-link { color: var(--as-teal); }
 #view-chat .choice-spinner { border-color: var(--as-border); border-top-color: var(--as-teal); }
 
@@ -621,7 +674,7 @@ body[data-tab="chat"] #command-bar { display: none !important; }
   color: var(--as-text-2);
 }
 #view-chat .choice-notice strong { color: var(--as-teal-dark); }
-#view-chat .choice-notice-warn { color: #92400e; }
+#view-chat .choice-notice-warn { color: var(--as-amber-ink); }
 
 /* The chat mount sits directly above the input bar and must share its
    gutter — full-bleed, the filter line reads as app chrome rather than as
@@ -968,3 +1021,174 @@ body[data-tab="chat"] #command-bar { display: none !important; }
 /* A partial answer is marked on the card itself, so it is visible when the
    card is scrolled past its own header. */
 .answer-card.partial { border-left: 3px solid var(--as-blue); }
+
+/* ═══ Follow-up conversation ═════════════════════════════════════════
+   A turn over passages already retrieved is not a second answer, so it is
+   not a second answer card: a bubble, lighter than the card it discusses,
+   with the same citation chips pointing back into that card. */
+
+.chat-modebar {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; flex-wrap: wrap;
+  padding: 9px 22px 0; background: var(--as-surface);
+  border-top: 1px solid var(--as-border);
+}
+.mode-tabs {
+  display: inline-flex; gap: 3px; padding: 3px;
+  background: var(--as-inset); border-radius: 8px;
+}
+.mode-tab {
+  border: none; background: none; border-radius: 6px;
+  padding: 5px 11px; font-size: 11.5px; font-weight: 600;
+  color: var(--as-muted); cursor: pointer;
+  transition: background .15s, color .15s;
+}
+.mode-tab:hover { color: var(--as-text); }
+.mode-tab.active {
+  background: var(--as-surface); color: var(--as-teal);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.14);
+}
+
+/* ── Context meter ── */
+
+.ctx-meter {
+  display: inline-flex; align-items: center; gap: 8px;
+  border: 1px solid var(--as-border); border-radius: 7px;
+  background: none; padding: 4px 9px; cursor: pointer;
+  transition: border-color .15s;
+}
+.ctx-meter:hover { border-color: var(--as-teal); }
+.ctx-bar {
+  display: flex; width: 86px; height: 6px; border-radius: 3px;
+  background: var(--as-inset); overflow: hidden;
+}
+.ctx-seg { display: block; height: 100%; }
+/* Pinned segments in the accent family, the droppable one distinct — the bar
+   reads as "this much cannot move, this much can". */
+.ctx-instructions { background: color-mix(in oklab, var(--as-teal) 32%, transparent); }
+.ctx-passages     { background: var(--as-teal); }
+.ctx-answer       { background: color-mix(in oklab, var(--as-teal) 62%, var(--as-text)); }
+.ctx-conversation { background: var(--as-blue); }
+.ctx-label {
+  font-size: 11px; font-weight: 600; color: var(--as-muted);
+  font-variant-numeric: tabular-nums;
+}
+.ctx-meter.tight .ctx-label { color: var(--as-amber-ink); }
+.ctx-meter.tight { border-color: var(--as-amber-bd); background: var(--as-amber-bg); }
+
+.ctx-popover {
+  position: absolute; right: 22px; bottom: 92px; z-index: 40;
+  width: min(360px, calc(100% - 44px));
+  background: var(--as-surface); border: 1px solid var(--as-border);
+  border-radius: 9px; box-shadow: var(--as-shadow-head); padding: 14px 16px;
+}
+.ctx-pop-eyebrow {
+  font-size: 10.5px; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.12em; color: var(--as-muted);
+}
+.ctx-pop-sub { margin-top: 3px; font-size: 12px; line-height: 1.5; color: var(--as-text-3); }
+.ctx-pop-rows { margin-top: 11px; display: flex; flex-direction: column; gap: 9px; }
+.ctx-pop-row { display: flex; gap: 9px; }
+.ctx-swatch { flex: none; width: 9px; height: 9px; border-radius: 2px; margin-top: 4px; }
+.ctx-pop-text { display: flex; flex-direction: column; gap: 1px; }
+.ctx-pop-text b { font-size: 12px; color: var(--as-text); font-variant-numeric: tabular-nums; }
+.ctx-pop-text span { font-size: 11.5px; line-height: 1.45; color: var(--as-muted); }
+.ctx-pop-warn {
+  margin-top: 11px; padding: 8px 10px; border-radius: 6px;
+  background: var(--as-amber-bg); border: 1px solid var(--as-amber-bd);
+  color: var(--as-amber-ink); font-size: 11.5px; line-height: 1.5;
+}
+.ctx-pop-reset {
+  margin-top: 12px; width: 100%; border: 1px solid var(--as-border);
+  border-radius: 6px; background: none; padding: 6px;
+  font-size: 11.5px; font-weight: 600; color: var(--as-text-2); cursor: pointer;
+}
+.ctx-pop-reset:hover { border-color: var(--as-teal); color: var(--as-teal); }
+
+/* ── Reply bubble ── */
+
+.chat-reply {
+  max-width: 86%;
+  background: var(--as-surface); border-radius: 8px;
+  border-left: 2px solid var(--as-teal-ring);
+  padding: 11px 15px; font-size: 13.5px; line-height: 1.6;
+  color: var(--as-text-2); box-shadow: var(--as-shadow-card);
+}
+.chat-reply p + p { margin-top: 9px; }
+.reply-foot {
+  margin-top: 9px; padding-top: 8px; border-top: 1px solid var(--as-border-2);
+  font-size: 11px; color: var(--as-faint);
+}
+/* While waiting the bubble holds the same composing widget the deck uses, so
+   it needs no padding of its own around it. */
+.chat-reply.pending { padding: 0; border-left-color: var(--as-teal); }
+.chat-reply.pending .composing { margin: 0; }
+
+/* ── Resuming an earlier answer ── */
+
+.ev-resume {
+  margin-top: 7px; width: 100%;
+  border: 1px solid var(--as-border); border-radius: 6px;
+  background: none; padding: 5px 8px;
+  font-size: 11px; font-weight: 600; color: var(--as-text-2);
+  cursor: pointer; transition: border-color .15s, color .15s;
+}
+.ev-resume:hover:not(:disabled) { border-color: var(--as-teal); color: var(--as-teal); }
+.ev-resume:disabled {
+  cursor: default; color: var(--as-teal);
+  border-color: var(--as-teal-ring); background: var(--as-teal-soft);
+}
+.ev-empty { font-size: 11.5px; color: var(--as-faint); padding: 4px 0; }
+
+/* ── The clinician's own context, as a source ──
+   Deliberately NOT tinted like a document card: it carries no provenance, and
+   looking like the passages beside it would be the whole problem. */
+.source-card.context-source {
+  border-left: 2px dashed var(--as-border-strong, var(--as-teal-ring));
+  background: var(--as-inset);
+}
+/* The number must read as a number: the base rule paints only the text, so
+   overriding just the background left a blank chip. */
+.context-source .source-num {
+  color: var(--as-text-2);
+  background: color-mix(in oklab, var(--as-text) 10%, transparent);
+  border-color: color-mix(in oklab, var(--as-text) 24%, transparent);
+}
+.context-source-note {
+  margin-top: 9px; font-size: 11px; line-height: 1.45; color: var(--as-muted);
+}
+.outcome-aside {
+  margin-top: 8px; font-size: 11.5px; line-height: 1.5; color: var(--as-muted);
+}
+
+.refined-changed {
+  margin-top: 8px; padding-top: 8px;
+  border-top: 1px solid var(--as-border-2);
+  font-size: 12px; line-height: 1.5; color: var(--as-text-2);
+}
+.refined-changed b {
+  display: block; font-size: 10.5px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.12em;
+  color: var(--as-muted); margin-bottom: 2px;
+}
+
+/* A rewrite in flight: the activity widget in the form's place, with the way
+   out beside it. */
+.gap-waiting { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
+.gap-waiting .composing { flex: 1; margin: 0; }
+.gap-stop { flex: none; }
+
+/* A cleared conversation: still readable, visibly no longer in play. Faded
+   rather than removed — the model has stopped seeing these turns, which is
+   not the same as the user being done with them. */
+.chat-row.followup-cleared { opacity: .42; filter: saturate(.5); }
+.chat-row.followup-cleared .chat-reply { border-left-color: var(--as-border); }
+.chat-row.followup-cleared .chat-reply,
+.chat-row.followup-cleared .chat-user-bubble { box-shadow: none; }
+.chat-row.followup-cleared .cite-chip { pointer-events: none; }
+
+.ev-resume.restore {
+  border-color: var(--as-amber-bd); color: var(--as-amber-ink);
+  background: var(--as-amber-bg);
+}
+.ev-resume.restore:hover { border-color: var(--amber); }
