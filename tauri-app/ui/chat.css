@@ -22,10 +22,13 @@
   --as-muted:     var(--muted);
   --as-faint:     var(--faint);
   --as-border:    var(--border);
-  /* Translucent, not a solid fill: this is used as BOTH a hairline and the
-     background of chips, pills and the composer. Aliased to a solid surface
-     it turned every one of those into a grey block on the dark ground. */
-  --as-border-2:  color-mix(in oklab, var(--text) 7%, transparent);
+  /* Two roles, split: a hairline, and the ground under chips, pills and the
+     composer. One token could not serve both — a tint light enough to read as
+     a rule became a grey slab once it was a fill. */
+  --as-border-2:  color-mix(in oklab, var(--text) 9%, transparent);
+  /* Inset surfaces sit BELOW the card they are on: darker on a dark ground,
+     not a lighter wash, which is what read as grey. */
+  --as-inset:     color-mix(in oklab, var(--text) 5%, transparent);
   --as-teal:      var(--accent);
   --as-teal-dark: var(--accent);
   --as-teal-deep: var(--accent);
@@ -44,6 +47,10 @@
 :root[data-theme="dark"], :root:not([data-theme="light"]) {
   --as-shadow-card: 0 8px 24px rgba(0, 0, 0, 0.45);
   --as-shadow-head: 0 6px 18px rgba(0, 0, 0, 0.5);
+  /* Recessed, not raised: on a dark ground a lighter fill reads as a grey
+     block, while going darker reads as a well cut into the card. */
+  --as-inset:     rgba(0, 0, 0, 0.30);
+  --as-border-2:  color-mix(in oklab, var(--text) 11%, transparent);
   /* --quote-bg already carries its own dark value. */
 }
 
@@ -102,7 +109,7 @@ body[data-tab="chat"] #command-bar { display: none !important; }
 .chat-notice {
   display: flex; gap: 8px; align-items: flex-start;
   margin-top: 10px; max-width: 680px;
-  background: rgba(240, 253, 250, 0.7); border-radius: 6px;
+  background: var(--as-teal-soft); border-radius: 6px;
   padding: 8px 12px; color: var(--as-teal-deep);
 }
 .chat-notice svg { flex: none; margin-top: 1px; color: var(--as-teal); }
@@ -117,7 +124,7 @@ body[data-tab="chat"] #command-bar { display: none !important; }
 .chat-config-btn {
   position: absolute; top: 14px; right: 22px;
   display: inline-flex; align-items: center; gap: 6px;
-  background: var(--as-border-2); border: none; border-radius: 6px;
+  background: var(--as-inset); border: none; border-radius: 6px;
   padding: 6px 11px; font-size: 11.5px; font-weight: 600; color: var(--as-text-3);
   cursor: pointer; transition: background .15s, color .15s;
 }
@@ -142,10 +149,10 @@ body[data-tab="chat"] #command-bar { display: none !important; }
 .ccm-sub { margin-top: 3px; font-size: 12px; color: var(--as-muted); }
 .ccm-close {
   flex: none; width: 30px; height: 30px; border: none; border-radius: 6px;
-  background: var(--as-border-2); color: var(--as-text-3); font-size: 13px; cursor: pointer;
+  background: var(--as-inset); color: var(--as-text-3); font-size: 13px; cursor: pointer;
 }
 .ccm-close:hover { background: var(--as-border); color: var(--as-text); }
-.ccm-body { overflow-y: auto; padding: 14px 20px 20px; background: rgba(250, 250, 249, 0.5); }
+.ccm-body { overflow-y: auto; padding: 14px 20px 20px; background: var(--as-inset); }
 
 .ccm-facts { display: grid; grid-template-columns: 140px 1fr; gap: 8px 14px; font-size: 12.5px; }
 .ccm-facts dt {
@@ -154,11 +161,11 @@ body[data-tab="chat"] #command-bar { display: none !important; }
 }
 .ccm-facts dd { color: var(--as-text-2); line-height: 1.55; }
 .ccm-facts code {
-  background: var(--as-border-2); border-radius: 4px; padding: 1px 5px;
+  background: var(--as-inset); border-radius: 4px; padding: 1px 5px;
   font-size: 11.5px; color: var(--as-teal-dark);
 }
 .ccm-select-model {
-  background: var(--as-border-2);
+  background: var(--as-inset);
   border: 1px solid var(--as-border);
   border-radius: 6px;
   padding: 4px 8px;
@@ -192,7 +199,7 @@ body[data-tab="chat"] #command-bar { display: none !important; }
 .ccm-prompt[open] summary { border-bottom: 1px solid var(--as-border-2); }
 .ccm-prompt pre {
   margin: 0; padding: 12px 13px; overflow-x: auto;
-  background: #fafaf9; font-size: 11px; line-height: 1.6;
+  background: var(--as-inset); font-size: 11px; line-height: 1.6;
   color: var(--as-text-2); white-space: pre-wrap; word-break: break-word;
   font-family: 'SF Mono', ui-monospace, 'Fira Mono', Consolas, monospace;
 }
@@ -201,7 +208,7 @@ body[data-tab="chat"] #command-bar { display: none !important; }
 
 .chat-scroll {
   flex: 1; min-height: 0; overflow-y: auto;
-  background: rgba(250, 250, 249, 0.4);
+  background: var(--as-inset);
   padding: 18px 22px 26px;
 }
 .chat-scroll::-webkit-scrollbar-thumb { background: rgba(113, 113, 122, 0.35);
@@ -342,7 +349,7 @@ body[data-tab="chat"] #command-bar { display: none !important; }
 .trace-ms {
   font-variant-numeric: tabular-nums;
   font-size: 11px; color: var(--as-faint);
-  background: var(--as-border-2); border-radius: 4px;
+  background: var(--as-inset); border-radius: 4px;
   padding: 0 4px; white-space: nowrap;
 }
 /* A shared prune call gets a marker, so "1 call / 8" cannot be misread as
@@ -382,7 +389,7 @@ body[data-tab="chat"] #command-bar { display: none !important; }
   display: flex; align-items: center; gap: 6px; flex-wrap: wrap;
 }
 .source-page-pill {
-  border-radius: 999px; background: var(--as-border-2); color: var(--as-text-3);
+  border-radius: 999px; background: var(--as-inset); color: var(--as-text-3);
   font-size: 11px; font-weight: 600; letter-spacing: normal; padding: 1px 8px;
 }
 .source-title { margin-top: 3px; font-size: 13px; font-weight: 600; line-height: 1.4; color: var(--as-text); }
@@ -429,19 +436,19 @@ body[data-tab="chat"] #command-bar { display: none !important; }
 .source-actions { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 10px; }
 .source-action {
   display: inline-flex; align-items: center; gap: 5px;
-  background: var(--as-border-2); border: none; border-radius: 6px;
+  background: var(--as-inset); border: none; border-radius: 6px;
   padding: 5px 10px; font-size: 11.5px; font-weight: 600; color: var(--as-text-2);
   cursor: pointer; transition: background .15s, color .15s;
 }
 .source-action:hover { background: var(--as-teal-soft); color: var(--as-teal-dark); }
 .source-action.warn { background: var(--as-amber-bg); color: #92400e; border: 1px solid var(--as-amber-bd); }
-.source-action.warn:hover { background: #fef3c7; color: var(--as-amber-tx); }
+.source-action.warn:hover { background: color-mix(in oklab, var(--amber) 20%, transparent); color: var(--as-amber-tx); }
 
 /* AI disclaimer — a quiet, separated strip at the foot of every answer */
 .answer-disclaimer {
   display: flex; align-items: center; gap: 8px;
   padding: 8px 16px; border-top: 1px solid var(--as-border-2);
-  background: #fafaf9;
+  background: var(--as-inset);
   font-size: 11.5px; line-height: 1.5; color: var(--as-muted);
 }
 .answer-disclaimer svg { flex: none; color: var(--as-faint); }
@@ -492,7 +499,7 @@ body[data-tab="chat"] #command-bar { display: none !important; }
 .ev-sub { margin-top: 2px; font-size: 11.5px; color: var(--as-muted); }
 .ev-mode {
   display: grid; grid-template-columns: 1fr 1fr; gap: 0;
-  margin-top: 12px; background: var(--as-border-2); border-radius: 6px; padding: 3px;
+  margin-top: 12px; background: var(--as-inset); border-radius: 6px; padding: 3px;
 }
 .ev-mode-btn {
   border: none; border-radius: 4px; background: transparent; cursor: pointer;
@@ -504,7 +511,7 @@ body[data-tab="chat"] #command-bar { display: none !important; }
 
 .ev-groups {
   flex: 1; min-height: 0; overflow-y: auto;
-  background: rgba(250, 250, 249, 0.55); padding: 4px 16px 20px;
+  background: var(--as-inset); padding: 4px 16px 20px;
   position: relative;
 }
 .ev-timeline { position: relative; }
@@ -521,12 +528,12 @@ body[data-tab="chat"] #command-bar { display: none !important; }
 .ev-group.active .ev-dot { border-color: var(--as-teal); }
 .ev-group-head {
   position: sticky; top: 0; z-index: 5; margin: 0 -4px 10px; padding: 9px 11px;
-  border-radius: 6px; background: rgba(255, 255, 255, 0.95);
+  border-radius: 6px; background: var(--as-surface);
   box-shadow: var(--as-shadow-head); backdrop-filter: blur(4px);
   border: 1px solid rgba(228, 228, 231, 0.7);
 }
 .ev-group.active .ev-group-head {
-  background: rgba(240, 253, 250, 0.95); border-color: rgba(153, 246, 228, 0.7);
+  background: var(--as-teal-soft); border-color: var(--as-teal-ring);
   box-shadow: 0 8px 22px rgba(15, 118, 110, 0.12);
 }
 .ev-group-title {
@@ -546,7 +553,7 @@ body[data-tab="chat"] #command-bar { display: none !important; }
   border-radius: 6px; padding: 9px 11px; transition: background .15s, border-color .15s;
 }
 .ev-source:hover { background: var(--as-surface2, var(--surface2)); }
-.ev-source.selected { border-left-color: var(--as-teal); background: rgba(240, 253, 250, 0.5); }
+.ev-source.selected { border-left-color: var(--as-teal); background: var(--as-teal-soft); }
 .ev-source-eyebrow {
   display: flex; justify-content: space-between; gap: 8px;
   font-size: 10.5px; font-weight: 600; text-transform: uppercase;
