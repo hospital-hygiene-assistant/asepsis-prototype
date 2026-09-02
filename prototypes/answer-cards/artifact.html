@@ -1,0 +1,817 @@
+<title>Evidence Cards</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&display=swap">
+<style>
+/* ══════════════════════════════════════════════════════════════════
+   EVIDENCE CARDS — standalone prototype, dummy data, no dependencies.
+   Drop into tauri-app/ui/ as-is; the only integration points are the
+   three functions marked INTEGRATION at the bottom of the script.
+   ══════════════════════════════════════════════════════════════════ */
+
+:root {
+  --ground:    #f2f4f3;
+  --surface:   #ffffff;
+  --sunken:    #e9edec;
+  --ink:       #0b0f0e;
+  --ink-2:     #3f4746;
+  --ink-3:     #6b7472;
+  --faint:     #9aa3a1;
+  --line:      #e2e7e6;
+  --line-2:    #eef1f0;
+  --accent:    #0f766e;
+  --accent-lo: #f0fdfa;
+  --quote:     #fef3c7;
+  --shadow:    0 10px 30px rgba(11, 15, 14, 0.08);
+  --shadow-lg: 0 24px 60px rgba(11, 15, 14, 0.14);
+
+  /* Folder hues — the information layer. research/preprints deliberately
+     share a hue: preprints is nested inside research, and tone carries that. */
+  --f-guidelines: #1d4ed8;
+  --f-internal:   #b45309;
+  --f-research:   #7e22ce;
+  --f-preprints:  #a855f7;
+  --f-none:       #52525b;
+}
+:root:not([data-theme="light"]) {
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ground:    #0d1211;
+    --surface:   #151b1a;
+    --sunken:    #101514;
+    --ink:       #f2f5f4;
+    --ink-2:     #c8d0ce;
+    --ink-3:     #98a2a0;
+    --faint:     #6b7472;
+    --line:      #232b2a;
+    --line-2:    #1b2221;
+    --accent:    #5eead4;
+    --accent-lo: #0c211f;
+    --quote:     #3f3410;
+    --shadow:    0 10px 30px rgba(0, 0, 0, 0.5);
+    --shadow-lg: 0 24px 60px rgba(0, 0, 0, 0.6);
+    --f-guidelines: #7aa2ff;
+    --f-internal:   #e0a04a;
+    --f-research:   #c084fc;
+    --f-preprints:  #d8b4fe;
+    --f-none:       #a1a1aa;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --ground:    #0d1211;
+  --surface:   #151b1a;
+  --sunken:    #101514;
+  --ink:       #f2f5f4;
+  --ink-2:     #c8d0ce;
+  --ink-3:     #98a2a0;
+  --faint:     #6b7472;
+  --line:      #232b2a;
+  --line-2:    #1b2221;
+  --accent:    #5eead4;
+  --accent-lo: #0c211f;
+  --quote:     #3f3410;
+  --shadow:    0 10px 30px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 24px 60px rgba(0, 0, 0, 0.6);
+  --f-guidelines: #7aa2ff;
+  --f-internal:   #e0a04a;
+  --f-research:   #c084fc;
+  --f-preprints:  #d8b4fe;
+  --f-none:       #a1a1aa;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body {
+  margin: 0; background: var(--ground); color: var(--ink);
+  font-family: "IBM Plex Sans", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  font-size: 15px; line-height: 1.5;
+  display: flex; flex-direction: column;
+  overflow: hidden;
+}
+
+/* ── Top bar: the question, and what the model is doing ── */
+.topbar {
+  flex: none; display: flex; align-items: center; gap: 14px;
+  padding: 14px 22px; border-bottom: 1px solid var(--line);
+  background: var(--surface);
+}
+.q-label {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 10px; font-weight: 600; letter-spacing: .12em;
+  text-transform: uppercase; color: var(--faint); flex: none;
+}
+.q-text {
+  flex: 1; min-width: 0; font-size: 14px; color: var(--ink-2);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+/* Composing pill — the thing that makes waiting legible. */
+.status {
+  flex: none; display: inline-flex; align-items: center; gap: 8px;
+  padding: 5px 12px 5px 10px; border-radius: 999px;
+  border: 1px solid var(--line); background: var(--sunken);
+  font-size: 12.5px; color: var(--ink-2);
+  font-variant-numeric: tabular-nums;
+}
+.status.ready { border-color: var(--accent); background: var(--accent-lo); color: var(--accent); }
+.pulse {
+  width: 7px; height: 7px; border-radius: 50%; background: var(--accent);
+  animation: pulse 1.4s ease-in-out infinite;
+}
+.status.ready .pulse { animation: none; }
+@keyframes pulse { 0%,100% { opacity: .25; transform: scale(.8); } 50% { opacity: 1; transform: scale(1.15); } }
+.status-bar {
+  width: 54px; height: 3px; border-radius: 2px; background: var(--line);
+  overflow: hidden; flex: none;
+}
+.status-bar i { display: block; height: 100%; width: 0; background: var(--accent); }
+
+/* ── Stage ── */
+.stage {
+  flex: 1; min-height: 0; position: relative;
+  display: grid; place-items: center; padding: 26px 22px;
+}
+
+/* ── The deck ── */
+.deck { position: relative; width: min(660px, 100%); height: min(396px, 100%); }
+.card {
+  position: absolute; inset: 0; display: flex; flex-direction: column;
+  background:
+    linear-gradient(color-mix(in oklab, var(--folder, var(--f-none)) 4%, transparent),
+                    color-mix(in oklab, var(--folder, var(--f-none)) 4%, transparent)),
+    var(--surface);
+  border: 1px solid var(--line);
+  border-left: 4px solid var(--folder, var(--f-none));
+  border-radius: 14px; box-shadow: var(--shadow);
+  padding: 20px 24px 18px; overflow: hidden;
+  transform-origin: 50% 100%;
+  transition: transform .42s cubic-bezier(.2,.8,.25,1), opacity .32s ease, box-shadow .3s ease;
+  will-change: transform, opacity;
+}
+.card.front { box-shadow: var(--shadow-lg); }
+.card.gone { pointer-events: none; }
+.card-head { display: flex; align-items: center; gap: 8px; flex: none; margin-bottom: 12px; }
+.chip {
+  display: inline-flex; align-items: center; gap: 5px;
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 10.5px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase;
+  padding: 3px 9px; border-radius: 999px;
+  color: var(--folder, var(--f-none));
+  background: color-mix(in oklab, var(--folder, var(--f-none)) 12%, transparent);
+  border: 1px solid color-mix(in oklab, var(--folder, var(--f-none)) 34%, transparent);
+}
+.chip.nested { border-style: dashed; }
+.doc {
+  font-size: 12px; color: var(--ink-3); white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis; min-width: 0;
+}
+.rank {
+  margin-left: auto; flex: none;
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 11px; color: var(--faint); font-variant-numeric: tabular-nums;
+}
+.card-title {
+  flex: none; margin: 0 0 10px; font-size: 21px; line-height: 1.25;
+  font-weight: 600; letter-spacing: -.01em; text-wrap: balance;
+}
+.card-body {
+  flex: 1; min-height: 0; overflow-y: auto;
+  font-family: Newsreader, ui-serif, Georgia, serif;
+  font-size: 16.5px; line-height: 1.62; color: var(--ink-2);
+}
+.card-body mark {
+  background: var(--quote); color: inherit;
+  padding: .06em .1em; border-radius: 2px;
+}
+.why {
+  flex: none; margin-top: 14px; padding-top: 12px;
+  border-top: 1px solid var(--line-2);
+  font-size: 12.5px; line-height: 1.5; color: var(--ink-3);
+}
+.why b {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 10px; font-weight: 600; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--faint);
+  display: block; margin-bottom: 3px;
+}
+
+/* ── Controls ── */
+.controls {
+  flex: none; display: flex; align-items: center; justify-content: center;
+  gap: 16px; padding: 0 22px 20px;
+}
+.dots { display: flex; gap: 6px; }
+.dot {
+  width: 7px; height: 7px; border-radius: 50%; padding: 0; border: none;
+  background: var(--line); cursor: pointer; transition: all .2s ease;
+}
+.dot:hover { background: var(--faint); }
+.dot.on { background: var(--folder, var(--accent)); width: 20px; border-radius: 4px; }
+.dot.seen { background: var(--faint); }
+button.nav {
+  font: inherit; font-size: 13px; font-weight: 500;
+  padding: 8px 16px; border-radius: 9px; cursor: pointer;
+  border: 1px solid var(--line); background: var(--surface); color: var(--ink-2);
+  transition: border-color .15s ease, color .15s ease, transform .1s ease;
+}
+button.nav:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+button.nav:active:not(:disabled) { transform: translateY(1px); }
+button.nav:disabled { opacity: .4; cursor: default; }
+button.nav.primary {
+  background: var(--accent); border-color: var(--accent);
+  color: var(--surface); font-weight: 600;
+}
+:root[data-theme="dark"] button.nav.primary,
+:root:not([data-theme="light"]) button.nav.primary { color: #06201d; }
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) button.nav.primary { color: #ffffff; }
+}
+button.nav.primary:hover { filter: brightness(1.08); }
+.kbd {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 10.5px; color: var(--faint); margin-left: 2px;
+}
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 6px; }
+
+/* ── Answer view ── */
+.answer-wrap {
+  width: min(760px, 100%); height: 100%; display: flex; flex-direction: column;
+  background: var(--surface); border: 1px solid var(--line);
+  border-radius: 16px; box-shadow: var(--shadow); overflow: hidden;
+}
+.answer-head {
+  flex: none; padding: 16px 26px 12px; border-bottom: 1px solid var(--line-2);
+  display: flex; align-items: baseline; gap: 10px;
+}
+.answer-head h2 { margin: 0; font-size: 15px; font-weight: 600; letter-spacing: -.01em; }
+.answer-head .meta {
+  margin-left: auto; font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 11px; color: var(--faint); font-variant-numeric: tabular-nums;
+}
+.answer-body { flex: 1; min-height: 0; overflow-y: auto; padding: 18px 26px 26px; }
+.sec { margin-bottom: 18px; }
+.sec-label {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 10px; font-weight: 600; letter-spacing: .12em;
+  text-transform: uppercase; color: var(--faint); margin-bottom: 5px;
+}
+.sec-text { font-size: 15.5px; line-height: 1.62; color: var(--ink-2); max-width: 66ch; }
+.cite {
+  display: inline-block; min-width: 17px; text-align: center;
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 11px; font-weight: 600; line-height: 16px;
+  padding: 0 4px; margin: 0 1px; border-radius: 4px; cursor: pointer;
+  color: var(--folder, var(--accent));
+  background: color-mix(in oklab, var(--folder, var(--accent)) 14%, transparent);
+  border: 1px solid color-mix(in oklab, var(--folder, var(--accent)) 36%, transparent);
+  transition: transform .12s ease;
+}
+.cite:hover { transform: translateY(-1px); }
+.caret {
+  display: inline-block; width: 2px; height: 1.05em; margin-left: 1px;
+  background: var(--accent); vertical-align: text-bottom;
+  animation: blink 1s steps(2) infinite;
+}
+@keyframes blink { 50% { opacity: 0; } }
+
+/* ── Retrieving screen ── */
+.retrieving { width: min(560px, 100%); text-align: left; }
+.retrieving h1 {
+  margin: 0 0 6px; font-size: 19px; font-weight: 600; letter-spacing: -.015em;
+}
+.retrieving p { margin: 0 0 18px; color: var(--ink-3); font-size: 13.5px; }
+.tick {
+  display: flex; align-items: center; gap: 9px; padding: 5px 0;
+  font-size: 13px; color: var(--ink-3);
+  animation: slide .28s cubic-bezier(.2,.8,.25,1) both;
+}
+@keyframes slide { from { opacity: 0; transform: translateY(6px); } }
+.tick .m {
+  width: 15px; text-align: center; flex: none;
+  font-family: "IBM Plex Mono", ui-monospace, monospace; font-weight: 600;
+}
+.tick .ms {
+  margin-left: auto; font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 11px; color: var(--faint); font-variant-numeric: tabular-nums;
+}
+
+/* ── Dev panel: this is a prototype, so the knobs are part of it ── */
+.dev {
+  /* Above the control row, not on top of it — the primary button lives
+     bottom-centre and the two collided at narrow widths. */
+  position: fixed; right: 14px; bottom: 70px; z-index: 50;
+  display: flex; flex-direction: column; gap: 8px; align-items: flex-end;
+}
+.dev-body {
+  display: none; flex-direction: column; gap: 9px;
+  padding: 13px 15px; border-radius: 11px;
+  background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow);
+  font-size: 12px; min-width: 232px;
+}
+.dev.open .dev-body { display: flex; }
+.dev-row { display: flex; align-items: center; gap: 9px; justify-content: space-between; }
+.dev-row label { color: var(--ink-3); }
+.dev-row input[type="range"] { width: 104px; accent-color: var(--accent); }
+.dev-row output {
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+  font-size: 11px; color: var(--ink-2); min-width: 52px; text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.dev-toggle {
+  font: inherit; font-size: 11.5px; padding: 6px 11px; border-radius: 8px;
+  cursor: pointer; background: var(--surface); color: var(--ink-3);
+  border: 1px solid var(--line); box-shadow: var(--shadow);
+}
+.dev-toggle:hover { color: var(--accent); border-color: var(--accent); }
+
+@media (prefers-reduced-motion: reduce) {
+  .card, .cite, button.nav, .dot { transition: none !important; }
+  .tick { animation: none; }
+  .pulse, .caret { animation: none; }
+}
+@media (max-width: 620px) {
+  .topbar { flex-wrap: wrap; gap: 8px; }
+  .q-text { order: 3; width: 100%; white-space: normal; }
+  .deck { height: min(460px, 100%); }
+  .card-title { font-size: 18px; }
+}
+</style>
+<header class="topbar">
+  <span class="q-label">Question</span>
+  <span class="q-text" id="q-text"></span>
+  <span class="status" id="status">
+    <span class="pulse"></span>
+    <span id="status-text">Composing…</span>
+    <span class="status-bar"><i id="status-fill"></i></span>
+  </span>
+</header>
+
+<main class="stage" id="stage"></main>
+<div class="controls" id="controls"></div>
+
+<div class="dev" id="dev">
+  <div class="dev-body">
+    <div class="dev-row">
+      <label for="k-compose">Compose time</label>
+      <input type="range" id="k-compose" min="2" max="40" step="1" value="16">
+      <output id="o-compose">16s</output>
+    </div>
+    <div class="dev-row">
+      <label for="k-speed">Type speed</label>
+      <input type="range" id="k-speed" min="120" max="2400" step="60" value="900">
+      <output id="o-speed">900 c/s</output>
+    </div>
+    <div class="dev-row">
+      <label for="k-retrieve">Retrieval</label>
+      <input type="range" id="k-retrieve" min="0" max="8" step="1" value="3">
+      <output id="o-retrieve">3s</output>
+    </div>
+    <div class="dev-row">
+      <button class="nav" id="k-replay" style="flex:1">Replay from start</button>
+    </div>
+  </div>
+  <button class="dev-toggle" id="dev-toggle">Prototype controls</button>
+</div>
+
+<script>
+'use strict';
+
+/* ══ Dummy data ═══════════════════════════════════════════════════
+   Shaped exactly like the real /api/chat payload's `grounding.sources`
+   plus the `folder` field /api/documents already returns. */
+
+const QUESTION = "What lifestyle changes and which drug classes should be started for newly diagnosed hypertension?";
+
+const FOLDER_COLORS = {
+  guidelines: 'var(--f-guidelines)',
+  internal:   'var(--f-internal)',
+  research:   'var(--f-research)',
+  preprints:  'var(--f-preprints)',
+  '':         'var(--f-none)',
+};
+
+const CARDS = [
+  { doc: 'hypertension_guidelines', folder: [], title: 'Sodium Restriction',
+    ms: 1840, rank: 1,
+    text: 'Reducing sodium intake to below 2,300 mg per day lowers systolic blood pressure by 5–6 mmHg in hypertensive adults. <mark>A target of 1,500 mg per day produces a further reduction and is recommended for patients with stage 2 hypertension.</mark> Most dietary sodium comes from processed food rather than the salt cellar, so advice framed around "adding less salt" understates what is required.',
+    why: 'Gives a specific, actionable lifestyle target with a quantified blood-pressure effect — the "lifestyle changes" part of the question.' },
+
+  { doc: 'hypertension_guidelines', folder: [], title: 'DASH Diet',
+    ms: 2210, rank: 2,
+    text: 'The DASH pattern emphasises fruit, vegetables, low-fat dairy and whole grains while limiting saturated fat and confectionery. <mark>Adherence lowers systolic pressure by 8–14 mmHg, an effect comparable to single-agent drug therapy.</mark> Benefit appears within two weeks and is additive to sodium restriction.',
+    why: 'A second distinct lifestyle intervention, with a magnitude that lets it be compared against starting a drug.' },
+
+  { doc: 'hypertension_guidelines', folder: [], title: 'Exercise and Weight Management',
+    ms: 1620, rank: 4,
+    text: 'Aerobic activity of 150 minutes per week lowers systolic pressure by 5–8 mmHg. <mark>Each kilogram of weight lost is associated with roughly 1 mmHg of systolic reduction.</mark> Resistance training adds a smaller independent effect and is not a substitute for aerobic exercise.',
+    why: 'Completes the lifestyle triad — diet, sodium, activity — that a newly diagnosed patient is counselled on.' },
+
+  { doc: 'hypertension_guidelines', folder: [], title: 'First-Line Drug Classes',
+    ms: 2980, rank: 3,
+    text: 'Four classes are first-line: ACE inhibitors, angiotensin receptor blockers, calcium channel blockers and thiazide-like diuretics. <mark>Beta-blockers are no longer first-line unless there is a compelling indication such as ischaemic heart disease or heart failure.</mark> Choice within the four is driven by age, ethnicity and comorbidity rather than by potency.',
+    why: 'Directly answers the "which drug classes" part, and rules out the class clinicians most often expect to see.' },
+
+  { doc: 'hypertension_guidelines', folder: [], title: 'Combination Strategies',
+    ms: 2440, rank: 5,
+    text: 'Starting two agents at half dose lowers pressure more than one agent at full dose, with fewer dose-dependent adverse effects. <mark>Single-pill combinations improve adherence and are preferred where the initial reading is more than 20/10 mmHg above target.</mark>',
+    why: 'Answers the implicit follow-up to the drug question: not just which class, but whether to start one or two.' },
+
+  { doc: 'guidelines__hypertension_in_pregnancy', folder: ['guidelines'], title: 'Agent Selection',
+    ms: 3120, rank: 6,
+    text: 'Labetalol is the first-line oral agent in pregnancy; nifedipine modified-release is the alternative. <mark>ACE inhibitors, angiotensin receptor blockers and direct renin inhibitors are contraindicated throughout pregnancy — they are fetotoxic.</mark> Women of childbearing age taking these agents should be switched before conception where pregnancy is planned.',
+    why: 'A safety exclusion that changes the drug answer for one group of patients, retrieved because the question did not exclude them.' },
+
+  { doc: 'internal__renal_dose_adjustment', folder: ['internal'], title: 'Cardiovascular Agents',
+    ms: 2050, rank: 7,
+    text: 'Renally cleared beta-blockers such as atenolol and sotalol accumulate in impairment; bisoprolol and metoprolol are hepatically cleared and safer. <mark>A creatinine rise of up to 30% after starting an ACE inhibitor is expected and is not a reason to stop.</mark> A larger rise warrants review for renal artery stenosis or volume depletion.',
+    why: 'Qualifies the first-line drug answer with what to expect on monitoring after starting one.' },
+
+  { doc: 'research__preprints__glycaemic_control_critical_illness', folder: ['research', 'preprints'],
+    title: 'Targets', ms: 2760, rank: 8,
+    text: 'Target a blood glucose of 8–10 mmol/L for most critically ill adults. Tight control to 4.5–6.0 mmol/L increases severe hypoglycaemia roughly six-fold and increases mortality.',
+    why: 'Weakly related — retrieved on shared vocabulary about treatment targets, not about hypertension. Kept visible so the miss is auditable.' },
+];
+
+const ANSWER = [
+  ['Short answer',
+   'Start lifestyle change and drug therapy together for stage 2 hypertension; lifestyle alone is reasonable for stage 1 at low cardiovascular risk [1][2]. First-line drug classes are ACE inhibitors, ARBs, calcium channel blockers and thiazide-like diuretics [4].'],
+  ['Recommended action',
+   'Advise sodium below 2,300 mg/day, the DASH pattern, and 150 minutes of weekly aerobic activity [1][2][3]. Choose the initial agent by age and comorbidity, and consider a half-dose two-agent combination where the reading is more than 20/10 mmHg above target [4][5].'],
+  ['Rationale',
+   'The lifestyle measures are not adjuncts: DASH lowers systolic pressure 8–14 mmHg, comparable to a single agent [2], and each kilogram lost adds about 1 mmHg [3]. Beta-blockers are not first-line without a compelling indication [4].'],
+  ['Limitations',
+   'These sources do not cover pregnancy beyond noting that ACE inhibitors and ARBs are contraindicated [6], and give no guidance on when to escalate beyond two agents. Expect a creatinine rise of up to 30% after starting an ACE inhibitor [7].'],
+];
+
+/* ══ State ══════════════════════════════════════════════════════ */
+
+const S = {
+  phase: 'retrieving',      // retrieving → cards → answer
+  index: 0,
+  seen: new Set([0]),
+  answerReady: false,
+  composeMs: 16000,
+  retrieveMs: 3000,
+  cps: 900,
+  timers: [],
+  t0: 0,
+};
+
+const $ = (id) => document.getElementById(id);
+const el = (tag, cls, text) => {
+  const n = document.createElement(tag);
+  if (cls) n.className = cls;
+  if (text != null) n.textContent = text;
+  return n;
+};
+const after = (ms, fn) => { const t = setTimeout(fn, ms); S.timers.push(t); return t; };
+const clearTimers = () => { S.timers.forEach(clearTimeout); S.timers = []; };
+
+/* A document's colour comes from its OUTERMOST folder, so everything from
+   research/ reads as one family whatever the nesting depth. The innermost
+   folder names the chip, so the card still says where it actually came from. */
+function folderColor(folder) {
+  return FOLDER_COLORS[(folder && folder[0]) || ''] || FOLDER_COLORS[''];
+}
+function chipColor(folder) {
+  const leaf = folder && folder.length ? folder[folder.length - 1] : '';
+  return FOLDER_COLORS[leaf] || folderColor(folder);
+}
+function folderLabel(folder) {
+  return folder && folder.length ? folder.join(' / ') : 'library root';
+}
+function prettyDoc(name) {
+  return name.split('__').pop().replace(/_/g, ' ');
+}
+
+/* ══ Screen 1 — retrieving ═════════════════════════════════════ */
+
+function renderRetrieving() {
+  const stage = $('stage');
+  stage.innerHTML = '';
+  $('controls').innerHTML = '';
+
+  const wrap = el('div', 'retrieving');
+  wrap.appendChild(el('h1', null, 'Reading the document trees'));
+  wrap.appendChild(el('p', null, 'Sections are compared against their siblings, then read in full.'));
+  const log = el('div');
+  wrap.appendChild(log);
+  stage.appendChild(wrap);
+
+  const lines = [
+    ['○', 'Non-Pharmacological Management', 2440],
+    ['⊘', 'Special Populations', 2440],
+    ['✓', 'Sodium Restriction', 1840],
+    ['✓', 'DASH Diet', 2210],
+    ['✓', 'First-Line Drug Classes', 2980],
+    ['✗', 'Classification and Diagnosis', 1290],
+    ['✓', 'Exercise and Weight Management', 1620],
+  ];
+  const step = Math.max(120, S.retrieveMs / (lines.length + 1));
+  lines.forEach(([m, title, ms], i) => {
+    after(step * i, () => {
+      const row = el('div', 'tick');
+      const mk = el('span', 'm', m);
+      mk.style.color = m === '✓' ? 'var(--accent)' : 'var(--faint)';
+      row.appendChild(mk);
+      row.appendChild(el('span', null, title));
+      row.appendChild(el('span', 'ms', (ms / 1000).toFixed(1) + 's'));
+      log.appendChild(row);
+      log.scrollTop = log.scrollHeight;
+    });
+  });
+
+  after(S.retrieveMs, () => { S.phase = 'cards'; renderCards(); });
+}
+
+/* ══ Screen 2 — the deck ═══════════════════════════════════════ */
+
+function renderCards() {
+  const stage = $('stage');
+  stage.innerHTML = '';
+  const deck = el('div', 'deck');
+  deck.id = 'deck';
+
+  CARDS.forEach((c, i) => {
+    const card = el('article', 'card');
+    card.dataset.i = String(i);
+    card.style.setProperty('--folder', folderColor(c.folder));
+
+    const head = el('div', 'card-head');
+    const chip = el('span', 'chip' + (c.folder.length > 1 ? ' nested' : ''), folderLabel(c.folder));
+    chip.style.setProperty('--folder', chipColor(c.folder));
+    head.appendChild(chip);
+    head.appendChild(el('span', 'doc', prettyDoc(c.doc)));
+    head.appendChild(el('span', 'rank', '#' + c.rank + ' · ' + (c.ms / 1000).toFixed(1) + 's'));
+    card.appendChild(head);
+
+    card.appendChild(el('h2', 'card-title', c.title));
+    const body = el('div', 'card-body');
+    body.innerHTML = c.text;
+    card.appendChild(body);
+
+    const why = el('div', 'why');
+    why.appendChild(el('b', null, 'Why this was kept'));
+    why.appendChild(document.createTextNode(c.why));
+    card.appendChild(why);
+
+    card.addEventListener('click', () => go(1));
+    deck.appendChild(card);
+  });
+
+  stage.appendChild(deck);
+  layoutDeck();
+  renderControls();
+}
+
+/* Position every card by its offset from the current one. Keeping them all
+   in the DOM is what makes going BACK animate as nicely as going forward. */
+function layoutDeck() {
+  const cards = document.querySelectorAll('#deck .card');
+  cards.forEach((card) => {
+    const rel = Number(card.dataset.i) - S.index;
+    card.classList.toggle('front', rel === 0);
+    card.classList.toggle('gone', rel !== 0);
+    if (rel < 0) {
+      card.style.transform = 'translate(-125%, -6%) rotate(-9deg) scale(.94)';
+      card.style.opacity = '0';
+      card.style.zIndex = '0';
+    } else if (rel === 0) {
+      card.style.transform = 'translate(0,0) rotate(0) scale(1)';
+      card.style.opacity = '1';
+      card.style.zIndex = '30';
+    } else if (rel <= 3) {
+      card.style.transform =
+        'translateY(' + (rel * 10) + 'px) rotate(' + (rel * 0.9) + 'deg) scale(' +
+        (1 - rel * 0.035) + ')';
+      card.style.opacity = String(1 - rel * 0.22);
+      card.style.zIndex = String(30 - rel);
+    } else {
+      card.style.transform = 'translateY(28px) scale(.895)';
+      card.style.opacity = '0';
+      card.style.zIndex = '0';
+    }
+  });
+  renderControls();
+}
+
+function go(delta) {
+  const next = S.index + delta;
+  if (next < 0) return;
+  if (next >= CARDS.length) {           // off the end of the deck
+    if (S.answerReady) showAnswer();
+    return;
+  }
+  S.index = next;
+  S.seen.add(next);
+  layoutDeck();
+}
+
+function renderControls() {
+  const c = $('controls');
+  c.innerHTML = '';
+  if (S.phase !== 'cards') return;
+
+  const prev = el('button', 'nav', '← Back');
+  prev.disabled = S.index === 0;
+  prev.addEventListener('click', () => go(-1));
+  c.appendChild(prev);
+
+  const dots = el('div', 'dots');
+  CARDS.forEach((card, i) => {
+    const d = el('button', 'dot' + (i === S.index ? ' on' : (S.seen.has(i) ? ' seen' : '')));
+    d.style.setProperty('--folder', folderColor(card.folder));
+    d.title = card.title;
+    d.setAttribute('aria-label', card.title);
+    d.addEventListener('click', () => { S.index = i; S.seen.add(i); layoutDeck(); });
+    dots.appendChild(d);
+  });
+  c.appendChild(dots);
+
+  const last = S.index === CARDS.length - 1;
+  if (S.answerReady) {
+    const b = el('button', 'nav primary', last ? 'Read the answer' : 'Skip to answer');
+    b.innerHTML = (last ? 'Read the answer' : 'Skip to answer') + ' <span class="kbd">↵</span>';
+    b.addEventListener('click', showAnswer);
+    c.appendChild(b);
+  } else {
+    const nxt = el('button', 'nav');
+    nxt.innerHTML = 'Next <span class="kbd">→</span>';
+    nxt.disabled = last;
+    nxt.addEventListener('click', () => go(1));
+    c.appendChild(nxt);
+  }
+}
+
+/* ══ Screen 3 — the answer, typed fast ════════════════════════ */
+
+function showAnswer() {
+  if (S.phase === 'answer') return;
+  S.phase = 'answer';
+  clearTimers();
+  $('controls').innerHTML = '';
+
+  const stage = $('stage');
+  stage.innerHTML = '';
+  const wrap = el('div', 'answer-wrap');
+
+  const head = el('div', 'answer-head');
+  head.appendChild(el('h2', null, 'Answer'));
+  const meta = el('span', 'meta', '');
+  head.appendChild(meta);
+  wrap.appendChild(head);
+
+  const body = el('div', 'answer-body');
+  wrap.appendChild(body);
+  stage.appendChild(wrap);
+
+  const back = el('button', 'nav');
+  back.innerHTML = '\u2190 Evidence <span class="kbd">' + CARDS.length + ' cards</span>';
+  back.addEventListener('click', () => { S.phase = 'cards'; renderCards(); });
+  $('controls').appendChild(back);
+
+  const status = $('status');
+  status.classList.add('ready');
+  $('status-text').textContent = 'Composed';
+  $('status-fill').style.width = '100%';
+
+  typeAnswer(body, meta);
+}
+
+/* Typed rather than pasted, but well above reading speed: the point is to
+   show the answer ARRIVING, not to make anyone wait for it. */
+function typeAnswer(body, meta) {
+  const started = performance.now();
+  let si = 0;
+
+  function nextSection() {
+    if (si >= ANSWER.length) {
+      meta.textContent = ((performance.now() - started) / 1000).toFixed(1) + 's';
+      // Typed bottom-up, read top-down: settle back to the first line.
+      body.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+    const [label, text] = ANSWER[si++];
+    const sec = el('div', 'sec');
+    sec.appendChild(el('div', 'sec-label', label));
+    const p = el('div', 'sec-text');
+    sec.appendChild(p);
+    body.appendChild(sec);
+
+    const caret = el('span', 'caret');
+    p.appendChild(caret);
+
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduce) { p.innerHTML = withCites(text); nextSection(); return; }
+
+    let i = 0, last = performance.now();
+    (function frame(now) {
+      const dt = Math.min(80, now - last); last = now;
+      i = Math.min(text.length, i + Math.max(1, Math.round((S.cps * dt) / 1000)));
+      // Render the completed prefix, then re-attach the caret. Citations
+      // only become chips once their closing bracket has arrived, so a
+      // half-typed "[4" never flashes as a broken chip.
+      p.innerHTML = withCites(text.slice(0, i));
+      p.appendChild(caret);
+      const nearBottom = body.scrollHeight - body.clientHeight - body.scrollTop < 140;
+      if (nearBottom) body.scrollTop = body.scrollHeight;
+      if (i < text.length) requestAnimationFrame(frame);
+      else { caret.remove(); nextSection(); }
+    })(performance.now());
+  }
+  nextSection();
+}
+
+/* Citation chips carry the folder colour of the source they point at, so the
+   answer and the deck are visibly the same evidence. */
+function withCites(text) {
+  const safe = text.replace(/[&<>]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[ch]));
+  return safe.replace(/\[(\d+)\]/g, (m, n) => {
+    const card = CARDS[Number(n) - 1];
+    if (!card) return m;
+    return '<span class="cite" data-card="' + (Number(n) - 1) + '" style="--folder:' +
+      folderColor(card.folder) + '" title="' + card.title.replace(/"/g, '&quot;') +
+      '">' + n + '</span>';
+  });
+}
+
+document.addEventListener('click', (e) => {
+  const cite = e.target.closest('.cite');
+  if (!cite) return;
+  S.phase = 'cards';
+  S.index = Number(cite.dataset.card);
+  S.seen.add(S.index);
+  renderCards();
+});
+
+/* ══ Composing clock ══════════════════════════════════════════ */
+
+function startComposing() {
+  S.t0 = performance.now();
+  const fill = $('status-fill');
+  const text = $('status-text');
+  $('status').classList.remove('ready');
+
+  (function tick() {
+    const elapsed = performance.now() - S.t0;
+    const pct = Math.min(1, elapsed / S.composeMs);
+    fill.style.width = (pct * 100).toFixed(1) + '%';
+    if (pct < 1) {
+      text.textContent = 'Composing · ' + (elapsed / 1000).toFixed(0) + 's';
+      requestAnimationFrame(tick);
+    } else if (!S.answerReady) {
+      S.answerReady = true;
+      text.textContent = 'Answer ready';
+      $('status').classList.add('ready');
+      // Deliberately does NOT jump the user out of the deck: being yanked
+      // mid-sentence is worse than waiting. The control changes instead.
+      if (S.phase === 'cards') renderControls();
+    }
+  })();
+}
+
+/* ══ Keyboard ═════════════════════════════════════════════════ */
+
+document.addEventListener('keydown', (e) => {
+  if (S.phase === 'cards') {
+    if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); go(1); }
+    else if (e.key === 'ArrowLeft') { e.preventDefault(); go(-1); }
+    else if (e.key === 'Enter' && S.answerReady) { e.preventDefault(); showAnswer(); }
+    else if (e.key === 'Escape' && S.answerReady) showAnswer();
+  }
+});
+
+/* ══ Prototype controls ═══════════════════════════════════════ */
+
+$('dev-toggle').addEventListener('click', () => $('dev').classList.toggle('open'));
+const bind = (id, out, fmt, set) => {
+  const input = $(id), o = $(out);
+  const sync = () => { o.textContent = fmt(Number(input.value)); set(Number(input.value)); };
+  input.addEventListener('input', sync); sync();
+};
+bind('k-compose', 'o-compose', v => v + 's', v => { S.composeMs = v * 1000; });
+bind('k-speed', 'o-speed', v => v + ' c/s', v => { S.cps = v; });
+bind('k-retrieve', 'o-retrieve', v => v + 's', v => { S.retrieveMs = v * 1000; });
+$('k-replay').addEventListener('click', start);
+
+/* ══ Boot ═════════════════════════════════════════════════════
+   INTEGRATION: in the real app these three become
+     1. renderRetrieving()  ← already driven by /api/status live events
+     2. renderCards(sources) ← grounding.sources from /api/chat, plus the
+        `folder` field /api/documents already returns
+     3. showAnswer(text)    ← the synthesis result, streamed or not     */
+
+function start() {
+  clearTimers();
+  S.phase = 'retrieving';
+  S.index = 0;
+  S.seen = new Set([0]);
+  S.answerReady = false;
+  $('q-text').textContent = QUESTION;
+  renderRetrieving();
+  startComposing();
+}
+start();
+</script>
