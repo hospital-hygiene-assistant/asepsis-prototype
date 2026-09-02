@@ -297,6 +297,214 @@ function buildPendingCard() {
            seen: new Set(), stats: { retrieved: 0, total: 0 } };
 }
 
+/* Reveal the answer at ~900 characters/second — above skim speed, so the
+   answer is seen ARRIVING rather than pasted, without anyone waiting on the
+   animation. Re-rendering the prefix each frame (rather than typing raw HTML)
+   is what keeps a half-written "[4" from flashing as a broken citation chip. */
+const TYPE_CPS = 900;
+
+function typeSequence(queue, sources, answerId) {
+  let k = 0;
+  (function next() {
+    if (k >= queue.length) return;
+    const [node, text] = queue[k++];
+    typeInto(node, text, sources, answerId, next);
+  })();
+}
+
+function typeInto(node, text, sources, answerId, done) {
+  text = (text || '').trim();
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (reduce || text.length > 2200) {   // long answers paste; nobody waits on a reveal
+    node.innerHTML = renderRichText(text, sources, answerId);
+    if (done) done();
+    return;
+  }
+  let i = 0, last = performance.now();
+  node.classList.add('typing');
+  requestAnimationFrame(function frame(now) {
+    const dt = Math.min(80, now - last); last = now;
+    i = Math.min(text.length, i + Math.max(1, Math.round((TYPE_CPS * dt) / 1000)));
+    node.innerHTML = renderRichText(text.slice(0, i), sources, answerId);
+    if (i < text.length) requestAnimationFrame(frame);
+    else { node.classList.remove('typing'); if (done) done(); }
+  });
+}
+
+/* ══ Evidence deck ═══════════════════════════════════════════════════
+   Retrieval finishes long before synthesis does — measured on this corpus,
+   ~27s of reasoning before the first answer token. The passages are already
+   sitting there for all of it, so the wait shows them instead of a spinner.
+
+   It mounts INSIDE the pending answer card rather than taking the screen:
+   the chat history, the trace and the composer all stay where they are, and
+   the deck collapses into the answer when it arrives. */
+
+/* One hue per top-level folder. The OUTERMOST folder picks the colour, so
+   everything under research/ reads as one family however deep it nests; the
+   chip names the innermost folder, so a card still says where it came from. */
+const FOLDER_HUES = {
+  guidelines: '#1d4ed8',
+  internal:   '#b45309',
+  research:   '#7e22ce',
+  preprints:  '#a855f7',
+  '':         '#52525b',
+};
+
+function folderHue(folder) {
+  const outer = (folder && folder.length) ? folder[0] : '';
+  return FOLDER_HUES[outer] || FOLDER_HUES[''];
+}
+function chipHue(folder) {
+  const leaf = (folder && folder.length) ? folder[folder.length - 1] : '';
+  return FOLDER_HUES[leaf] || folderHue(folder);
+}
+function folderLabel(folder) {
+  return (folder && folder.length) ? folder.join(' / ') : 'library root';
+}
+
+/* Source colour by node id, so citation chips and source cards in the finished
+   answer carry the same hue the deck used. Populated when the deck mounts. */
+const sourceHues = new Map();
+
+function mountDeck(p, cards) {
+  if (!cards || !cards.length || p.deck) return;
+  // Keyed by citation number, which restarts at 1 for every question — so the
+  // previous question's hues have to go, or [1] would keep a colour from a
+  // document this answer never cited.
+  sourceHues.clear();
+  cards.forEach(c => sourceHues.set(c.n, folderHue(c.folder)));
+
+  // The trace has done its job by now; collapsing it is what makes room.
+  p.trace.classList.remove('open');
+
+  const deck = { i: 0, seen: new Set([0]), cards, engaged: false, held: null };
+  const wrap = el('div', 'deck-wrap');
+
+  const head = el('div', 'deck-head');
+  head.appendChild(el('span', 'deck-eyebrow', 'Evidence found'));
+  head.appendChild(el('span', 'deck-sub',
+    `${cards.length} passage${cards.length === 1 ? '' : 's'} · read them while the answer is written`));
+  wrap.appendChild(head);
+
+  const stack = el('div', 'deck-stack');
+  cards.forEach((c, i) => {
+    const card = el('article', 'ev-card');
+    card.dataset.i = String(i);
+    card.style.setProperty('--folder', folderHue(c.folder));
+
+    const ch = el('div', 'ev-head');
+    const chip = el('span', 'ev-chip' + (c.folder && c.folder.length > 1 ? ' nested' : ''),
+                    folderLabel(c.folder));
+    chip.style.setProperty('--folder', chipHue(c.folder));
+    ch.appendChild(chip);
+    ch.appendChild(el('span', 'ev-doc', prettyDoc(c.doc)));
+    ch.appendChild(el('span', 'ev-n', `[${c.n}]`));
+    card.appendChild(ch);
+
+    card.appendChild(el('h4', 'ev-title', c.title));
+    if (c.breadcrumb) card.appendChild(el('div', 'ev-crumb', c.breadcrumb));
+
+    const body = el('div', 'ev-body');
+    body.appendChild(el('p', 'ev-quote', c.quote || '(no verbatim quote was returned)'));
+    card.appendChild(body);
+
+    if (c.reason) {
+      const why = el('div', 'ev-why');
+      why.appendChild(el('b', null, 'Why this was kept'));
+      why.appendChild(document.createTextNode(c.reason));
+      card.appendChild(why);
+    }
+    card.addEventListener('click', () => deckGo(deck, 1));
+    stack.appendChild(card);
+  });
+  wrap.appendChild(stack);
+  wrap.appendChild(el('div', 'deck-controls'));
+
+  const body = p.card.querySelector('.answer-body');
+  body.innerHTML = '';
+  body.appendChild(wrap);
+
+  deck.wrap = wrap;
+  deck.stack = stack;
+  p.deck = deck;
+  layoutDeck(deck);
+  scrollChatToBottom();
+}
+
+function layoutDeck(deck) {
+  deck.stack.querySelectorAll('.ev-card').forEach(card => {
+    const rel = Number(card.dataset.i) - deck.i;
+    card.classList.toggle('front', rel === 0);
+    if (rel < 0) {
+      card.style.transform = 'translate(-118%, -4%) rotate(-7deg) scale(.95)';
+      card.style.opacity = '0'; card.style.zIndex = '0'; card.style.pointerEvents = 'none';
+    } else if (rel === 0) {
+      card.style.transform = 'none';
+      card.style.opacity = '1'; card.style.zIndex = '30'; card.style.pointerEvents = 'auto';
+    } else if (rel <= 3) {
+      card.style.transform =
+        `translateY(${rel * 8}px) rotate(${rel * 0.8}deg) scale(${1 - rel * 0.03})`;
+      card.style.opacity = String(1 - rel * 0.24);
+      card.style.zIndex = String(30 - rel); card.style.pointerEvents = 'none';
+    } else {
+      card.style.transform = 'translateY(24px) scale(.91)';
+      card.style.opacity = '0'; card.style.zIndex = '0'; card.style.pointerEvents = 'none';
+    }
+  });
+  renderDeckControls(deck);
+}
+
+function deckGo(deck, delta) {
+  const next = deck.i + delta;
+  if (next < 0 || next >= deck.cards.length) return;
+  deck.i = next;
+  deck.seen.add(next);
+  deck.engaged = true;
+  layoutDeck(deck);
+}
+
+function renderDeckControls(deck) {
+  const c = deck.wrap.querySelector('.deck-controls');
+  c.innerHTML = '';
+
+  const prev = el('button', 'deck-btn', '← Back');
+  prev.type = 'button';
+  prev.disabled = deck.i === 0;
+  prev.addEventListener('click', e => { e.stopPropagation(); deckGo(deck, -1); });
+  c.appendChild(prev);
+
+  const dots = el('div', 'deck-dots');
+  deck.cards.forEach((card, i) => {
+    const d = el('button', 'deck-dot' + (i === deck.i ? ' on' : (deck.seen.has(i) ? ' seen' : '')));
+    d.type = 'button';
+    d.style.setProperty('--folder', folderHue(card.folder));
+    d.title = card.title;
+    d.setAttribute('aria-label', card.title);
+    d.addEventListener('click', e => {
+      e.stopPropagation();
+      deck.i = i; deck.seen.add(i); deck.engaged = true; layoutDeck(deck);
+    });
+    dots.appendChild(d);
+  });
+  c.appendChild(dots);
+
+  // Held answer: the reader is mid-card, so the answer waits for a click
+  // rather than yanking the card away. See finalizeAnswerCard.
+  if (deck.held) {
+    const b = el('button', 'deck-btn primary', 'Read the answer →');
+    b.type = 'button';
+    b.addEventListener('click', e => { e.stopPropagation(); deck.held(); });
+    c.appendChild(b);
+  } else {
+    const nxt = el('button', 'deck-btn', 'Next →');
+    nxt.type = 'button';
+    nxt.disabled = deck.i === deck.cards.length - 1;
+    nxt.addEventListener('click', e => { e.stopPropagation(); deckGo(deck, 1); });
+    c.appendChild(nxt);
+  }
+}
+
 /* How long the model call behind a decision took.
 
    Two shapes, and conflating them would misreport the cost of retrieval:
@@ -329,6 +537,12 @@ function chatOnStatus(status) {
     } else if (prog.total > 0) {
       textEl.textContent = `Evaluating passages — ${prog.done} / ${prog.total}`;
     }
+  }
+
+  // Retrieval is done and synthesis has started: the passages exist now, so
+  // show them rather than spinning for the ~27s the model spends reasoning.
+  if (status.chat?.phase === 'synthesis' && status.chat.cards && !p.deck) {
+    mountDeck(p, status.chat.cards);
   }
 
   const meta = status.live?.meta || {};
@@ -369,7 +583,9 @@ function renderRichText(text, sources, answerId) {
   html = html.replace(/\[(\d+)\]/g, (whole, n) => {
     const num = parseInt(n, 10);
     if (!sources || num < 1 || num > sources.length) return whole;
-    return `<button type="button" class="cite-chip" data-cite="${num}" data-answer="${answerId}" title="Jump to source [${num}]">${num}</button>`;
+    const hue = sourceHues.get(num);
+    const tint = hue ? ` style="--folder:${hue}"` : '';
+    return `<button type="button" class="cite-chip${hue ? ' tinted' : ''}"${tint} data-cite="${num}" data-answer="${answerId}" title="Jump to source [${num}]">${num}</button>`;
   });
   return html;
 }
@@ -511,6 +727,24 @@ function buildBudgetNotice(budget) {
 }
 
 function finalizeAnswerCard(p, data) {
+  // Someone reading a card should not have it yanked away mid-sentence, so a
+  // reader who has actually flipped through the deck gets a button instead.
+  // A passive one — deck untouched — sees the answer immediately, because for
+  // them the deck was never more than a progress indicator.
+  if (p.deck && p.deck.engaged) {
+    p.deck.held = () => { p.deck.held = null; applyAnswer(p, data); };
+    renderDeckControls(p.deck);
+    const txt = p.progressEl.querySelector('.trace-progress-text');
+    if (txt) txt.textContent = 'Answer ready';
+    return;
+  }
+  applyAnswer(p, data);
+}
+
+function applyAnswer(p, data) {
+  // No deck mounted (a cached replay never reaches the synthesis phase), so
+  // there is no provenance to show. Untinted beats wrongly tinted.
+  if (!p.deck) sourceHues.clear();
   const answerId = `a${++chatState.answerCount}`;
   p.card.id = `answer-${answerId}`;
   chatState.activeAnswerId = answerId;
@@ -539,15 +773,17 @@ function finalizeAnswerCard(p, data) {
   body.innerHTML = '';
   const a = data.answer || {};
   const present = chatCopy.sections.filter(([key]) => (a[key] || '').trim());
+  const typeQueue = [];
   if (present.length) {
     for (const [key, label] of present) {
       const sec = el('section', 'answer-section');
       const h = el('h3', '', label);
       const txt = el('p', 'answer-text');
-      txt.innerHTML = renderRichText(a[key], sources, answerId);
       sec.appendChild(h); sec.appendChild(txt);
       body.appendChild(sec);
+      typeQueue.push([txt, a[key]]);
     }
+    typeSequence(typeQueue, sources, answerId);
   } else if ((a.content || '').trim()) {
     const div = el('div', 'answer-fallback');
     div.innerHTML = renderRichText(a.content, sources, answerId);

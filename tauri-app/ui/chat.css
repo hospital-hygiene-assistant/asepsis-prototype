@@ -602,3 +602,116 @@ body[data-tab="chat"] #command-bar { display: none !important; }
    gutter — full-bleed, the filter line reads as app chrome rather than as
    part of the composer. */
 #chat-choice-bar { padding: 6px 22px 0; margin-bottom: 0; }
+
+/* ═══ Evidence deck — the interlude while the answer is composed ═══
+   Lives INSIDE the pending answer card: the chat history, the collapsed
+   trace and the composer all keep their space, so this never becomes a
+   takeover of a screen that already has plenty on it. */
+
+.deck-wrap { display: flex; flex-direction: column; gap: 10px; }
+.deck-head { display: flex; align-items: baseline; gap: 9px; flex-wrap: wrap; }
+.deck-eyebrow {
+  font-size: 10px; font-weight: 700; letter-spacing: .14em;
+  text-transform: uppercase; color: var(--as-teal);
+}
+.deck-sub { font-size: 12px; color: var(--as-muted); }
+
+/* Fixed height: cards in a stack must be the same size, and a height that
+   changed per card would make the composer jump on every click. */
+.deck-stack { position: relative; height: clamp(230px, 30vh, 310px); }
+
+.ev-card {
+  position: absolute; inset: 0; display: flex; flex-direction: column;
+  padding: 13px 16px 12px; border-radius: 11px;
+  background:
+    linear-gradient(color-mix(in oklab, var(--folder) 5%, transparent),
+                    color-mix(in oklab, var(--folder) 5%, transparent)),
+    var(--as-surface);
+  border: 1px solid var(--as-border);
+  border-left: 3px solid var(--folder);
+  box-shadow: 0 6px 18px rgba(15, 23, 42, .06);
+  transform-origin: 50% 100%; cursor: pointer;
+  transition: transform .4s cubic-bezier(.2,.8,.25,1), opacity .3s ease, box-shadow .25s ease;
+  will-change: transform, opacity;
+}
+.ev-card.front { box-shadow: 0 16px 38px rgba(15, 23, 42, .12); }
+.ev-card.front:hover { border-color: color-mix(in oklab, var(--folder) 45%, var(--as-border)); }
+
+.ev-head { display: flex; align-items: center; gap: 7px; margin-bottom: 7px; }
+.ev-chip {
+  flex: none; font-size: 9.5px; font-weight: 700; letter-spacing: .07em;
+  text-transform: uppercase; padding: 2px 7px; border-radius: 999px;
+  color: var(--folder);
+  background: color-mix(in oklab, var(--folder) 12%, transparent);
+  border: 1px solid color-mix(in oklab, var(--folder) 34%, transparent);
+}
+.ev-chip.nested { border-style: dashed; }
+.ev-doc {
+  font-size: 11.5px; color: var(--as-muted); min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.ev-n {
+  margin-left: auto; flex: none; font-size: 11px; font-weight: 600;
+  color: var(--folder); font-variant-numeric: tabular-nums;
+}
+.ev-title { margin: 0 0 2px; font-size: 15.5px; font-weight: 600; line-height: 1.3; }
+.ev-crumb { font-size: 11px; color: var(--as-faint); margin-bottom: 7px; }
+.ev-body { flex: 1; min-height: 0; overflow-y: auto; }
+.ev-quote {
+  margin: 0; font-size: 13.5px; line-height: 1.55; color: var(--as-text-2);
+  border-left: 2px solid var(--as-quote); padding-left: 10px;
+}
+.ev-why {
+  flex: none; margin-top: 9px; padding-top: 8px;
+  border-top: 1px solid var(--as-border-2);
+  font-size: 11.5px; line-height: 1.45; color: var(--as-text-3);
+}
+.ev-why b {
+  display: block; margin-bottom: 2px;
+  font-size: 9.5px; font-weight: 700; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--as-faint);
+}
+
+.deck-controls { display: flex; align-items: center; justify-content: center; gap: 12px; }
+.deck-btn {
+  font: inherit; font-size: 12px; font-weight: 500;
+  padding: 5px 12px; border-radius: 8px; cursor: pointer;
+  border: 1px solid var(--as-border); background: var(--as-surface); color: var(--as-text-2);
+  transition: border-color .15s ease, color .15s ease;
+}
+.deck-btn:hover:not(:disabled) { border-color: var(--as-teal); color: var(--as-teal); }
+.deck-btn:disabled { opacity: .38; cursor: default; }
+.deck-btn.primary {
+  background: var(--as-teal); border-color: var(--as-teal); color: #fff; font-weight: 600;
+}
+.deck-btn.primary:hover { filter: brightness(1.08); color: #fff; }
+.deck-dots { display: flex; gap: 5px; }
+.deck-dot {
+  width: 6px; height: 6px; padding: 0; border: none; border-radius: 50%;
+  background: var(--as-border); cursor: pointer; transition: all .18s ease;
+}
+.deck-dot:hover { background: var(--as-faint); }
+.deck-dot.seen { background: var(--as-faint); }
+.deck-dot.on { background: var(--folder); width: 17px; border-radius: 3px; }
+
+/* The caret only exists while a section is being typed. */
+.answer-text.typing::after {
+  content: ''; display: inline-block; width: 2px; height: 1em;
+  margin-left: 1px; background: var(--as-teal); vertical-align: text-bottom;
+  animation: type-caret 1s steps(2) infinite;
+}
+@keyframes type-caret { 50% { opacity: 0; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .ev-card { transition: none; }
+  .answer-text.typing::after { animation: none; }
+}
+
+/* A citation and the card it came from are the same evidence, so the chip
+   carries that source's folder hue. Untinted when the deck never mounted
+   (a cached replay), which is why the default styling still stands alone. */
+.cite-chip.tinted {
+  color: var(--folder);
+  background: color-mix(in oklab, var(--folder) 13%, transparent);
+  border-color: color-mix(in oklab, var(--folder) 38%, transparent);
+}

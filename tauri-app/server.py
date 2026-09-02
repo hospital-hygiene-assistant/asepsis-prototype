@@ -1625,9 +1625,13 @@ _chat_lock = threading.Lock()
 _chat_phase: dict = {"phase": "idle", "detail": ""}
 
 
-def _set_chat_phase(phase: str, detail: str = "") -> None:
+def _set_chat_phase(phase: str, detail: str = "", **extra) -> None:
     with _chat_lock:
-        _chat_phase.update({"phase": phase, "detail": detail})
+        # `extra` carries the retrieved passages once retrieval is done, so the
+        # UI can show them while synthesis runs. Reset on every transition or
+        # a stale phase would keep serving the previous question's cards.
+        _chat_phase.clear()
+        _chat_phase.update({"phase": phase, "detail": detail, **extra})
 
 
 CHAT_SYNTHESIS_PROMPT = """\
@@ -1795,7 +1799,21 @@ def chat(req: ChatRequest):
             answer_text = cached.answer.get("content", "")
             sections = {k: v for k, v in cached.answer.items() if k != "content"}
         elif sources:
-            _set_chat_phase("synthesis", f"Composing an answer from {len(sources)} passages…")
+            # Trimmed deliberately: this rides the 250ms status poll, so the
+            # excerpt and page image stay out. The full source objects reach
+            # the UI once in the final response.
+            manifest = _manifest()
+            _set_chat_phase(
+                "synthesis", f"Composing an answer from {len(sources)} passages…",
+                cards=[{
+                    "n": s_["n"],
+                    "doc": s_["doc"],
+                    "folder": _folder_of(manifest.get(s_["doc"])),
+                    "title": s_["title"],
+                    "breadcrumb": s_["breadcrumb"],
+                    "quote": s_["quote"],
+                    "reason": s_["reason"],
+                } for s_ in sources])
             passages = "\n\n".join(
                 f"[{s['n']}] {s['doc'].replace('_', ' ')} › {s['breadcrumb'] or s['title']}\n{s['excerpt'] or '(no content)'}"
                 for s in sources
