@@ -118,7 +118,6 @@ async function init() {
   }
 
   initWorkflow();
-  initCommandBar();
   refreshCachedQuestions();
   checkIndexFormat();
   loadChoiceQuestions();
@@ -241,7 +240,7 @@ function setView(name) {
 function updateFlowSteps() {
   const map = {
     library: state.view === 'library' && !state.running,
-    ask: state.running || !document.getElementById('command-bar').classList.contains('collapsed'),
+    ask: state.running,
     review: state.view === 'results',
   };
   document.querySelectorAll('.flow-step').forEach(btn => {
@@ -258,7 +257,6 @@ function initWorkflow() {
     btn.addEventListener('click', () => {
       const step = btn.dataset.step;
       if (step === 'library') setView('library');
-      else if (step === 'ask') setChatExpanded(true);
       else if (step === 'review') {
         if (state.currentResults) setView('results');
         else toast('No results yet — ask a question first.', 'warn');
@@ -275,7 +273,7 @@ function initWorkflow() {
   document.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape') return;
     if (anyOverlayOpen()) return;                        // overlays handle their own Esc
-    if (!document.getElementById('command-bar').classList.contains('collapsed')) return;
+    if (state.running) return;
     if (state.view === 'results') setView('library');
   });
 }
@@ -430,6 +428,7 @@ function initSettings(modulesData, config) {
   // does what its icon shows even when the stored setting is "system".
   document.getElementById('theme-btn').addEventListener('click', () => {
     applyTheme(currentTheme() === 'dark' ? 'light' : 'dark');
+    refreshStatusColors();
     if (state.view === 'library' && _docsCache) renderTreemap(_docsCache);
     if (state.view === 'results' && state.currentResults) renderCurrentResultView();
   });
@@ -600,7 +599,13 @@ async function stopStatusPolling() {
 
 /* ── 5 · Command bar (Ask) ─────────────────────────────────── */
 
-function setChatExpanded(expanded) {
+/* The ask panel was removed: questions are asked in the chatbot tab, which
+   does the same job with the evidence and the answer in one place. These
+   remain as no-ops so any stale caller is inert rather than throwing. */
+function setChatExpanded() { /* removed with the command bar */ }
+function initCommandBar() { /* removed with the command bar */ }
+
+function _removedSetChatExpanded(expanded) {
   const container = document.getElementById('command-bar');
   const input = document.getElementById('main-query-input');
   container.classList.toggle('collapsed', !expanded);
@@ -704,7 +709,7 @@ function moveSuggestionFocus(delta) {
   return _sugFocus >= 0;
 }
 
-function initCommandBar() {
+function _removedInitCommandBar() {
   const container = document.getElementById('command-bar');
   const input     = document.getElementById('main-query-input');
 
@@ -1379,7 +1384,24 @@ function showDocTree(docName, data) {
 
 /* ── D3 tree (Graph tab) — verdict colors shared with style.css ── */
 
-const STATUS_COLOR = {
+/* Verdict colours live in CSS so they can differ per theme: the dark set is
+   tuned to glow on a near-black ground and turns to grey-on-grey mush on
+   white. Read once per render rather than per node. */
+function cssVar(name, fallback = '') {
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback;
+}
+
+function themeStatusColors(prefix, fallback) {
+  const cs = getComputedStyle(document.documentElement);
+  const out = {};
+  for (const key of Object.keys(fallback)) {
+    const v = cs.getPropertyValue(`--${prefix}-${key.replace(/[^a-z]/g, '')}`).trim();
+    out[key] = v || fallback[key];
+  }
+  return out;
+}
+
+const STATUS_COLOR_DARK = {
   internal:        '#3b82f6',
   'expected-hit':  '#22c55e',
   retrieved:       '#86efac',
@@ -1393,7 +1415,7 @@ const STATUS_COLOR = {
   error:           '#eab308',
   neutral:         '#374151',
 };
-const STATUS_STROKE = {
+const STATUS_STROKE_DARK = {
   internal:        '#60a5fa',
   'expected-hit':  '#16a34a',
   retrieved:       '#22c55e',
@@ -1405,6 +1427,14 @@ const STATUS_STROKE = {
   error:           '#ca8a04',
   neutral:         '#4b5563',
 };
+let STATUS_COLOR = STATUS_COLOR_DARK;
+let STATUS_STROKE = STATUS_STROKE_DARK;
+function refreshStatusColors() {
+  STATUS_COLOR = themeStatusColors('sc', STATUS_COLOR_DARK);
+  STATUS_STROKE = themeStatusColors('ss', STATUS_STROKE_DARK);
+}
+refreshStatusColors();
+
 const STATUS_ICON = {
   'expected-hit':  '✓',
   'expected-miss': '✗',
@@ -1474,7 +1504,7 @@ function renderTree(rawTree, retrievedSet, expectedSet, expectedAnySet, nodeReas
 
   linkGroup.append('path')
     .attr('fill', 'none')
-    .attr('stroke', '#334155')
+    .attr('stroke', cssVar('--border-strong'))
     .attr('stroke-width', 1.5)
     .attr('class', d => leadsToRetrieved(d.target) ? 'link-highlight' : '')
     .attr('d', d3.linkHorizontal().x(d => d.y).y(d => d.x));
@@ -1558,7 +1588,7 @@ function renderTree(rawTree, retrievedSet, expectedSet, expectedAnySet, nodeReas
   nodeG.filter(d => d.data.isLeaf)
     .append('text')
     .attr('text-anchor', 'middle').attr('dominant-baseline', 'central')
-    .attr('font-size', '8px').attr('fill', '#fff').attr('pointer-events', 'none')
+    .attr('font-size', '8px').attr('fill', cssVar('--surface')).attr('pointer-events', 'none')
     .text(d => STATUS_ICON[nodeStatus(d, retrievedSet, expectedSet, expectedAnySet, nodeReasons)] || '');
 
   nodeG.append('text')
@@ -1567,7 +1597,8 @@ function renderTree(rawTree, retrievedSet, expectedSet, expectedAnySet, nodeReas
     .attr('dominant-baseline', 'central')
     .attr('font-size', '11px')
     .attr('font-family', "'SF Mono','Fira Mono','Consolas',monospace")
-    .attr('fill', d => d.data.isLeaf ? '#cbd5e1' : '#64748b')
+    // Through tokens, or a label tuned for near-black vanishes on white.
+    .attr('fill', d => d.data.isLeaf ? cssVar('--text-2') : cssVar('--muted'))
     .attr('pointer-events', 'none')
     .text(d => {
       const id = d.data.nodeId || '';

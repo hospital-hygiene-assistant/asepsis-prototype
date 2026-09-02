@@ -1443,3 +1443,85 @@ button { font-family: inherit; }
   :root:not([data-theme="light"]) #theme-btn .ico-sun { display: none; }
   :root:not([data-theme="light"]) #theme-btn .ico-moon { display: block; }
 }
+
+/* ═══ Verdict colours, per theme ══════════════════════════════════
+   The dark set is tuned to glow on near-black; on white the pale greens and
+   slate greys collapse into grey-on-grey. The light set is darker and more
+   saturated so a fill reads as a verdict and a stroke reads as an edge.
+   Keys are the status names with non-letters stripped (main.js reads them). */
+:root {
+  --sc-internal: #2563eb;  --ss-internal: #1d4ed8;
+  --sc-expectedhit: #15803d;  --ss-expectedhit: #14532d;
+  --sc-retrieved: #16a34a;  --ss-retrieved: #14532d;
+  --sc-expectedmiss: #dc2626;  --ss-expectedmiss: #991b1b;
+  --sc-kept: #0369a1;  --ss-kept: #075985;
+  --sc-pruned: #b6c2c0;  --ss-pruned: #8d9a98;
+  --sc-rejected: #ea580c;  --ss-rejected: #9a3412;
+  --sc-deferred: #9333ea;  --ss-deferred: #6b21a8;
+  --sc-error: #ca8a04;  --ss-error: #854d0e;
+  --sc-neutral: #cbd5d3;  --ss-neutral: #94a3b8;
+}
+:root[data-theme="dark"] {
+  --sc-internal: #3b82f6;  --ss-internal: #60a5fa;
+  --sc-expectedhit: #22c55e;  --ss-expectedhit: #16a34a;
+  --sc-retrieved: #86efac;  --ss-retrieved: #22c55e;
+  --sc-expectedmiss: #ef4444;  --ss-expectedmiss: #dc2626;
+  --sc-kept: #0ea5e9;  --ss-kept: #38bdf8;
+  --sc-pruned: #64748b;  --ss-pruned: #475569;
+  --sc-rejected: #f97316;  --ss-rejected: #ea580c;
+  --sc-deferred: #a855f7;  --ss-deferred: #9333ea;
+  --sc-error: #eab308;  --ss-error: #ca8a04;
+  --sc-neutral: #374151;  --ss-neutral: #4b5563;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --sc-internal: #3b82f6;  --ss-internal: #60a5fa;
+    --sc-expectedhit: #22c55e;  --ss-expectedhit: #16a34a;
+    --sc-retrieved: #86efac;  --ss-retrieved: #22c55e;
+    --sc-expectedmiss: #ef4444;  --ss-expectedmiss: #dc2626;
+    --sc-kept: #0ea5e9;  --ss-kept: #38bdf8;
+    --sc-pruned: #64748b;  --ss-pruned: #475569;
+    --sc-rejected: #f97316;  --ss-rejected: #ea580c;
+    --sc-deferred: #a855f7;  --ss-deferred: #9333ea;
+    --sc-error: #eab308;  --ss-error: #ca8a04;
+    --sc-neutral: #374151;  --ss-neutral: #4b5563;
+  }
+}
+
+/* ═══ Light-mode fixes for things tuned only for the dark ground ═══ */
+
+/* The deciding quote was amber text on an amber wash — invisible on white.
+   The wash carries the meaning; the text stays the page's ink. */
+.snippet-content mark,
+.markdown-body mark.md-quote {
+  background: color-mix(in oklab, var(--amber) 30%, transparent);
+  color: var(--text);
+  box-shadow: none;
+}
+
+/* Verdict bands: alpha overlays tuned for near-black wash out on white, and
+   a rejected passage whose caption cannot be read is not a verdict at all. */
+.md-h-accepted, .md-c-accepted { background: color-mix(in oklab, var(--green) 13%, transparent); }
+.md-h-rejected, .md-c-rejected { background: color-mix(in oklab, var(--red) 11%, transparent); }
+.md-h-kept,     .md-c-kept     { background: color-mix(in oklab, var(--accent) 11%, transparent); }
+.md-h-pruned,   .md-c-pruned   { background: color-mix(in oklab, var(--muted) 12%, transparent); opacity: 1; }
+.md-h-rejected { box-shadow: inset 2.5px 0 0 var(--red); }
+.md-h-pruned   { box-shadow: inset 2.5px 0 0 var(--muted); }
+
+/* Snippet cards: a card whose text is muted grey on a grey surface reads as
+   disabled rather than as evidence. */
+.snippet-content { color: var(--text-2); }
+.snippet-card { background: var(--surface); }
+.tag.doc-tag { background: var(--accent-soft); }
+.tag.id-tag, .tag.level-tag { background: color-mix(in oklab, var(--muted) 13%, transparent); }
+.tag.pin-tag { border-color: color-mix(in oklab, var(--accent) 40%, transparent); }
+.tag.pin-tag:hover { background: color-mix(in oklab, var(--accent) 26%, transparent); }
+.sw-rej { background: color-mix(in oklab, var(--red) 55%, transparent); }
+
+/* The results rail and evidence panel were near-black by construction; on a
+   light ground the borders have to do the separating instead. */
+.snippet-card { border-color: var(--border-strong); }
+.snippet-reason {
+  background: color-mix(in oklab, var(--accent) 8%, transparent);
+  color: var(--text-2);
+}

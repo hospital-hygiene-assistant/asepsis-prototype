@@ -319,10 +319,10 @@ function buildPendingCard() {
    is what keeps a half-written "[4" from flashing as a broken citation chip. */
 const TYPE_CPS = 900;
 
-function typeSequence(queue, sources, answerId) {
+function typeSequence(queue, sources, answerId, whenDone) {
   let k = 0;
   (function next() {
-    if (k >= queue.length) return;
+    if (k >= queue.length) { if (whenDone) whenDone(); return; }
     const [node, text] = queue[k++];
     typeInto(node, text, sources, answerId, next);
   })();
@@ -662,11 +662,10 @@ function chatOnStatus(status) {
   if (added) {
     p.logEl.hidden = false;
     p.countEl.textContent = `· ${p.stats.total} decisions · ${p.stats.retrieved} retrieved`;
-    // Follow only if the reader is already at the bottom — otherwise they are
-    // reading back through the trail and should not be dragged forward.
-    const nearBottom =
-      p.logEl.scrollHeight - p.logEl.clientHeight - p.logEl.scrollTop < 90;
-    if (nearBottom) p.logEl.scrollTop = p.logEl.scrollHeight;
+    // Follow every new verdict — watching the search work is the point. The
+    // pointer sitting over the log means the trail is being read, so hovering
+    // pauses the follow rather than dragging the reader forward.
+    if (!p.logEl.matches(':hover')) p.logEl.scrollTop = p.logEl.scrollHeight;
   }
 }
 
@@ -889,7 +888,12 @@ function applyAnswer(p, data) {
       body.appendChild(sec);
       typeQueue.push([txt, a[key]]);
     }
-    typeSequence(typeQueue, sources, answerId);
+    // The sources are built now but revealed when the writing stops — a
+    // finished list sitting under a sentence still being typed gives away
+    // that the answer already exists.
+    p.card.classList.add('writing');
+    typeSequence(typeQueue, sources, answerId,
+                 () => p.card.classList.remove('writing'));
   } else if ((a.content || '').trim()) {
     const div = el('div', 'answer-fallback');
     div.innerHTML = renderRichText(a.content, sources, answerId);
@@ -961,7 +965,7 @@ function buildSourceCard(s, answerId) {
   if (hue) { card.style.setProperty('--folder', hue); card.classList.add('tinted'); }
 
   const eyebrow = el('p', 'source-eyebrow');
-  eyebrow.innerHTML = `[${s.n}] ${escHtml(prettyDoc(s.doc))}` +
+  eyebrow.innerHTML = `<span class="source-num">${s.n}</span> ${escHtml(prettyDoc(s.doc))}` +
     (s.page ? ` <span class="source-page-pill">p. ${escHtml(String(s.page))}</span>` : '') +
     (s.synthetic ? ` <span class="source-page-pill">overview</span>` : '');
   card.appendChild(eyebrow);

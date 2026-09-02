@@ -707,7 +707,7 @@ body[data-tab="chat"] #command-bar { display: none !important; }
   width: 6px; height: 6px; padding: 0; border: none; border-radius: 50%;
   background: var(--as-border); cursor: pointer; transition: all .18s ease;
 }
-.deck-dot:hover { background: var(--as-faint); }
+.deck-dot:hover { background: var(--as-text-3); }
 .deck-dot.seen { background: var(--as-faint); }
 .deck-dot.on { background: var(--folder); width: 17px; border-radius: 3px; }
 
@@ -831,4 +831,58 @@ body[data-tab="chat"] #command-bar { display: none !important; }
 @media (prefers-reduced-motion: reduce) {
   .trace-line.arriving { animation: none; }
   .composing-viz i { animation: none; transform: scaleY(.6); }
+}
+
+/* ═══ Provenance on the source cards ══════════════════════════════
+   A card whose only colour is a 3px edge does not read as belonging to a
+   folder at a glance, so the tint carries it and the number pill anchors it.
+   Kept very faint: eleven tinted cards in a column must still read as a
+   list, not as eleven highlights. */
+.source-card.tinted {
+  background:
+    linear-gradient(color-mix(in oklab, var(--folder) 4%, transparent),
+                    color-mix(in oklab, var(--folder) 4%, transparent)),
+    var(--as-surface);
+}
+.source-num {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 17px; height: 17px; padding: 0 4px; margin-right: 4px;
+  border-radius: 5px; font-size: 10.5px; font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--as-muted);
+  background: color-mix(in oklab, var(--as-muted) 14%, transparent);
+  border: 1px solid transparent;
+}
+.source-card.tinted .source-num {
+  color: var(--folder);
+  background: color-mix(in oklab, var(--folder) 14%, transparent);
+  border-color: color-mix(in oklab, var(--folder) 34%, transparent);
+}
+
+/* The deck's own pill, same treatment so the two views match. */
+.ev-n {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 18px; height: 18px; padding: 0 5px; border-radius: 5px;
+  background: color-mix(in oklab, var(--folder) 14%, transparent);
+  border: 1px solid color-mix(in oklab, var(--folder) 34%, transparent);
+}
+
+/* Sources stay hidden while the answer is still being written. */
+.answer-card.writing .answer-sources { display: none; }
+
+/* A verdict POPS in rather than sliding: overshoot, then settle. */
+.trace-line.arriving { animation: verdict-pop .32s cubic-bezier(.18,.9,.3,1.25) both; }
+@keyframes verdict-pop {
+  0%   { opacity: 0; transform: translateY(10px) scale(.94); }
+  60%  { opacity: 1; transform: translateY(-1px) scale(1.015); }
+  100% { opacity: 1; transform: none; }
+}
+/* A find is the event worth noticing, so only that one flashes. */
+.trace-line.retrieved.arriving { animation: verdict-pop-hit .42s cubic-bezier(.18,.9,.3,1.25) both; }
+@keyframes verdict-pop-hit {
+  0%   { opacity: 0; transform: translateY(10px) scale(.94);
+         background: color-mix(in oklab, var(--as-green) 42%, transparent); }
+  60%  { opacity: 1; transform: translateY(-1px) scale(1.02); }
+  100% { opacity: 1; transform: none;
+         background: color-mix(in oklab, var(--as-green) 9%, transparent); }
 }

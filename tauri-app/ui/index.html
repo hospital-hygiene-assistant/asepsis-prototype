@@ -32,9 +32,7 @@
   <nav id="flow-steps" aria-label="Workflow">
     <button class="flow-step" data-step="library"><span class="flow-num">1</span> Library</button>
     <span class="flow-sep">›</span>
-    <button class="flow-step" data-step="ask"><span class="flow-num">2</span> Ask</button>
-    <span class="flow-sep">›</span>
-    <button class="flow-step" data-step="review"><span class="flow-num">3</span> Review</button>
+    <button class="flow-step" data-step="review"><span class="flow-num">2</span> Review</button>
   </nav>
 
   <div class="topbar-right">
@@ -333,32 +331,6 @@
   </section>
 
 </main>
-
-<!-- ══ ② Ask: the command bar (⌘K) ══ -->
-<div id="command-bar" class="collapsed">
-  <button id="chat-launcher" title="Ask a question (⌘K)">
-    <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path></svg>
-    <span class="chat-launcher-label">Ask a question</span>
-    <span class="chat-kbd">⌘K</span>
-  </button>
-
-  <div class="command-box">
-    <div id="suggestions" class="suggestions" hidden></div>
-    <!-- Pre-filter questions: answered before the query, they narrow the tree
-         the question runs over using judgements precomputed at index time. -->
-    <div id="choice-bar" class="choice-bar" hidden></div>
-    <div class="command-input-row">
-      <button id="chat-collapse" title="Collapse (Esc)">
-        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
-      </button>
-      <textarea id="main-query-input" rows="1" spellcheck="false"
-                placeholder="Ask about your documents…  (↵ to run · ⇧↵ newline)"></textarea>
-      <button id="main-run-btn" title="Run (↵)">
-        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
-      </button>
-    </div>
-  </div>
-</div>
 
 <!-- ══ Global Ingest Overlay ══ -->
 <div id="global-ingest-overlay" class="global-ingest-overlay" hidden>
