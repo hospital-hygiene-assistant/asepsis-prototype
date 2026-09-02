@@ -102,6 +102,15 @@
     <p id="agent-ctx-hint" class="settings-hint"></p>
 
     <label class="settings-row settings-check">
+      <span class="settings-label">Flag incomplete answers</span>
+      <input id="completeness-toggle" type="checkbox">
+    </label>
+    <p class="settings-hint">The answering model reports whether the retrieved
+      passages actually covered the question, and says what is missing when
+      they did not — then you can add the detail and have the answer
+      rewritten. Costs a little more output per answer.</p>
+
+    <label class="settings-row settings-check">
       <span class="settings-label">Debug cache</span>
       <input id="debug-cache-toggle" type="checkbox">
     </label>

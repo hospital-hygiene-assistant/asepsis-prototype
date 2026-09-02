@@ -370,6 +370,22 @@ function initEngineControls(config) {
     }
   });
 
+  const completeness = document.getElementById('completeness-toggle');
+  if (completeness) {
+    completeness.checked = config.completeness_check !== false;
+    completeness.addEventListener('change', async () => {
+      try {
+        await apiPost('/api/config', { completeness_check: completeness.checked });
+        toast(completeness.checked
+          ? 'Answers will now say when the evidence did not cover the question.'
+          : 'Incomplete-answer flagging off.', 'ok');
+      } catch (e) {
+        completeness.checked = !completeness.checked;
+        toast(`Could not change the setting: ${e.message}`, 'err', 6000);
+      }
+    });
+  }
+
   if (toggle) {
     toggle.checked = !!config.debug_cache_enabled;
     toggle.addEventListener('change', async () => {
@@ -1471,9 +1487,34 @@ function nodeStatus(d, retrievedSet, expectedSet, expectedAnySet, nodeReasons = 
   return 'neutral';
 }
 
+/* Zoom controls live outside the svg so they survive a re-render, and the
+   pane refits itself when it changes size — the graph shares its container
+   with a panel that opens and closes. */
+function mountGraphControls(container) {
+  if (container.__graphChrome) return;
+  container.__graphChrome = true;
+
+  const bar = el('div', 'graph-controls');
+  const mk = (label, title, fn) => {
+    const b = el('button', 'graph-btn', label);
+    b.type = 'button'; b.title = title;
+    b.addEventListener('click', (e) => { e.stopPropagation(); fn(); });
+    return b;
+  };
+  bar.appendChild(mk('−', 'Zoom out', () => container.__zoomBy && container.__zoomBy(0.75)));
+  bar.appendChild(mk('+', 'Zoom in', () => container.__zoomBy && container.__zoomBy(1.33)));
+  bar.appendChild(mk('Fit', 'Fit the whole tree in view', () => container.__fit && container.__fit(true)));
+  container.parentElement.appendChild(bar);
+
+  new ResizeObserver(() => {
+    if (container.__fit && container.clientWidth > 200) container.__fit(false);
+  }).observe(container);
+}
+
 function renderTree(rawTree, retrievedSet, expectedSet, expectedAnySet, nodeReasons = {}) {
   const container = document.getElementById('tree-container');
   container.innerHTML = '';
+  mountGraphControls(container);
 
   const treeData = rawTree.length === 1
     ? rawTree[0]
@@ -1482,26 +1523,58 @@ function renderTree(rawTree, retrievedSet, expectedSet, expectedAnySet, nodeReas
   const root = d3.hierarchy(treeData, d =>
     (d.children && d.children.length) ? d.children : null);
 
-  const spacingV = state.nodeSpacing || 36;
-  const spacingH = 240;
-  const mT = 24, mR = 200, mB = 24, mL = 12;
+  const spacingV = state.nodeSpacing || 34;
+  // Horizontal spacing scales with depth rather than a flat 240: a shallow
+  // tree used a fraction of the pane while a deep one ran off the end.
+  const depth = root.height + 1;
+  const paneW = contentWidth(container) || 900;
+  const paneH = container.clientHeight || 520;
+  const spacingH = Math.max(150, Math.min(260, (paneW - 260) / Math.max(1, depth - 1)));
 
   d3.tree().nodeSize([spacingV, spacingH])(root);
 
-  let minX = Infinity, maxX = -Infinity, maxY = -Infinity;
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
   root.each(d => {
     if (d.x < minX) minX = d.x;
     if (d.x > maxX) maxX = d.x;
+    if (d.y < minY) minY = d.y;
     if (d.y > maxY) maxY = d.y;
   });
 
+  // The svg FILLS the pane. It used to be sized to the tree, which left the
+  // graph in a narrow band at the top-left of a wide window and made the
+  // container scroll instead of the view panning.
   const svg = d3.select(container).append('svg')
-    .attr('width', maxY + spacingH + mL + mR)
-    .attr('height', Math.max((maxX - minX) + mT + mB, 120))
-    .style('display', 'block');
+    .attr('width', '100%').attr('height', '100%')
+    .style('display', 'block').style('cursor', 'grab');
 
-  const g = svg.append('g').attr('transform', `translate(${mL},${mT - minX})`);
-  svg.call(d3.zoom().scaleExtent([0.2, 3]).on('zoom', e => g.attr('transform', e.transform)));
+  const g = svg.append('g');
+  const zoom = d3.zoom().scaleExtent([0.15, 3])
+    .on('start', () => svg.style('cursor', 'grabbing'))
+    .on('end', () => svg.style('cursor', 'grab'))
+    .on('zoom', e => g.attr('transform', e.transform));
+  svg.call(zoom);
+
+  /* Fit the whole tree into the pane, once, with room for the labels that
+     hang off each node. A graph you have to hunt for is not a map. */
+  // Leaf labels hang to the RIGHT of their node and section labels to the
+  // LEFT, so the tree is wider than its node extent on both sides. Fitting to
+  // the nodes alone clipped the root's label against the left edge.
+  const PAD_R = 190, PAD_L = 150;
+  function fitToPane(animate = false) {
+    const w = contentWidth(container) || paneW;
+    const h = container.clientHeight || paneH;
+    const treeW = (maxY - minY) + PAD_R + PAD_L;
+    const treeH = Math.max(1, maxX - minX);
+    const k = Math.max(0.15, Math.min(1.4, Math.min((w - 40) / treeW, (h - 40) / treeH)));
+    const tx = PAD_L * k + 20 - minY * k;
+    const ty = h / 2 - ((minX + maxX) / 2) * k;
+    const t = d3.zoomIdentity.translate(tx, ty).scale(k);
+    (animate ? svg.transition().duration(280) : svg).call(zoom.transform, t);
+  }
+  container.__fit = fitToPane;
+  container.__zoomBy = (f) => svg.transition().duration(180).call(zoom.scaleBy, f);
+  requestAnimationFrame(() => fitToPane(false));
 
   function leadsToRetrieved(node) {
     let found = false;
@@ -1514,8 +1587,13 @@ function renderTree(rawTree, retrievedSet, expectedSet, expectedAnySet, nodeReas
 
   linkGroup.append('path')
     .attr('fill', 'none')
-    .attr('stroke', cssVar('--border-strong'))
-    .attr('stroke-width', 1.5)
+    // A branch that led somewhere is drawn as such: the route to a retrieved
+    // passage carries the accent, everything else is scaffolding.
+    .attr('stroke', d => leadsToRetrieved(d.target)
+      ? cssVar('--accent') : cssVar('--border-strong'))
+    .attr('stroke-width', d => leadsToRetrieved(d.target) ? 2 : 1.2)
+    .attr('stroke-opacity', d => leadsToRetrieved(d.target) ? 0.9 : 0.42)
+    .attr('stroke-linecap', 'round')
     .attr('class', d => leadsToRetrieved(d.target) ? 'link-highlight' : '')
     .attr('d', d3.linkHorizontal().x(d => d.y).y(d => d.x));
 

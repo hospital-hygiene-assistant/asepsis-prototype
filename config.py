@@ -124,6 +124,11 @@ class RuntimeConfig:
     keep_alive: str = "10m"
     max_leaf_evals: int = 400  # wall-clock guard, independent of the token budget
     debug_cache_enabled: bool = False
+    # When on, the answering model reports whether the retrieved passages were
+    # ENOUGH, and says what is missing when they were not. Off by default: it
+    # asks the model to judge its own evidence, which is worth having in a
+    # clinical setting but adds a claim the user has to weigh.
+    completeness_check: bool = True
 
     def resolved_retrieval_ctx(self) -> int:
         spec = spec_for(self.retrieval_model)
@@ -225,7 +230,11 @@ NUM_PREDICT = {
     "facet":     160,   # a short JSON list of answer ids
     "prune":     640,   # JSON: kept child ids, each with a short reason
     "retrieval": 512,   # JSON: relevance verdict, reason, verbatim quote
-    "agent":    1400,   # the four-section cited answer
+    # Six labels now, not four: the completeness check adds EVIDENCE_SUFFICIENT
+    # and STILL_NEEDED after LIMITATIONS, and a long answer over a dozen
+    # passages was being cut off mid-RATIONALE at 1400 — so the two labels the
+    # UI keys on never arrived. Still a runaway guard, just an honest one.
+    "agent":    2600,   # the cited answer, plus the completeness verdict
 }
 
 
@@ -287,6 +296,7 @@ def describe() -> dict:
         "concurrency_per_instance": cfg.concurrency_per_instance,
         "max_leaf_evals": cfg.max_leaf_evals,
         "debug_cache_enabled": cfg.debug_cache_enabled,
+        "completeness_check": cfg.completeness_check,
         "known_models": sorted(MODEL_SPECS),
         "index_format_version": INDEX_FORMAT_VERSION,
     }

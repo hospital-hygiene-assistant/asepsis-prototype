@@ -505,6 +505,7 @@ class ConfigRequest(BaseModel):
     concurrency_per_instance: Optional[int] = None
     max_leaf_evals: Optional[int] = None
     debug_cache_enabled: Optional[bool] = None
+    completeness_check: Optional[bool] = None
 
 
 @app.post("/api/config")
@@ -521,6 +522,7 @@ def post_config(req: ConfigRequest):
         concurrency_per_instance=req.concurrency_per_instance,
         max_leaf_evals=req.max_leaf_evals,
         debug_cache_enabled=req.debug_cache_enabled,
+        completeness_check=req.completeness_check,
     )
     if req.retrieval_model:
         _pi.MODEL = req.retrieval_model
@@ -1711,6 +1713,10 @@ _chat_lock = threading.Lock()
 _chat_phase: dict = {"phase": "idle", "detail": ""}
 # The retrieved passages of the run in flight, for the evidence deck.
 _chat_cards: list = []
+# The last completed run, so an answer can be rewritten against the SAME
+# passages once the clinician supplies the missing context. Single-user
+# desktop app, so one slot is enough; a shared deployment would key this.
+_last_run: dict = {}
 
 
 def _set_chat_phase(phase: str, detail: str = "", **extra) -> None:
@@ -1744,7 +1750,8 @@ If the passages cannot answer the question, say so in SHORT_ANSWER and leave
 the other sections brief.
 """
 
-_SECTION_KEYS = ["SHORT_ANSWER", "RECOMMENDED_ACTION", "RATIONALE", "LIMITATIONS"]
+_SECTION_KEYS = ["SHORT_ANSWER", "RECOMMENDED_ACTION", "RATIONALE", "LIMITATIONS",
+                 "EVIDENCE_SUFFICIENT", "STILL_NEEDED"]
 
 
 def _parse_answer_sections(text: str) -> dict:
@@ -1778,6 +1785,81 @@ def _breadcrumbs_for(results: dict) -> dict:
             for nid in doc_data["retrieved_ids"]
         }
     return crumbs
+
+
+class RefineRequest(BaseModel):
+    context: str
+
+
+@app.post("/api/chat/refine")
+def chat_refine(req: RefineRequest):
+    """Rewrite the last answer with context the clinician supplied.
+
+    Retrieval is NOT re-run: the passages are the same ones, and the point of
+    the exchange is that the model was missing patient detail, not documents.
+    Re-retrieving would also change the evidence under an answer the user is
+    in the middle of reading.
+    """
+    extra = (req.context or "").strip()
+    if not extra:
+        return JSONResponse({"error": "No context provided"}, status_code=400)
+    with _chat_lock:
+        run = dict(_last_run)
+    if not run.get("sources"):
+        return JSONResponse({"error": "There is no answer to revise yet."},
+                            status_code=409)
+
+    _chat_cancel.clear()
+    _set_chat_phase("synthesis", "Rewriting the answer with your context…")
+    try:
+        prompt = (
+            "You are a clinical knowledge assistant. Answer the question using ONLY the "
+            "provided source passages, plus the clinician's added context below. "
+            "Every claim from a passage must cite it inline as [n].\n\n"
+            f"Question: {run['query']}\n\n"
+            f"Clinician's added context: {extra}\n\n"
+            f"Source passages:\n{run['passages']}\n\n"
+            "The added context is what the passages were missing, so use it to give a "
+            "more specific answer than before. It is NOT a source: do not cite it as "
+            "[n], and do not treat it as evidence for a claim the passages do not "
+            "support.\n\n"
+            "Respond in EXACTLY this format:\n\n"
+            "SHORT_ANSWER: <the direct answer>\n"
+            "RECOMMENDED_ACTION: <what the clinician should do>\n"
+            "RATIONALE: <why, grounded in the cited passages>\n"
+            "LIMITATIONS: <what is still uncertain, including anything the added "
+            "context does not resolve>\n\n"
+            "Plain text under each label. No markdown."
+        )
+        client = _pi.make_client(_pi.OLLAMA_URLS[0])
+        chunks = []
+        for part in client.chat(
+            model=getattr(_pi, "SYNTHESIS_MODEL", _pi.MODEL),
+            messages=[{"role": "user", "content": prompt}],
+            options=app_config.chat_options("agent"),
+            keep_alive=app_config.keep_alive(),
+            stream=True,
+        ):
+            if _chat_cancel.is_set():
+                raise ChatCancelled()
+            chunks.append((part.get("message") or {}).get("content") or "")
+        text = re.sub(r"<thought>.*?(</thought>|$)", "", "".join(chunks), flags=re.S).strip()
+        sections = _parse_answer_sections(text)
+        return JSONResponse({
+            "answer": {"content": text, **sections},
+            "sources": run["sources"],
+            "refined_with": extra,
+        })
+    except ChatCancelled:
+        _set_chat_phase("cancelled", "Stopped")
+        return JSONResponse({"cancelled": True}, status_code=499)
+    except Exception as exc:
+        _set_chat_phase("error", str(exc))
+        return JSONResponse({"error": str(exc)}, status_code=500)
+    finally:
+        with _chat_lock:
+            if _chat_phase["phase"] not in ("error", "cancelled"):
+                _chat_phase.update({"phase": "idle", "detail": ""})
 
 
 @app.post("/api/chat/cancel")
@@ -1910,6 +1992,9 @@ def chat(req: ChatRequest):
 
         answer_text = ""
         sections: dict = {}
+        # Bound here, not inside the branch below: the empty-result path skips
+        # synthesis entirely and still records the run.
+        passages = ""
         # Synthesis is re-run live by default even on a cache hit: the point of
         # the cache is to iterate on the synthesis prompt against a FROZEN node
         # set, which only works if the answer is recomputed.
@@ -1945,6 +2030,17 @@ def chat(req: ChatRequest):
                 "LIMITATIONS: <what the sources do not cover, or uncertainty>\n\n"
                 "If the passages cannot answer the question, say so in SHORT_ANSWER and leave the other sections brief.\n"
                 "Do not use markdown headers, bullet points, bolding, or lists. Write ONLY plain text under each of the four labels."
+                + (
+                    "\n\nThen add two more labels, on their own lines:\n"
+                    "EVIDENCE_SUFFICIENT: yes or no — 'no' if the passages leave any"
+                    " part of the question unanswered, or if the answer depends on"
+                    " patient details the question did not give.\n"
+                    "STILL_NEEDED: when 'no', ONE sentence per item, each starting"
+                    " with '- ', naming what would be needed — a specific document"
+                    " topic that appears to be missing, or a specific patient detail"
+                    " you would have to know. Say nothing here when 'yes'."
+                    if app_config.runtime().completeness_check else ""
+                )
             )
             client = _pi.make_client(_pi.OLLAMA_URLS[0])
             # Streamed so a cancel can land mid-answer: breaking out of the
@@ -1976,6 +2072,10 @@ def chat(req: ChatRequest):
                        tags=req.tags, selected_answers=req.selected_answers,
                        index_dir=_index_dir())
 
+        with _chat_lock:
+            _last_run.clear()
+            _last_run.update({"query": query, "sources": sources, "passages": passages})
+
         cited = set(int(n) for n in re.findall(r"\[(\d+)\]", answer_text))
         valid_cited = {n for n in cited if 1 <= n <= len(sources)}
         if not sources:
@@ -2003,13 +2103,10 @@ def chat(req: ChatRequest):
 
         return JSONResponse({
             "query": query,
-            "answer": {
-                "content": answer_text,
-                "short_answer": sections.get("short_answer", ""),
-                "recommended_action": sections.get("recommended_action", ""),
-                "rationale": sections.get("rationale", ""),
-                "limitations": sections.get("limitations", ""),
-            },
+            # Spread the parsed sections rather than naming four of them: the
+            # completeness labels were being parsed correctly and then dropped
+            # here, by a whitelist written when there were only four.
+            "answer": {"content": answer_text, **sections},
             "grounding": {"status": status, "summary": summary, "sources": sources},
             "budget": budget,
             "choices": _choice_payload(results, req.selected_answers,

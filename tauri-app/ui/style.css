@@ -1558,3 +1558,20 @@ button { font-family: inherit; }
     --fh-none:       #8d9997;
   }
 }
+
+/* Graph chrome: zoom controls pinned to the pane, not drawn into the svg, so
+   they survive every re-render and never scroll away with the tree. */
+#tree-container { position: relative; overflow: hidden; }
+.graph-controls {
+  position: absolute; right: 14px; bottom: 14px; z-index: 5;
+  display: flex; gap: 4px; padding: 3px;
+  background: color-mix(in oklab, var(--surface) 90%, transparent);
+  border: 1px solid var(--border); border-radius: 9px;
+  backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+}
+.graph-btn {
+  font: inherit; font-size: 12px; min-width: 26px; height: 24px;
+  padding: 0 8px; border-radius: 6px; cursor: pointer;
+  background: transparent; color: var(--text-2); border: none;
+}
+.graph-btn:hover { background: var(--surface3); color: var(--accent); }

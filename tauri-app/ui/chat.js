@@ -366,6 +366,102 @@ function typeInto(node, text, sources, answerId, done) {
   });
 }
 
+function buildNoEvidenceCard(data) {
+  const wrap = el('div', 'outcome-card empty');
+  wrap.appendChild(el('b', null, 'No passage in the library answered this'));
+
+  const c = data.choices || {};
+  const p = el('p');
+  p.textContent = c.applied
+    ? `Every document was searched, but your pre-filter answers narrowed it to `
+      + `${c.kept} of ${c.total} passages and none of them matched.`
+    : 'The whole library was searched and nothing matched closely enough to cite.';
+  wrap.appendChild(p);
+
+  const list = el('ul', 'outcome-next');
+  if (c.applied) {
+    list.appendChild(el('li', null, 'Clear the filters above the composer and ask again — they are the most likely cause.'));
+  }
+  list.appendChild(el('li', null, 'Try naming the condition and the decision explicitly ("which drug class", "what dose").'));
+  list.appendChild(el('li', null, 'The library may simply not contain this topic — the retrieval trace below shows what was considered.'));
+  wrap.appendChild(list);
+  return wrap;
+}
+
+/* The evidence was thin, and the model said so. This is the one place the app
+   asks the clinician for something rather than telling them something: what is
+   missing is usually patient detail the documents cannot contain. */
+function buildGapCard(a, p) {
+  const wrap = el('div', 'outcome-card gap');
+  wrap.appendChild(el('b', null, 'This answer is incomplete'));
+
+  const needed = (a.still_needed || '').split('\n')
+    .map(l => l.replace(/^[-•*]\s*/, '').trim()).filter(Boolean);
+  if (needed.length) {
+    wrap.appendChild(el('p', null, 'To answer fully it would need:'));
+    const ul = el('ul', 'outcome-next');
+    needed.forEach(n => ul.appendChild(el('li', null, n)));
+    wrap.appendChild(ul);
+  } else {
+    wrap.appendChild(el('p', null,
+      'The retrieved passages did not cover every part of the question.'));
+  }
+
+  const form = el('form', 'gap-form');
+  const input = document.createElement('textarea');
+  input.rows = 2;
+  input.placeholder = 'Add the missing detail — e.g. the patient\'s age, renal function, or allergies';
+  input.className = 'gap-input';
+  const send = el('button', 'deck-btn primary', 'Rewrite the answer');
+  send.type = 'submit';
+  form.appendChild(input);
+  form.appendChild(send);
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const extra = input.value.trim();
+    if (!extra) return;
+    send.disabled = true; input.disabled = true;
+    send.textContent = 'Rewriting…';
+    try {
+      const r = await apiPost('/api/chat/refine', { context: extra });
+      applyRefinedAnswer(p, r, extra);
+    } catch (err) {
+      send.disabled = false; input.disabled = false;
+      send.textContent = 'Rewrite the answer';
+      toast(`Could not rewrite: ${err.message}`, 'err', 6000);
+    }
+  });
+  wrap.appendChild(form);
+  return wrap;
+}
+
+/* Only the ANSWER is replaced. The passages are the same ones — retrieval was
+   not re-run — so the sources below stay exactly where the reader left them. */
+function applyRefinedAnswer(p, r, extra) {
+  const body = p.card.querySelector('.answer-body');
+  const a = r.answer || {};
+  const answerId = chatState.activeAnswerId || 'a1';
+  body.innerHTML = '';
+
+  const note = el('div', 'outcome-card refined');
+  note.appendChild(el('b', null, 'Rewritten with your context'));
+  note.appendChild(el('p', null, extra));
+  body.appendChild(note);
+
+  const queue = [];
+  for (const [key, label] of chatCopy.sections) {
+    if (!(a[key] || '').trim()) continue;
+    const sec = el('section', 'answer-section');
+    sec.appendChild(el('h3', '', label));
+    const txt = el('p', 'answer-text');
+    sec.appendChild(txt);
+    body.appendChild(sec);
+    queue.push([txt, a[key]]);
+  }
+  typeSequence(queue, r.sources || [], answerId, () => {});
+  p.card.classList.remove('partial');
+}
+
 /* A stopped run keeps whatever it had found — the passages were retrieved and
    paid for, so throwing them away as well would punish the stop. */
 function renderStoppedCard(p) {
@@ -931,7 +1027,14 @@ function applyAnswer(p, data) {
   const body = p.card.querySelector('.answer-body');
   body.innerHTML = '';
   const a = data.answer || {};
-  const present = chatCopy.sections.filter(([key]) => (a[key] || '').trim());
+
+  // (a) Nothing was retrieved. Not an answer with empty sections — a distinct
+  // outcome that says what was searched and what to try, because "no result"
+  // with a filter on usually means the filter, not the library.
+  const noEvidence = !sources.length;
+  if (noEvidence) body.appendChild(buildNoEvidenceCard(data));
+  const present = noEvidence
+    ? [] : chatCopy.sections.filter(([key]) => (a[key] || '').trim());
   const typeQueue = [];
   if (present.length) {
     for (const [key, label] of present) {
@@ -948,12 +1051,20 @@ function applyAnswer(p, data) {
     p.card.classList.add('writing');
     typeSequence(typeQueue, sources, answerId,
                  () => p.card.classList.remove('writing'));
-  } else if ((a.content || '').trim()) {
+  } else if (!noEvidence && (a.content || '').trim()) {
     const div = el('div', 'answer-fallback');
     div.innerHTML = renderRichText(a.content, sources, answerId);
     body.appendChild(div);
-  } else {
+  } else if (!noEvidence) {
     body.appendChild(el('p', 'chat-loading', 'The model returned no answer text — see the sources below.'));
+  }
+
+  // (b) Answered, but the model says the passages did not cover everything.
+  // The gap and the way to close it belong WITH the answer, not in a footnote.
+  const insufficient = !noEvidence && /^\s*no\b/i.test(a.evidence_sufficient || '');
+  if (insufficient) {
+    p.card.classList.add('partial');
+    body.appendChild(buildGapCard(a, p));
   }
 
   // What the evidence set was narrowed by, before and during retrieval.

@@ -918,3 +918,53 @@ body[data-tab="chat"] #command-bar { display: none !important; }
   padding: 0 3px; border-radius: 3px;
   border: 1px solid currentColor;
 }
+
+/* ═══ Outcome cards ═══════════════════════════════════════════════
+   Three states that are not "an answer": nothing found, found but
+   incomplete, and rewritten with added context. Each gets its own colour so
+   the state is readable before a word is. */
+.outcome-card {
+  border-radius: 9px; padding: 12px 14px; margin-bottom: 14px;
+  border: 1px solid var(--as-border); border-left-width: 3px;
+}
+.outcome-card b { display: block; font-size: 13.5px; margin-bottom: 5px; }
+.outcome-card p { margin: 0 0 8px; font-size: 12.5px; line-height: 1.55; color: var(--as-text-2); }
+.outcome-next { margin: 0; padding-left: 17px; }
+.outcome-next li { font-size: 12.5px; line-height: 1.6; color: var(--as-text-2); margin-bottom: 3px; }
+
+/* Nothing found — amber, because it is a dead end to act on, not a failure. */
+.outcome-card.empty {
+  border-color: color-mix(in oklab, var(--amber) 34%, transparent);
+  border-left-color: var(--amber);
+  background: color-mix(in oklab, var(--amber) 8%, transparent);
+}
+.outcome-card.empty b { color: var(--as-amber-tx); }
+
+/* Incomplete — the app is asking for something, so it reads as a prompt. */
+.outcome-card.gap {
+  border-color: color-mix(in oklab, var(--as-blue) 34%, transparent);
+  border-left-color: var(--as-blue);
+  background: color-mix(in oklab, var(--as-blue) 7%, transparent);
+}
+.outcome-card.gap b { color: var(--as-blue); }
+
+.outcome-card.refined {
+  border-color: color-mix(in oklab, var(--as-teal) 34%, transparent);
+  border-left-color: var(--as-teal);
+  background: var(--as-teal-soft);
+}
+.outcome-card.refined b { color: var(--as-teal); }
+.outcome-card.refined p { font-style: italic; }
+
+.gap-form { display: flex; gap: 8px; align-items: flex-end; margin-top: 10px; }
+.gap-input {
+  flex: 1; resize: vertical; font: inherit; font-size: 12.5px;
+  padding: 7px 10px; border-radius: 7px; color: var(--as-text);
+  background: var(--as-surface); border: 1px solid var(--as-border);
+}
+.gap-input:focus { outline: none; border-color: var(--as-blue); }
+.gap-form .deck-btn { flex: none; }
+
+/* A partial answer is marked on the card itself, so it is visible when the
+   card is scrolled past its own header. */
+.answer-card.partial { border-left: 3px solid var(--as-blue); }
