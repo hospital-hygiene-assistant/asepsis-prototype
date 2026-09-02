@@ -1010,6 +1010,16 @@ function initLibraryAdd() {
    library. Zooming re-lays out that subtree to fill the viewport, which keeps
    one code path for every depth: the same render, the same live colouring,
    the same filter. */
+/* The drawable width is the CONTENT box. getBoundingClientRect().width
+   includes the container's horizontal padding, so an svg sized from it is as
+   wide as the padded box but positioned inside it — pushed right by the left
+   padding and overflowing the right edge by the same amount. */
+function contentWidth(container) {
+  const cs = getComputedStyle(container);
+  return container.clientWidth
+    - parseFloat(cs.paddingLeft || 0) - parseFloat(cs.paddingRight || 0);
+}
+
 let _tmFocus = [];
 // The width the current drawing was laid out at — see observeTreemapSize.
 let _tmLastWidth = 0;
@@ -1103,7 +1113,7 @@ function renderTreemap(docs) {
   document.getElementById('treemap-legend').hidden = false;
 
   const rect = container.getBoundingClientRect();
-  const width = rect.width;
+  const width = contentWidth(container);
   // Too narrow to lay anything out — the container has not been sized yet.
   // Draw nothing and wait: the observer fires as soon as it has a real width,
   // which is better than drawing a library nobody can read.
@@ -1621,6 +1631,23 @@ function renderTree(rawTree, retrievedSet, expectedSet, expectedAnySet, nodeReas
 
 /* ── Boxes tab: single-document verdict treemap ─────────────── */
 
+let _rtLastWidth = 0;
+
+/* The results treemap is hidden whenever the graph tab is showing, so it is
+   routinely measured at zero. Observing the container covers the switch back,
+   the tab switch and a window resize alike. */
+function observeResultBoxes() {
+  const container = document.getElementById('result-treemap');
+  if (!container || container.__rtObserved) return;
+  container.__rtObserved = true;
+  new ResizeObserver(entries => {
+    if (state.resultView !== 'boxes' || !state.currentResults || !state.currentDoc) return;
+    const width = entries[0].contentRect.width;
+    if (container.querySelector('svg') && Math.abs(width - _rtLastWidth) < 2) return;
+    if (width >= 200) renderResultBoxes(state.currentDoc, state.currentResults);
+  }).observe(container);
+}
+
 function renderResultBoxes(docName, data) {
   const container = document.getElementById('result-treemap');
   container.innerHTML = '';
@@ -1631,7 +1658,13 @@ function renderResultBoxes(docName, data) {
   const meta = docData.node_meta || {};
 
   const rect = container.getBoundingClientRect();
-  const width  = rect.width  || 800;
+  const width = contentWidth(container);
+  // Same first-paint trap as the library treemap: drawn before the container
+  // has a real width, every box collapses to a sliver. Draw nothing and let
+  // the observer below repaint once it has been sized.
+  if (width < 200) { _rtLastWidth = 0; observeResultBoxes(); return; }
+  _rtLastWidth = width;
+  observeResultBoxes();
   const height = rect.height || 480;
 
   const rootData = {

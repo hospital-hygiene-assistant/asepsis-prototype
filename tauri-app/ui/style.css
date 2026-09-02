@@ -49,6 +49,9 @@
   --amber:        #b45309;
 
   /* treemap fills — alpha-only greys vanish on white, so they are tokens */
+  /* The deciding quote is a highlighter, not a warning: its own yellow,
+     independent of --amber (a brown-red at 700, which read as red). */
+  --quote-bg:     rgba(250, 204, 21, 0.42);
   --tm-pending:   rgba(16, 40, 36, 0.05);
   --tm-pending-2: rgba(16, 40, 36, 0.09);
   --tm-pruned:    rgba(16, 40, 36, 0.10);
@@ -82,7 +85,8 @@
     --gray:         #4b5563;
     --amber:        #fbbf24;
 
-    --tm-pending:   rgba(170, 195, 190, 0.06);
+    --quote-bg:     rgba(250, 204, 21, 0.30);
+  --tm-pending:   rgba(170, 195, 190, 0.06);
     --tm-pending-2: rgba(170, 195, 190, 0.11);
     --tm-pruned:    rgba(170, 195, 190, 0.10);
 
@@ -92,6 +96,7 @@
 
 /* Explicit dark choice wins over a light OS. */
 :root[data-theme="dark"] {
+  --quote-bg:  rgba(250, 204, 21, 0.30);
   --bg:        #0e1413;
   --surface:   #161d1c;
   --surface2:  #1d2625;
@@ -390,17 +395,17 @@ button { font-family: inherit; }
   transition: fill 0.3s var(--ease), stroke 0.3s var(--ease), opacity 0.3s var(--ease); }
 .tm-rect.tm-pending  { fill: var(--tm-pending); stroke: var(--border-strong); }
 .tm-rect.tm-pending.tm-leaf { fill: var(--tm-pending-2); }
-.tm-rect.tm-retrieved { fill: rgba(34, 197, 94, 0.4); stroke: var(--green); }
-.tm-rect.tm-rejected  { fill: rgba(51, 65, 85, 0.7); stroke: var(--red);
+.tm-rect.tm-retrieved { fill: color-mix(in oklab, var(--green) 34%, transparent); stroke: var(--green); }
+.tm-rect.tm-rejected  { fill: color-mix(in oklab, var(--red) 22%, transparent); stroke: var(--red);
   stroke-dasharray: 4 3; }
 .tm-rect.tm-pruned    { fill: var(--tm-pruned); stroke: var(--border-strong);
   opacity: 0.6; }
 /* Deferred: never read, because the agent's context filled up first. Not a
    judgement about the passage, so it reads as "held back" (dotted violet)
    rather than as a rejection or a prune. */
-.tm-rect.tm-deferred  { fill: rgba(168, 85, 247, 0.18); stroke: #a855f7;
+.tm-rect.tm-deferred  { fill: color-mix(in oklab, var(--violet) 20%, transparent); stroke: var(--violet);
   stroke-dasharray: 2 3; }
-.tm-rect.tm-error     { fill: rgba(234, 179, 8, 0.18); stroke: #eab308;
+.tm-rect.tm-error     { fill: color-mix(in oklab, var(--amber) 20%, transparent); stroke: var(--amber);
   stroke-dasharray: 1 2; }
 .tm-rect:hover { stroke: var(--accent); stroke-width: 1.5; }
 .tm-rect.tm-filter-dim { opacity: 0.15; }
@@ -1494,7 +1499,7 @@ button { font-family: inherit; }
    The wash carries the meaning; the text stays the page's ink. */
 .snippet-content mark,
 .markdown-body mark.md-quote {
-  background: color-mix(in oklab, var(--amber) 30%, transparent);
+  background: var(--quote-bg);
   color: var(--text);
   box-shadow: none;
 }
@@ -1524,4 +1529,32 @@ button { font-family: inherit; }
 .snippet-reason {
   background: color-mix(in oklab, var(--accent) 8%, transparent);
   color: var(--text-2);
+}
+
+
+/* Folder hues. Muted on purpose: these sit behind text as a tint and appear
+   eleven at a time in a source list, so saturation that works for a single
+   badge becomes noise here. Read by chat.js. */
+:root {
+  --fh-guidelines: #5b7ba6;
+  --fh-internal:   #a3794c;
+  --fh-research:   #866a9e;
+  --fh-preprints:  #a08cb5;
+  --fh-none:       #7c8785;
+}
+:root[data-theme="dark"] {
+  --fh-guidelines: #7f9dc4;
+  --fh-internal:   #c0995f;
+  --fh-research:   #a68cc0;
+  --fh-preprints:  #bcaad0;
+  --fh-none:       #8d9997;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --fh-guidelines: #7f9dc4;
+    --fh-internal:   #c0995f;
+    --fh-research:   #a68cc0;
+    --fh-preprints:  #bcaad0;
+    --fh-none:       #8d9997;
+  }
 }

@@ -6,6 +6,7 @@ import inspect
 import json
 import os
 import shutil
+import signal
 import subprocess
 import sys
 import threading
@@ -163,7 +164,49 @@ def _shutdown_explainer() -> None:
             except Exception: pass
 
 
+def _unload_models() -> None:
+    """Ask Ollama to drop our models from memory as the app exits.
+
+    Ollama is a separate long-running server: quitting the app (or Ctrl-C in
+    the terminal) leaves whatever we loaded resident for the full keep_alive
+    window, and a 4-8 GB model sitting in RAM after the app is gone is what
+    pushes this machine into swap. A zero keep_alive unloads immediately.
+
+    Best-effort by design: Ollama may already be gone, and failing to tidy up
+    must never stop the process exiting.
+    """
+    models = {getattr(_pi, "MODEL", None), getattr(_pi, "SYNTHESIS_MODEL", None)}
+    for url in list(getattr(_pi, "OLLAMA_URLS", [])):
+        for model in filter(None, models):
+            try:
+                req = urllib.request.Request(
+                    f"{url.rstrip('/')}/api/generate",
+                    data=json.dumps({"model": model, "keep_alive": 0}).encode(),
+                    headers={"Content-Type": "application/json"})
+                urllib.request.urlopen(req, timeout=3).read()
+            except Exception:
+                pass
+
+
 atexit.register(_shutdown_explainer)
+atexit.register(_unload_models)
+
+
+def _on_signal(signum, _frame):
+    """atexit does not run on SIGTERM, and a killed app that leaves 4-8 GB of
+    model resident is exactly the case worth covering. Ctrl-C (SIGINT) would
+    reach atexit on its own; this makes both paths behave the same."""
+    _unload_models()
+    _shutdown_explainer()
+    signal.signal(signum, signal.SIG_DFL)
+    os.kill(os.getpid(), signum)
+
+
+for _sig in (signal.SIGTERM, signal.SIGINT):
+    try:
+        signal.signal(_sig, _on_signal)
+    except (ValueError, OSError):
+        pass          # not the main thread, or unsupported — atexit still covers it
 
 
 # Initialise from env on startup

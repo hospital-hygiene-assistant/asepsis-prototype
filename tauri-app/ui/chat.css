@@ -22,7 +22,10 @@
   --as-muted:     var(--muted);
   --as-faint:     var(--faint);
   --as-border:    var(--border);
-  --as-border-2:  var(--surface2);
+  /* Translucent, not a solid fill: this is used as BOTH a hairline and the
+     background of chips, pills and the composer. Aliased to a solid surface
+     it turned every one of those into a grey block on the dark ground. */
+  --as-border-2:  color-mix(in oklab, var(--text) 7%, transparent);
   --as-teal:      var(--accent);
   --as-teal-dark: var(--accent);
   --as-teal-deep: var(--accent);
@@ -31,7 +34,7 @@
   --as-amber-bg:  color-mix(in oklab, var(--amber) 12%, var(--surface));
   --as-amber-bd:  color-mix(in oklab, var(--amber) 40%, transparent);
   --as-amber-tx:  var(--amber);
-  --as-quote:     color-mix(in oklab, var(--amber) 26%, transparent);
+  --as-quote:     var(--quote-bg);
   --as-green:     var(--green);
   --as-rose:      var(--red);
   --as-blue:      var(--blue);
@@ -41,9 +44,7 @@
 :root[data-theme="dark"], :root:not([data-theme="light"]) {
   --as-shadow-card: 0 8px 24px rgba(0, 0, 0, 0.45);
   --as-shadow-head: 0 6px 18px rgba(0, 0, 0, 0.5);
-  /* A wash tuned for paper disappears on a dark ground — the deciding quote
-     is the one thing on the card that must not be missable. */
-  --as-quote: color-mix(in oklab, var(--amber) 34%, transparent);
+  /* --quote-bg already carries its own dark value. */
 }
 
 /* ═══ Topbar app tabs (shared chrome — dark theme) ═══ */

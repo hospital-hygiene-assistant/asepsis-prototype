@@ -359,21 +359,23 @@ function typeInto(node, text, sources, answerId, done) {
 /* One hue per top-level folder. The OUTERMOST folder picks the colour, so
    everything under research/ reads as one family however deep it nests; the
    chip names the innermost folder, so a card still says where it came from. */
-const FOLDER_HUES = {
-  guidelines: '#1d4ed8',
-  internal:   '#b45309',
-  research:   '#7e22ce',
-  preprints:  '#a855f7',
-  '':         '#52525b',
+/* Hues come from the stylesheet (--fh-*) so they follow the theme and stay
+   in one place. Fallbacks only matter if the stylesheet fails to load. */
+const FOLDER_FALLBACK = {
+  guidelines: '#5b7ba6', internal: '#a3794c',
+  research: '#866a9e', preprints: '#a08cb5', '': '#7c8785',
 };
 
+function hueFor(name) {
+  const v = getComputedStyle(document.documentElement)
+    .getPropertyValue(`--fh-${name || 'none'}`).trim();
+  return v || FOLDER_FALLBACK[name] || FOLDER_FALLBACK[''];
+}
 function folderHue(folder) {
-  const outer = (folder && folder.length) ? folder[0] : '';
-  return FOLDER_HUES[outer] || FOLDER_HUES[''];
+  return hueFor((folder && folder.length) ? folder[0] : '');
 }
 function chipHue(folder) {
-  const leaf = (folder && folder.length) ? folder[folder.length - 1] : '';
-  return FOLDER_HUES[leaf] || folderHue(folder);
+  return hueFor((folder && folder.length) ? folder[folder.length - 1] : '');
 }
 function folderLabel(folder) {
   return (folder && folder.length) ? folder.join(' / ') : 'library root';
