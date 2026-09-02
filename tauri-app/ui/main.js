@@ -420,11 +420,7 @@ function initSettings(modulesData, config) {
     pop.style.left = 'auto';
   });
 
-  // ⌘, opens settings — the platform-native place for it.
-  document.addEventListener('keydown', (e) => {
-    if ((e.metaKey || e.ctrlKey) && e.key === ',') {
-      e.preventDefault();
-      // Toggle flips to the OPPOSITE of what is on screen, so the button always
+  // Toggle flips to the OPPOSITE of what is on screen, so the button always
   // does what its icon shows even when the stored setting is "system".
   document.getElementById('theme-btn').addEventListener('click', () => {
     applyTheme(currentTheme() === 'dark' ? 'light' : 'dark');
@@ -433,7 +429,11 @@ function initSettings(modulesData, config) {
     if (state.view === 'results' && state.currentResults) renderCurrentResultView();
   });
 
-  document.getElementById('settings-btn').click();
+  // ⌘, opens settings — the platform-native place for it.
+  document.addEventListener('keydown', (e) => {
+    if ((e.metaKey || e.ctrlKey) && e.key === ',') {
+      e.preventDefault();
+      document.getElementById('settings-btn').click();
     }
   });
 
