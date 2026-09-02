@@ -8,32 +8,121 @@
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
+  /* ═══ ONE palette, two themes ═══════════════════════════════════
+     The two tabs used to be separate visual worlds: the retrieval tab dark
+     navy, the chatbot tab light zinc. Both now resolve from these tokens, so
+     a theme switch moves the whole app rather than half of it.
+
+     `data-theme` on <html> wins in both directions; with nothing stamped the
+     OS preference decides. Every colour below is redefined in all three
+     places, never only inside a media query — a token defined in one branch
+     only renders one theme's text on the other theme's ground.
+
+     Hue: a near-neutral with a green bias toward the teal accent, rather
+     than the blue it was. Blue-grey plus a cyan accent read as two competing
+     temperatures; this reads as one. */
+
   /* surfaces */
-  --bg:        #0b1220;
-  --surface:   #111a2c;
-  --surface2:  #18233a;
-  --surface3:  #1f2c47;
-  --border:    rgba(148, 163, 184, 0.14);
-  --border-strong: rgba(148, 163, 184, 0.28);
+  --bg:        #f4f6f5;
+  --surface:   #ffffff;
+  --surface2:  #eaefed;
+  --surface3:  #e0e6e4;
+  --border:        rgba(16, 40, 36, 0.12);
+  --border-strong: rgba(16, 40, 36, 0.24);
 
   /* text */
-  --text:      #e7edf6;
-  --text-2:    #b6c2d4;
-  --muted:     #8494ab;
-  --faint:     #5b6b84;
+  --text:      #0b0f0e;
+  --text-2:    #3f4746;
+  --muted:     #67716f;
+  --faint:     #96a09e;
 
   /* accent + verdicts (mirrored in main.js STATUS_COLOR) */
-  --accent:       #38bdf8;
-  --accent-soft:  rgba(56, 189, 248, 0.14);
+  --accent:       #0f766e;
+  --accent-soft:  rgba(15, 118, 110, 0.12);
+  --green:        #15803d;
+  --green-light:  #16a34a;
+  --red:          #be123c;
+  --orange:       #c2410c;
+  --blue:         #1d4ed8;
+  --violet:       #7e22ce;
+  --gray:         #94a3b8;
+  --amber:        #b45309;
+
+  /* treemap fills — alpha-only greys vanish on white, so they are tokens */
+  --tm-pending:   rgba(16, 40, 36, 0.05);
+  --tm-pending-2: rgba(16, 40, 36, 0.09);
+  --tm-pruned:    rgba(16, 40, 36, 0.10);
+
+  color-scheme: light;
+}
+
+/* System preference, unless an explicit light choice overrides it. */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg:        #0e1413;
+    --surface:   #161d1c;
+    --surface2:  #1d2625;
+    --surface3:  #26302f;
+    --border:        rgba(170, 195, 190, 0.14);
+    --border-strong: rgba(170, 195, 190, 0.28);
+
+    --text:      #eef3f2;
+    --text-2:    #c2ccca;
+    --muted:     #93a09d;
+    --faint:     #6a7775;
+
+    --accent:       #2dd4bf;
+    --accent-soft:  rgba(45, 212, 191, 0.14);
+    --green:        #22c55e;
+    --green-light:  #86efac;
+    --red:          #f87171;
+    --orange:       #fb923c;
+    --blue:         #7aa2ff;
+    --violet:       #c084fc;
+    --gray:         #4b5563;
+    --amber:        #fbbf24;
+
+    --tm-pending:   rgba(170, 195, 190, 0.06);
+    --tm-pending-2: rgba(170, 195, 190, 0.11);
+    --tm-pruned:    rgba(170, 195, 190, 0.10);
+
+    color-scheme: dark;
+  }
+}
+
+/* Explicit dark choice wins over a light OS. */
+:root[data-theme="dark"] {
+  --bg:        #0e1413;
+  --surface:   #161d1c;
+  --surface2:  #1d2625;
+  --surface3:  #26302f;
+  --border:        rgba(170, 195, 190, 0.14);
+  --border-strong: rgba(170, 195, 190, 0.28);
+
+  --text:      #eef3f2;
+  --text-2:    #c2ccca;
+  --muted:     #93a09d;
+  --faint:     #6a7775;
+
+  --accent:       #2dd4bf;
+  --accent-soft:  rgba(45, 212, 191, 0.14);
   --green:        #22c55e;
   --green-light:  #86efac;
-  --red:          #ef4444;
-  --orange:       #f97316;
-  --blue:         #3b82f6;
-  --violet:       #a78bfa;
-  --gray:         #475569;
-  --amber:        #f59e0b;
+  --red:          #f87171;
+  --orange:       #fb923c;
+  --blue:         #7aa2ff;
+  --violet:       #c084fc;
+  --gray:         #4b5563;
+  --amber:        #fbbf24;
 
+  --tm-pending:   rgba(170, 195, 190, 0.06);
+  --tm-pending-2: rgba(170, 195, 190, 0.11);
+  --tm-pruned:    rgba(170, 195, 190, 0.10);
+
+  color-scheme: dark;
+}
+
+:root {
   /* geometry */
   --r-sm: 6px;
   --r-md: 10px;
@@ -79,7 +168,7 @@ button { font-family: inherit; }
   position: fixed; inset: 0 0 auto 0; height: var(--topbar-h); z-index: 900;
   display: flex; align-items: center; justify-content: space-between;
   padding: 0 14px;
-  background: rgba(13, 20, 35, 0.82);
+  background: color-mix(in oklab, var(--surface) 84%, transparent);
   -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
   border-bottom: 1px solid var(--border);
 }
@@ -299,12 +388,12 @@ button { font-family: inherit; }
 
 .tm-rect { stroke-width: 1; rx: 3;
   transition: fill 0.3s var(--ease), stroke 0.3s var(--ease), opacity 0.3s var(--ease); }
-.tm-rect.tm-pending  { fill: rgba(148, 163, 184, 0.07); stroke: rgba(148, 163, 184, 0.28); }
-.tm-rect.tm-pending.tm-leaf { fill: rgba(148, 163, 184, 0.12); }
+.tm-rect.tm-pending  { fill: var(--tm-pending); stroke: var(--border-strong); }
+.tm-rect.tm-pending.tm-leaf { fill: var(--tm-pending-2); }
 .tm-rect.tm-retrieved { fill: rgba(34, 197, 94, 0.4); stroke: var(--green); }
 .tm-rect.tm-rejected  { fill: rgba(51, 65, 85, 0.7); stroke: var(--red);
   stroke-dasharray: 4 3; }
-.tm-rect.tm-pruned    { fill: rgba(71, 85, 105, 0.28); stroke: rgba(71, 85, 105, 0.6);
+.tm-rect.tm-pruned    { fill: var(--tm-pruned); stroke: var(--border-strong);
   opacity: 0.6; }
 /* Deferred: never read, because the agent's context filled up first. Not a
    judgement about the passage, so it reads as "held back" (dotted violet)
@@ -543,7 +632,7 @@ button { font-family: inherit; }
 
 #chat-launcher {
   display: inline-flex; align-items: center; gap: 9px;
-  background: rgba(24, 35, 58, 0.92);
+  background: color-mix(in oklab, var(--surface2) 94%, transparent);
   -webkit-backdrop-filter: blur(12px); backdrop-filter: blur(12px);
   border: 1px solid var(--border-strong); border-radius: 999px;
   color: var(--text-2); font-size: 12.5px; padding: 10px 16px; cursor: pointer;
@@ -671,7 +760,7 @@ button { font-family: inherit; }
 .doc-modal-body { flex: 1; display: flex; min-height: 0; }
 .doc-modal-toc {
   width: 224px; flex-shrink: 0; overflow-y: auto; padding: 12px 8px;
-  border-right: 1px solid var(--border); background: rgba(11, 18, 32, 0.4);
+  border-right: 1px solid var(--border); background: color-mix(in oklab, var(--bg) 55%, transparent);
 }
 .doc-modal-toc a {
   display: block; color: var(--muted); text-decoration: none; font-size: 11.5px;
@@ -1344,3 +1433,13 @@ button { font-family: inherit; }
 .library-tags .tag-chip b { font-weight: 600; color: var(--text); }
 .library-tags .tag-chip i { font-style: normal; opacity: 0.6; font-size: 10px; }
 .library-tags .tag-empty { font-size: 11px; color: var(--text-2); opacity: 0.7; }
+
+/* Theme toggle — shows the theme you would switch TO, which is the
+   convention people already expect from a single-button switch. */
+#theme-btn .ico-moon { display: none; }
+:root[data-theme="dark"] #theme-btn .ico-sun { display: none; }
+:root[data-theme="dark"] #theme-btn .ico-moon { display: block; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) #theme-btn .ico-sun { display: none; }
+  :root:not([data-theme="light"]) #theme-btn .ico-moon { display: block; }
+}

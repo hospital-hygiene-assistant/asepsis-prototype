@@ -26,6 +26,22 @@ const prefs = {
   },
 };
 
+/* Theme is applied before anything renders: stamping it later would let the
+   app paint one theme and then flip, which is worse than either. "system"
+   stamps nothing, so the OS preference in the stylesheet decides. */
+function applyTheme(mode) {
+  const root = document.documentElement;
+  if (mode === 'light' || mode === 'dark') root.setAttribute('data-theme', mode);
+  else root.removeAttribute('data-theme');
+  prefs.set('theme', mode);
+}
+function currentTheme() {
+  const stamped = document.documentElement.getAttribute('data-theme');
+  if (stamped) return stamped;
+  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+}
+applyTheme(prefs.get('theme', 'system'));
+
 const state = {
   tests: [],
   currentTestId: null,
@@ -410,7 +426,15 @@ function initSettings(modulesData, config) {
   document.addEventListener('keydown', (e) => {
     if ((e.metaKey || e.ctrlKey) && e.key === ',') {
       e.preventDefault();
-      document.getElementById('settings-btn').click();
+      // Toggle flips to the OPPOSITE of what is on screen, so the button always
+  // does what its icon shows even when the stored setting is "system".
+  document.getElementById('theme-btn').addEventListener('click', () => {
+    applyTheme(currentTheme() === 'dark' ? 'light' : 'dark');
+    if (state.view === 'library' && _docsCache) renderTreemap(_docsCache);
+    if (state.view === 'results' && state.currentResults) renderCurrentResultView();
+  });
+
+  document.getElementById('settings-btn').click();
     }
   });
 
