@@ -256,6 +256,50 @@ def reconfigure_clients(urls: list[str]) -> None:
 # it, so parallelising documents cannot multiply the thread count.
 # ---------------------------------------------------------------------------
 
+# ---------------------------------------------------------------------------
+# Cancellation
+#
+# A run the user stopped should stop COSTING something, not just stop being
+# displayed. Every node-level call checks this before starting, so a stop takes
+# effect within one in-flight call per worker rather than running the whole
+# corpus out.
+# ---------------------------------------------------------------------------
+
+_cancel = threading.Event()
+
+
+class Cancelled(BaseException):
+    """Raised inside a worker when the run has been cancelled.
+
+    Deliberately a BaseException, not an Exception. Every call site here wraps
+    model calls in `except Exception` and treats a failure as "keep going,
+    conservatively" — which is right for a transport hiccup and exactly wrong
+    for a cancellation: the first attempt swallowed the stop, retried, marked
+    the node errored and carried on to the next one, so a cancelled run still
+    walked the whole corpus (just faster, and with every verdict an error).
+
+    Sitting outside Exception is what makes a stop actually stop, the same way
+    KeyboardInterrupt does.
+    """
+
+
+def request_cancel() -> None:
+    _cancel.set()
+
+
+def clear_cancel() -> None:
+    _cancel.clear()
+
+
+def is_cancelled() -> bool:
+    return _cancel.is_set()
+
+
+def _raise_if_cancelled() -> None:
+    if _cancel.is_set():
+        raise Cancelled()
+
+
 _pool_lock = threading.Lock()
 _work_pool: Optional[ThreadPoolExecutor] = None
 
@@ -1084,6 +1128,7 @@ def _chat(prompt: str, client: Optional[ollama.Client] = None, url: str = "",
     default (4096) and silently truncates anything longer, which loses
     passages with no error anywhere.
     """
+    _raise_if_cancelled()
     if client is None:
         client, url = _round_robin_client()
     response = _chat_call(client, model or MODEL, prompt, kind)

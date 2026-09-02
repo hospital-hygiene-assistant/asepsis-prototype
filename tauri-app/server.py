@@ -210,6 +210,39 @@ for _sig in (signal.SIGTERM, signal.SIGINT):
 
 
 # Initialise from env on startup
+def _warm_models() -> None:
+    """Load the models into Ollama as the app opens.
+
+    Ollama loads a model on its first request, so without this the opening
+    seconds of the FIRST retrieval are spent reading several GB off disk while
+    the UI shows a progress bar that is not moving. One throwaway token per
+    model gets that out of the way while the user is still reading the page.
+
+    Runs in the background and never raises: a failure here must not stop the
+    app from starting, and the first real call would load the model anyway.
+    """
+    def work():
+        models = {getattr(_pi, "MODEL", None), getattr(_pi, "SYNTHESIS_MODEL", None)}
+        for url in list(getattr(_pi, "OLLAMA_URLS", []))[:1]:
+            for model in filter(None, models):
+                try:
+                    req = urllib.request.Request(
+                        f"{url.rstrip('/')}/api/generate",
+                        data=json.dumps({"model": model, "prompt": "ok",
+                                         "stream": False, "think": False,
+                                         "keep_alive": app_config.keep_alive(),
+                                         "options": {"num_predict": 1}}).encode(),
+                        headers={"Content-Type": "application/json"})
+                    urllib.request.urlopen(req, timeout=300).read()
+                    print(f"[warm] {model} resident", file=sys.stderr)
+                except Exception as exc:
+                    print(f"[warm] could not preload {model}: {exc}", file=sys.stderr)
+
+    threading.Thread(target=work, daemon=True).start()
+
+
+_warm_models()
+
 _initial_n = int(os.environ.get("OLLAMA_INSTANCES", "1"))
 if _initial_n > 1:
     set_ollama_instances(_initial_n)
@@ -1664,6 +1697,16 @@ def run_query(req: RunRequest):
 # Chat — retrieval + grounded answer synthesis for the chatbot tab
 # ---------------------------------------------------------------------------
 
+# Set by /api/chat/cancel. Retrieval checks it between node calls and the
+# synthesis stream breaks on it — breaking closes the HTTP connection, which
+# is what makes Ollama stop generating rather than finishing into the void.
+_chat_cancel = threading.Event()
+
+
+class ChatCancelled(Exception):
+    """Raised to unwind a run the user stopped."""
+
+
 _chat_lock = threading.Lock()
 _chat_phase: dict = {"phase": "idle", "detail": ""}
 # The retrieved passages of the run in flight, for the evidence deck.
@@ -1737,6 +1780,19 @@ def _breadcrumbs_for(results: dict) -> dict:
     return crumbs
 
 
+@app.post("/api/chat/cancel")
+def chat_cancel():
+    """Stop the run in flight.
+
+    Retrieval checks the flag between node calls and synthesis breaks out of
+    its stream, which closes the connection — so this actually stops the model
+    working rather than just hiding the result from the user.
+    """
+    _chat_cancel.set()
+    _pi.request_cancel()
+    return JSONResponse({"cancelling": True})
+
+
 @app.get("/api/chat/cards")
 def chat_cards():
     """The passages retrieved by the run in flight.
@@ -1801,6 +1857,10 @@ def chat(req: ChatRequest):
     stale = _stale_index_response()
     if stale is not None:
         return stale
+
+    # A stop applies to the run it was pressed during, never the next one.
+    _chat_cancel.clear()
+    _pi.clear_cancel()
 
     defs = _module_defaults()
     index_mod_name = req.index_module or defs["index"]
@@ -1887,14 +1947,24 @@ def chat(req: ChatRequest):
                 "Do not use markdown headers, bullet points, bolding, or lists. Write ONLY plain text under each of the four labels."
             )
             client = _pi.make_client(_pi.OLLAMA_URLS[0])
-            response = client.chat(
+            # Streamed so a cancel can land mid-answer: breaking out of the
+            # iterator closes the connection and Ollama stops generating.
+            # (The UI still receives the answer in one piece — this is about
+            # being able to STOP, not about showing tokens as they arrive.)
+            chunks, prompt_eval = [], 0
+            for part in client.chat(
                 model=getattr(_pi, "SYNTHESIS_MODEL", _pi.MODEL),
                 messages=[{"role": "user", "content": prompt}],
                 options=app_config.chat_options("agent"),
                 keep_alive=app_config.keep_alive(),
-            )
-            app_tokens.observe(prompt, int(response.get("prompt_eval_count") or 0))
-            answer_text = response["message"]["content"]
+                stream=True,
+            ):
+                if _chat_cancel.is_set():
+                    raise ChatCancelled()
+                chunks.append((part.get("message") or {}).get("content") or "")
+                prompt_eval = int(part.get("prompt_eval_count") or prompt_eval)
+            app_tokens.observe(prompt, prompt_eval)
+            answer_text = "".join(chunks)
             # Strip thought blocks
             answer_text = re.sub(r"<thought>.*?(</thought>|$)", "", answer_text, flags=re.S).strip()
             sections = _parse_answer_sections(answer_text)
@@ -1957,12 +2027,20 @@ def chat(req: ChatRequest):
                 },
             },
         })
+    except _pi.Cancelled:
+        _set_chat_phase("cancelled", "Stopped")
+        return JSONResponse({"cancelled": True, "query": query}, status_code=499)
+    except ChatCancelled:
+        # Not an error: the user asked for this, so it gets its own status
+        # rather than a red failure the UI has to explain away.
+        _set_chat_phase("cancelled", "Stopped")
+        return JSONResponse({"cancelled": True, "query": query}, status_code=499)
     except Exception as exc:
         _set_chat_phase("error", str(exc))
         return JSONResponse({"error": str(exc)}, status_code=500)
     finally:
         with _chat_lock:
-            if _chat_phase["phase"] != "error":
+            if _chat_phase["phase"] not in ("error", "cancelled"):
                 _chat_phase.update({"phase": "idle", "detail": ""})
 
 

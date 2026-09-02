@@ -24,6 +24,7 @@ const chatState = {
   // Set per-question by the replay prompt below.
   useCacheForNext: false,
   replayAnswerForNext: false,
+  cancelled: false,
 };
 
 function setAppTab(tab) {
@@ -119,8 +120,20 @@ function setSendEnabled(enabled) {
   const input = document.getElementById('chat-input');
   const btn = document.getElementById('chat-send');
   input.disabled = !enabled;
-  btn.disabled = !enabled || !input.value.trim();
-  document.getElementById('chat-send-label').textContent = enabled ? 'Send' : 'Sending';
+  // While a run is live the button STOPS it. Same control, and its label
+  // always names what pressing it does — a disabled "Sending…" told the user
+  // nothing and left them no way out of a slow run.
+  btn.classList.toggle('stopping', !enabled);
+  btn.disabled = enabled && !input.value.trim();
+  document.getElementById('chat-send-label').textContent = enabled ? 'Send' : 'Stop';
+}
+
+async function cancelRun() {
+  chatState.cancelled = true;
+  const label = document.getElementById('chat-send-label');
+  if (label) label.textContent = 'Stopping';
+  try { await apiPost('/api/chat/cancel', {}); }
+  catch (e) { toast(`Could not stop the run: ${e.message}`, 'err', 6000); }
 }
 
 function renderChatEmptyState() {
@@ -247,11 +260,17 @@ async function sendChat(text) {
     renderResults(data.run);
     finalizeAnswerCard(pending, data);
   } catch (e) {
-    pending.card.querySelector('.answer-body').innerHTML =
-      `<p class="chat-error">The question could not be processed: ${escHtml(e.message)}</p>`;
-    pending.progressEl.remove();
-    toast(`Chat failed: ${e.message}`, 'err', 7000);
+    stopComposer(deckComposer); deckComposer = null;
+    if (chatState.cancelled || /\b499\b/.test(e.message || '')) {
+      renderStoppedCard(pending);
+    } else {
+      pending.card.querySelector('.answer-body').innerHTML =
+        `<p class="chat-error">The question could not be processed: ${escHtml(e.message)}</p>`;
+      pending.progressEl.remove();
+      toast(`Chat failed: ${e.message}`, 'err', 7000);
+    }
   } finally {
+    chatState.cancelled = false;
     state.running = false;
     setRunPill(null);
     await stopStatusPolling();     // final status flush → last trace lines land
@@ -346,6 +365,37 @@ function typeInto(node, text, sources, answerId, done) {
     else { node.classList.remove('typing'); if (done) done(); }
   });
 }
+
+/* A stopped run keeps whatever it had found — the passages were retrieved and
+   paid for, so throwing them away as well would punish the stop. */
+function renderStoppedCard(p) {
+  const body = p.card.querySelector('.answer-body');
+  const found = p.deck ? p.deck.cards.length : 0;
+  body.innerHTML = '';
+  const box = el('div', 'stopped-card');
+  box.appendChild(el('b', null, 'Stopped'));
+  box.appendChild(el('p', null, found
+    ? `The answer was not written. ${found} passage${found === 1 ? '' : 's'} had already been retrieved and are listed below.`
+    : 'The search was stopped before any passage was retrieved.'));
+  body.appendChild(box);
+  if (p.progressEl) p.progressEl.remove();
+  p.trace.classList.remove('open');
+  p.trace.classList.add('frozen');
+}
+
+/* Keys belong to the deck only while one is on screen and the composer does
+   not have focus — otherwise ← and → would fight the text cursor. */
+document.addEventListener('keydown', (e) => {
+  const deck = chatState.pending && chatState.pending.deck;
+  if (!deck || chatState.tab !== 'chat') return;
+  const typing = document.activeElement
+    && /^(INPUT|TEXTAREA)$/.test(document.activeElement.tagName);
+  if (typing && e.key !== 'Escape') return;
+
+  if (e.key === 'ArrowRight') { e.preventDefault(); deckGo(deck, 1); }
+  else if (e.key === 'ArrowLeft') { e.preventDefault(); deckGo(deck, -1); }
+  else if (e.key === 'Enter' && deck.held) { e.preventDefault(); deck.held(); }
+});
 
 /* ══ Evidence deck ═══════════════════════════════════════════════════
    Retrieval finishes long before synthesis does — measured on this corpus,
@@ -535,8 +585,10 @@ function layoutDeck(deck) {
 }
 
 function deckGo(deck, delta) {
-  const next = deck.i + delta;
-  if (next < 0 || next >= deck.cards.length) return;
+  // Cycles: reaching the end and being stuck there is a dead end when the
+  // whole point is flipping through while you wait.
+  const n = deck.cards.length;
+  const next = ((deck.i + delta) % n + n) % n;
   deck.i = next;
   deck.seen.add(next);
   deck.engaged = true;
@@ -549,7 +601,6 @@ function renderDeckControls(deck) {
 
   const prev = el('button', 'deck-btn', '← Back');
   prev.type = 'button';
-  prev.disabled = deck.i === 0;
   prev.addEventListener('click', e => { e.stopPropagation(); deckGo(deck, -1); });
   c.appendChild(prev);
 
@@ -571,14 +622,15 @@ function renderDeckControls(deck) {
   // Held answer: the reader is mid-card, so the answer waits for a click
   // rather than yanking the card away. See finalizeAnswerCard.
   if (deck.held) {
-    const b = el('button', 'deck-btn primary', 'Read the answer →');
+    const b = el('button', 'deck-btn primary');
+    b.innerHTML = 'Read the answer <span class="deck-key">↵</span>';
     b.type = 'button';
     b.addEventListener('click', e => { e.stopPropagation(); deck.held(); });
     c.appendChild(b);
   } else {
-    const nxt = el('button', 'deck-btn', 'Next →');
+    const nxt = el('button', 'deck-btn');
+    nxt.innerHTML = 'Next <span class="deck-key">→</span>';
     nxt.type = 'button';
-    nxt.disabled = deck.i === deck.cards.length - 1;
     nxt.addEventListener('click', e => { e.stopPropagation(); deckGo(deck, 1); });
     c.appendChild(nxt);
   }
@@ -1283,8 +1335,10 @@ function initChatTab() {
   const input = document.getElementById('chat-input');
   form.addEventListener('submit', (e) => {
     e.preventDefault();
+    // Mid-run the same button stops it, which is why it is never disabled.
+    if (state.running) { cancelRun(); return; }
     const text = input.value.trim();
-    if (text && !state.running) sendChat(text);
+    if (text) sendChat(text);
   });
   input.addEventListener('keydown', (e) => {
     if (e.key === 'Enter' && !e.shiftKey) {
