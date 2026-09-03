@@ -9,7 +9,7 @@ that way would have no document ids and no tags, and would behave differently
 from one built through the app.
 
 Usage:
-    python ingest.py                # ingest docs/ recursively
+    python ingest.py                # ingest data/ recursively
     python ingest.py <folder>       # ingest another folder
 """
 

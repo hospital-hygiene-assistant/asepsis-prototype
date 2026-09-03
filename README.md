@@ -107,7 +107,7 @@ Both phases run in parallel across the configured Ollama instances.
 - **Outcome:** a desktop window titled *Asepsis Prototype* opens (or the system browser, if Tauri's CLI isn't installed). Nothing is interactive yet — the UI is loading.
 
 ⚙️ **Backend**
-- `run-tauri.py` installs Python deps if missing, then **runs the pipeline only if needed**: ingest (`docs/ → knowledge_base/`) if the knowledge base is stale, and index (`knowledge_base/ → index/*.json`) if any document is unindexed.
+- `run-tauri.py` installs Python deps if missing, then **runs the pipeline only if needed**: ingest (`data/<name>/auto/<name>.md → knowledge_base/`) if the knowledge base is stale, and index (`knowledge_base/ → index/*.json`) if any document is unindexed.
 - Starts FastAPI on `127.0.0.1:8765` and waits until it responds, then opens the window pointing at it.
 - **Outcome:** the server is up; document trees exist as `index/<doc>.json`. No LLM work yet.
 - *Note:* every response is sent `Cache-Control: no-store`, and asset URLs are versioned by file mtime, so the webview never serves a stale UI across launches.
@@ -258,7 +258,7 @@ Discovered automatically from `modules/<stage>/*.py` (each exports a `MODULE_INF
 
 | Stage | Default module | Role |
 |-------|----------------|------|
-| Ingest | `basic_markdown` | Copy `docs/*.md` into `knowledge_base/` |
+| Ingest | `basic_markdown` | Copy `data/<name>/auto/<name>.md` files into `knowledge_base/` |
 | Index | `pageindex_custom` | Deterministic heading-tree index (delegates to `pageindex.py`) |
 | Query | `ollama_synthesis` | LLM retrieval + synthesis over the index |
 
@@ -284,11 +284,8 @@ One muted palette is shared across the treemap, the Graph tree, the snippet high
 
 ```
 astepsis/
-├── docs/                     # Source documents (.md), ingested recursively
-│   ├── *.md                  #   top level: no folder, no tags
-│   ├── guidelines/           #   sub-folders are provenance: the folder name
-│   ├── internal/             #   becomes a tag, and the path becomes the
-│   └── research/preprints/   #   folder the library treemap groups and zooms by
+├── data/                     # Git submodule containing source markdown documents
+│   └── <name>/auto/<name>.md #   generated markdown source for each document
 ├── knowledge_base/           # Ingested markdown  (ingest output)
 ├── index/                    # Heading-tree indexes, one JSON per doc (index output)
 ├── pageindex.py              # Heading parser, indexer, two-phase LLM retrieval, explainer

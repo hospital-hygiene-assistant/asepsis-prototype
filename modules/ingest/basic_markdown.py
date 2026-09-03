@@ -1,6 +1,6 @@
 """
 Module 1 — Ingest: Basic Markdown
-Copies .md files from docs/ to knowledge_base/ unchanged.
+Copies .md files from data/ to knowledge_base/ unchanged.
 Simple passthrough for already well-structured markdown documents.
 """
 import shutil
@@ -12,10 +12,10 @@ MODULE_INFO = {
     "stage": "ingest",
     "name": "basic_markdown",
     "label": "Basic Markdown",
-    "description": "Copies .md files from docs/ (recursively) to knowledge_base/ unchanged. No transformation — assumes documents are already well-structured markdown. Sub-folder names become tags.",
+    "description": "Copies .md files from data/ (recursively) to knowledge_base/ unchanged. No transformation — assumes documents are already well-structured markdown. Sub-folder names become tags.",
 }
 
-DOCS_DIR = Path("docs")
+DOCS_DIR = Path("data")
 KB_DIR   = Path("knowledge_base")
 
 
@@ -29,7 +29,8 @@ def run(source_dir: str | None = None) -> dict:
     """
     root = Path(source_dir or DOCS_DIR)
     KB_DIR.mkdir(parents=True, exist_ok=True)
-    docs = discover_files(root, (".md",))
+    docs = (sorted(root.glob("*/auto/*.md")) if source_dir is None
+            else discover_files(root, (".md",)))
     if not docs:
         print(f"No markdown files found under {root}/")
         return {"docs": [], "warnings": []}

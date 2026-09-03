@@ -17,11 +17,13 @@ import time
 import urllib.request
 from pathlib import Path
 
+from modules.ingest._manifest import make_doc_id
+
 ROOT      = Path(__file__).parent
 TAURI_DIR = ROOT / "tauri-app"
 KB_DIR    = ROOT / "knowledge_base"
 INDEX_DIR = ROOT / "index"
-DOCS_DIR  = ROOT / "docs"
+DOCS_DIR  = ROOT / "data"
 PORT      = 8765
 URL       = f"http://127.0.0.1:{PORT}"
 
@@ -40,15 +42,20 @@ def _ensure_python_deps():
 
 # ── pipeline ──────────────────────────────────────────────────
 def _run_pipeline_if_needed():
-    docs = list(DOCS_DIR.glob("*.md")) if DOCS_DIR.exists() else []
+    docs = list(DOCS_DIR.glob("*/auto/*.md")) if DOCS_DIR.exists() else []
     if not docs:
-        print("  No docs found in docs/ — skipping pipeline.")
+        print("  No markdown files found in data/ — skipping pipeline.")
         return
 
     # Ingest: run if knowledge_base is missing or stale
     kb_files  = set(p.stem for p in KB_DIR.glob("*.md"))  if KB_DIR.exists()    else set()
-    doc_stems = set(p.stem for p in docs)
-    if not kb_files >= doc_stems:
+    taken = set()
+    doc_ids = set()
+    for doc in sorted(docs):
+        doc_id = make_doc_id(doc, DOCS_DIR, taken)
+        taken.add(doc_id)
+        doc_ids.add(doc_id)
+    if not kb_files >= doc_ids:
         print("  Running ingest…")
         subprocess.check_call(
             [sys.executable, str(ROOT / "ingest.py")],
@@ -57,7 +64,7 @@ def _run_pipeline_if_needed():
 
     # Index: run if any doc is missing from the index
     idx_files = set(p.stem for p in INDEX_DIR.glob("*.json")) if INDEX_DIR.exists() else set()
-    if not idx_files >= doc_stems:
+    if not idx_files >= doc_ids:
         print("  Building index…")
         subprocess.check_call(
             [sys.executable, str(ROOT / "pageindex.py")],
