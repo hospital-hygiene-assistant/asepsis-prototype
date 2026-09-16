@@ -308,3 +308,13 @@ astepsis/
 pytest tests/test_pageindex_units.py     # deterministic, no Ollama required
 pytest tests/test_retrieval.py           # end-to-end, requires Ollama running
 ```
+
+## Evaluating the system
+
+`evaluation/README.md` describes the evaluation design and the scripts that
+run it against the headless backend: gold-chunk sampling, the eval driver over
+`/api/chat`, the forced-pairing control, the BM25 and frontier baselines, and
+the report. The synthesis prompt lives in `synthesis.py`, shared by the server
+and the scripts; `/api/chat` returns per-phase `timing` and the model's raw
+sufficiency `judgment` alongside the answer, and `ASEPSIS_RUN_LOG=<path>` makes
+the server append a structured record of every run.

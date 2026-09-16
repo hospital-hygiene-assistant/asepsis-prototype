@@ -26,6 +26,11 @@ SOURCES = [
     "pageindex.py", "config.py", "tokens.py", "ranking.py", "choices.py",
     "debug_cache.py", "query.py", "pipeline.py", "ingest.py",
     "run_tests.py", "install_dependencies.py",
+    "synthesis.py", "runlog.py",
+    "evaluation/common.py", "evaluation/run_eval.py", "evaluation/report.py",
+    "evaluation/bm25_baseline.py", "evaluation/frontier_baseline.py",
+    "evaluation/forced_pairing.py", "evaluation/sample_gold.py",
+    "evaluation/validate_queries.py",
     "modules/registry.py",
     "modules/ingest/_manifest.py",
     "modules/ingest/betteringest_pdf.py",
@@ -82,7 +87,9 @@ def test_all_modules_import_cleanly():
     import, a module-level call that raises — without polluting this process.
     """
     mods = ["config", "tokens", "ranking", "choices", "debug_cache",
-            "pageindex", "query",
+            "pageindex", "query", "synthesis", "runlog",
+            "evaluation.common", "evaluation.report", "evaluation.bm25_baseline",
+            "evaluation.frontier_baseline", "evaluation.forced_pairing",
             "modules.registry", "modules.ingest._manifest",
             "modules.ingest.basic_markdown", "modules.ingest.betteringest_pdf",
             "modules.index.pageindex_custom", "modules.query.ollama_synthesis"]

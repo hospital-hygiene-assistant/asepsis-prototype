@@ -1,0 +1,9 @@
+id,set,pair_id,doc,node_id,question,edit_term
+A001,A,,hypertension_guidelines,sodium-restriction,What daily sodium intake is recommended for patients with hypertension and by roughly how much does reducing intake lower systolic blood pressure?,
+B001,B,A001,hypertension_guidelines,sodium-restriction,"What daily sodium intake is recommended for a hypertensive patient with Nasal Hypochondria, and by roughly how much does reducing intake lower systolic blood pressure?",Nasal Hypochondria
+A002,A,,antibiotic_stewardship,severity-assessment-curb-65,Which five criteria make up the CURB-65 score for community-acquired pneumonia and what 30-day mortality does a score of 0-1 carry?,
+B002,B,A002,antibiotic_stewardship,severity-assessment-curb-65,"Which five criteria make up the CURB-65 score for community-acquired pneumonia in a patient receiving Postnasal Desensitization Infusion, and what 30-day mortality does a score of 0-1 carry?",Postnasal Desensitization Infusion
+A003,A,,icu_sedation_guide,pain-assessment-tools,How often should pain be assessed in ICU patients and which scale is used for patients who cannot communicate?,
+B003,B,A003,icu_sedation_guide,pain-assessment-tools,"How often should pain be assessed in ICU patients with Mucus Memory Syndrome, and which scale is used for those who cannot communicate?",Mucus Memory Syndrome
+A004,A,,diabetes_management,glycaemic-targets,What HbA1c target applies to most adults with type 2 diabetes and when is a relaxed target appropriate?,
+B004,B,A004,diabetes_management,glycaemic-targets,"What HbA1c target applies to adults with type 2 diabetes who are on the Pinocchio De-Elongation Protocol, and when is a relaxed target appropriate?",Pinocchio De-Elongation Protocol

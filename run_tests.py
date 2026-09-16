@@ -27,6 +27,7 @@ PHASE_FILES: dict[str, list[str]] = {
     "4": ["test_manifest_tags.py", "test_betteringest_ingest.py"],
     "5": ["test_mcq_precompute.py"],
     "6": ["test_debug_cache.py"],
+    "7": ["test_synthesis.py", "test_evaluation.py"],
     "static": ["test_static_checks.py"],
     "legacy": ["test_pageindex_units.py", "test_chat_endpoint_units.py", "test_retrieval.py"],
 }

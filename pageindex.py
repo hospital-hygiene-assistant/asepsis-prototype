@@ -97,8 +97,24 @@ class RunContext:
         self.events: dict[str, set[str]] = {s: set() for s in STATUSES}
         self.meta: dict[str, dict] = {}
         self.budget = BudgetState()
+        # Wall-clock per phase, in ms: prune / evaluate / retrieval, and
+        # synthesis when the server adds it. Per-node `ms` on the verdicts
+        # says how long each model call took; this says how long the user
+        # waited for each phase, which is a different number under
+        # parallelism and the one an evaluation reports as latency.
+        self.timings: dict[str, int] = {}
         self._total = total_leaves
         self._done = 0
+
+    # -- timing -------------------------------------------------------------
+
+    def record_timing(self, phase: str, ms: int) -> None:
+        with self.lock:
+            self.timings[phase] = int(ms)
+
+    def timed(self, phase: str):
+        """`with ctx.timed("prune"):` records the block's wall-clock."""
+        return _PhaseTimer(self, phase)
 
     # -- verdict recording --------------------------------------------------
 
@@ -140,6 +156,7 @@ class RunContext:
             snap = {s: sorted(ids) for s, ids in self.events.items()}
             snap["meta"] = {k: dict(v) for k, v in self.meta.items()}
             snap["budget"] = dict(self.budget.__dict__)
+            snap["timings"] = dict(self.timings)
             return snap
 
     def restore(self, snapshot: dict) -> None:
@@ -152,6 +169,21 @@ class RunContext:
             for k, v in (snapshot.get("budget") or {}).items():
                 if hasattr(self.budget, k):
                     setattr(self.budget, k, v)
+            self.timings = {k: int(v) for k, v in (snapshot.get("timings") or {}).items()}
+
+
+class _PhaseTimer:
+    def __init__(self, ctx: RunContext, phase: str):
+        self.ctx, self.phase = ctx, phase
+
+    def __enter__(self):
+        self._started = time.perf_counter()
+        return self
+
+    def __exit__(self, *exc):
+        self.ctx.record_timing(
+            self.phase, int((time.perf_counter() - self._started) * 1000))
+        return False
 
 
 _runs_lock = threading.Lock()
@@ -1961,14 +1993,21 @@ def evaluate_ranked(
                 if accepted_tokens + cost > budget:
                     # This passage cannot fit; it and everything below it in
                     # the ranking are deferred rather than accepted.
+                    # This one node is NOT a censored observation like the
+                    # rest of the deferred tail: the evaluator did read it
+                    # and said yes. Flag that explicitly — an evaluation
+                    # that treats every `deferred` as "never judged" would
+                    # otherwise count a correct verdict as a budget failure.
                     meta.update({
                         "relevant": False,
                         "status": "deferred",
+                        "judged_relevant": True,
                         "reason": ("Judged relevant, but the agent's context budget was "
                                    "already full — this passage was not included."),
                     })
                     ctx.mark(leaf.node_id, "deferred", meta["reason"],
-                             bm25_rank=scored.rank, bm25_score=meta["bm25_score"])
+                             bm25_rank=scored.rank, bm25_score=meta["bm25_score"],
+                             judged_relevant=True)
                     stop_reason = "context"
                     break
                 accepted_tokens += cost
@@ -2036,11 +2075,13 @@ def retrieve_with_metadata(
     so that ranking and the agent's budget span the whole corpus.
     """
     ctx = ctx or current_run()
-    doc = prune_document(doc_name, query, ctx=ctx)
-    if not doc.leaves:
-        return [], {}
-
-    evaluate_ranked([doc], query, ctx=ctx)
+    with ctx.timed("retrieval"):
+        with ctx.timed("prune"):
+            doc = prune_document(doc_name, query, ctx=ctx)
+        if not doc.leaves:
+            return [], {}
+        with ctx.timed("evaluate"):
+            evaluate_ranked([doc], query, ctx=ctx)
 
     # Preserve original document order
     selected = [l for l in doc.leaves if doc.node_meta.get(l.node_id, {}).get("relevant")]

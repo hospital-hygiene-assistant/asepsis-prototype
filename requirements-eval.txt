@@ -1,0 +1,10 @@
+# Evaluation-only dependencies.
+#
+# The driver, the BM25 baseline, the forced-pairing control and the report
+# need nothing beyond the app's own runtime dependencies (ollama) — they use
+# urllib against the running backend. Only the frontier baseline needs more:
+#
+#     python3 -m pip install -r requirements-eval.txt
+#
+anthropic>=1.0
+pydantic>=2

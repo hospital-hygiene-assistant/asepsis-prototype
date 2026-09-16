@@ -34,6 +34,7 @@ PHASES: list[tuple[str, str]] = [
     ("test_manifest_tags|test_betteringest_ingest",                "Phase 4 · tags + ingest"),
     ("test_mcq_precompute",                                        "Phase 5 · choice precompute"),
     ("test_debug_cache",                                           "Phase 6 · debug cache"),
+    ("test_synthesis|test_evaluation",                             "Phase 7 · evaluation"),
     ("test_static_checks",                                         "Static · lint + imports"),
     ("test_pageindex_units|test_chat_endpoint_units|test_retrieval", "Legacy · existing suite"),
 ]

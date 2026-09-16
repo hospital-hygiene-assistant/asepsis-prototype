@@ -22,6 +22,8 @@ sys.path.insert(0, str(ROOT))
 import choices as app_choices
 import config as app_config
 import debug_cache as app_debug_cache
+import runlog as app_runlog
+import synthesis as app_synthesis
 import tokens as app_tokens
 from modules.ingest._manifest import Manifest
 import pageindex as _pi
@@ -465,6 +467,10 @@ def _index_state() -> dict:
         "stale_docs": stale,
         "stale": bool(stale),
         "rebuild": rebuild,
+        # A content hash over every index file. An evaluation driver polls
+        # this between queries: if it changes mid-run, the corpus was
+        # re-indexed underneath the later queries and the run is not one run.
+        "fingerprint": app_debug_cache.index_fingerprint(_index_dir()),
     }
 
 
@@ -1550,6 +1556,8 @@ def _run_retrieval(query: str, index_mod, ctx=None, tags=None,
     )
     ctx = ctx or _pi.start_run(total_leaves)
     ctx.set_total(total_leaves)
+    retrieval_timer = ctx.timed("retrieval")
+    retrieval_timer.__enter__()
 
     # Pruning runs per document, in parallel. Leaf evaluation does NOT: every
     # retrieved passage lands in one agent context, so candidates are ranked
@@ -1567,6 +1575,8 @@ def _run_retrieval(query: str, index_mod, ctx=None, tags=None,
         prune = index_mod.prune_document
         # A third-party index module may predate the pre-filter entirely.
         takes_mode = "selection_mode" in inspect.signature(prune).parameters
+        prune_timer = ctx.timed("prune")
+        prune_timer.__enter__()
         futures = {
             pool.submit(prune, doc_name, query, ctx, selected_answers,
                         **({"selection_mode": selection_mode} if takes_mode else {})):
@@ -1582,6 +1592,7 @@ def _run_retrieval(query: str, index_mod, ctx=None, tags=None,
                 print(f"[retrieval] {doc_name} failed: {exc}", file=sys.stderr)
                 continue
             candidates.append(doc)
+        prune_timer.__exit__(None, None, None)
 
         # The one genuinely suspicious case: EVERY document pruned away. A
         # single document doing so is a normal, useful verdict; all of them
@@ -1593,7 +1604,8 @@ def _run_retrieval(query: str, index_mod, ctx=None, tags=None,
                   f"{query!r} — no passage was judged worth reading",
                   file=sys.stderr)
 
-        index_mod.evaluate_ranked(candidates, query, ctx)
+        with ctx.timed("evaluate"):
+            index_mod.evaluate_ranked(candidates, query, ctx)
 
         for doc in candidates:
             selected = [l for l in doc.leaves
@@ -1647,7 +1659,25 @@ def _run_retrieval(query: str, index_mod, ctx=None, tags=None,
                 for n in nodes
             ],
         }
+    retrieval_timer.__exit__(None, None, None)
     return results, ctx
+
+
+def _timing_payload(ctx, synthesis_ms: Optional[int] = None) -> dict:
+    """Phase wall-clocks for one run, in ms. Retrieval and synthesis are
+    reported separately and never summed into a single mean — the evaluation
+    wants p50/p95 per phase, and a combined number would hide which phase
+    moved."""
+    timings = dict(getattr(ctx, "timings", {}) or {})
+    out = {
+        "retrieval_ms": timings.get("retrieval"),
+        "prune_ms": timings.get("prune"),
+        "evaluate_ms": timings.get("evaluate"),
+        "synthesis_ms": synthesis_ms,
+    }
+    parts = [v for v in (out["retrieval_ms"], synthesis_ms) if v is not None]
+    out["total_ms"] = sum(parts) if parts else None
+    return out
 
 
 def _choice_payload(results: dict, selected_answers=None,
@@ -1719,10 +1749,19 @@ def run_query(req: RunRequest):
         cache_info = {"cached": False, "key": cache_key}
 
     test_result = _eval_test(test, results) if test else None
+    budget = _budget_payload(ctx, results)
+    timing = _timing_payload(ctx)
+    if app_runlog.enabled():
+        app_runlog.append(app_runlog.build_record(
+            kind="run", query=query, results=results, budget=budget,
+            timing=timing, index_dir=_index_dir(), run_id=ctx.run_id,
+            extra={"cache": cache_info, "tags": req.tags,
+                   "selected_answers": req.selected_answers}))
     return JSONResponse({
         "query": query,
         "results": results,
-        "budget": _budget_payload(ctx, results),
+        "budget": budget,
+        "timing": timing,
         "choices": _choice_payload(results, req.selected_answers,
                                    req.selection_mode),
         "cache": cache_info,
@@ -1789,62 +1828,20 @@ def _set_chat_phase(phase: str, detail: str = "", **extra) -> None:
         _chat_phase.update({"phase": phase, "detail": detail, **extra})
 
 
-CHAT_SYNTHESIS_PROMPT = """\
-You are a clinical knowledge assistant. Answer the question using ONLY the
-numbered source passages below. Every claim must cite its passage inline as
-[n] (e.g. [1] or [2][3]). Never invent a source number.
-
-Question: {query}
-
-Source passages:
-{passages}
-
-Respond in EXACTLY this format (keep the labels, fill in the text; each
-section is 1-3 sentences of plain text with inline [n] citations):
-
-SHORT_ANSWER: <the direct answer to the question>
-RECOMMENDED_ACTION: <what the clinician should do>
-RATIONALE: <why, grounded in the cited passages>
-LIMITATIONS: <what the sources do not cover, or uncertainty>
-
-If the passages cannot answer the question, say so in SHORT_ANSWER and leave
-the other sections brief.
-"""
-
-_SECTION_KEYS = ["SHORT_ANSWER", "RECOMMENDED_ACTION", "RATIONALE", "LIMITATIONS",
-                 "EVIDENCE_SUFFICIENT", "STILL_NEEDED", "WHAT_CHANGED"]
+# The synthesis prompt, the passage format and the answer parser live in
+# synthesis.py, shared with the evaluation scripts. A module-level copy used
+# to sit here for /api/chat/config to display — and had already drifted from
+# the prompt the handler actually sent (it lacked the completeness labels).
+# What the config endpoint shows is now built by the same function the
+# handler calls, with the placeholders left in.
+def _synthesis_prompt_template() -> str:
+    return app_synthesis.build_synthesis_prompt("{query}", "{passages}",
+                                                completeness=True)
 
 
-def _parse_answer_sections(text: str) -> dict:
-    """Parse the labeled sections out of the model's answer. Tolerant of
-    markdown bolding and missing sections; anything unmatched stays in
-    'content' as the fallback body."""
-    pattern_keys = [k.replace("_", r"[\s_-]?") for k in _SECTION_KEYS]
-    pattern = re.compile(
-        r"^\s*(?:#+\s*)?\**\s*(" + "|".join(pattern_keys) + r")\s*\**\s*:?\s*",
-        re.MULTILINE | re.IGNORECASE,
-    )
-    sections: dict[str, str] = {}
-    matches = list(pattern.finditer(text))
-    for i, m in enumerate(matches):
-        raw_key = m.group(1)
-        key = raw_key.upper().replace(" ", "_").replace("-", "_")
-        end = matches[i + 1].start() if i + 1 < len(matches) else len(text)
-        sections[key.lower()] = text[m.end():end].strip().strip("*").strip()
-    return sections
-
-
-def _cited_numbers(text: str) -> list[int]:
-    """Source numbers cited in an answer.
-
-    Both [2][3] and [2, 3] appear in practice — counting only the first form
-    made a correctly-cited answer look ungrounded, which downgrades the
-    grounding badge on the very answers that cite the most.
-    """
-    out: list[int] = []
-    for group in re.findall(r"\[(\d+(?:\s*,\s*\d+)*)\]", text or ""):
-        out.extend(int(part) for part in group.split(","))
-    return out
+_SECTION_KEYS = app_synthesis.SECTION_KEYS
+_parse_answer_sections = app_synthesis.parse_answer_sections
+_cited_numbers = app_synthesis.cited_numbers
 
 
 def _breadcrumbs_for(results: dict) -> dict:
@@ -2368,7 +2365,7 @@ def chat_config():
         "any_busy": any(v > 0 for v in activity.values()),
         "pipeline": defs,
         "prompts": {
-            "synthesis": CHAT_SYNTHESIS_PROMPT,
+            "synthesis": _synthesis_prompt_template(),
             "rewrite": CHAT_REWRITE_PROMPT,
             "followup": CHAT_FOLLOWUP_PROMPT,
             "followup_empty": CHAT_FOLLOWUP_EMPTY_PROMPT,
@@ -2457,6 +2454,7 @@ def chat(req: ChatRequest):
 
         answer_text = ""
         sections: dict = {}
+        synthesis_ms: Optional[int] = None
         # Bound here, not inside the branch below: the empty-result path skips
         # synthesis entirely and still records the run.
         passages = ""
@@ -2479,56 +2477,22 @@ def chat(req: ChatRequest):
             _set_chat_phase("synthesis",
                             f"Composing an answer from {len(sources)} passages…",
                             cards_ready=len(sources))
-            passages = "\n\n".join(
-                f"[{s['n']}] {s['doc'].replace('_', ' ')} › {s['breadcrumb'] or s['title']}\n{s['excerpt'] or '(no content)'}"
-                for s in sources
-            )
-            prompt = (
-                "You are a clinical knowledge assistant. Answer the question using ONLY the provided source passages. "
-                "Every claim must cite its passage inline as [n] (e.g. [1] or [2][3]). Never invent a source number.\n\n"
-                f"Question: {query}\n\n"
-                f"Source passages:\n{passages}\n\n"
-                "Respond in EXACTLY this format (keep the labels, fill in the text; each section is 1-3 sentences of plain text with inline [n] citations):\n\n"
-                "SHORT_ANSWER: <the direct answer to the question>\n"
-                "RECOMMENDED_ACTION: <what the clinician should do>\n"
-                "RATIONALE: <why, grounded in the cited passages>\n"
-                "LIMITATIONS: <what the sources do not cover, or uncertainty>\n\n"
-                "If the passages cannot answer the question, say so in SHORT_ANSWER and leave the other sections brief.\n"
-                "Do not use markdown headers, bullet points, bolding, or lists. Write ONLY plain text under each of the four labels."
-                + (
-                    "\n\nThen add two more labels, on their own lines:\n"
-                    "EVIDENCE_SUFFICIENT: yes or no — 'no' if the passages leave any"
-                    " part of the question unanswered, or if the answer depends on"
-                    " patient details the question did not give.\n"
-                    "STILL_NEEDED: when 'no', ONE sentence per item, each starting"
-                    " with '- ', naming what would be needed — a specific document"
-                    " topic that appears to be missing, or a specific patient detail"
-                    " you would have to know. Say nothing here when 'yes'."
-                    if app_config.runtime().completeness_check else ""
+            passages = app_synthesis.format_passages(sources)
+            # The prompt, the streamed call and the parsing all live in
+            # synthesis.py so the evaluation's forced-pairing control runs
+            # this identical step over a passage set of its choosing.
+            try:
+                synth = app_synthesis.synthesise(
+                    query, sources,
+                    model=getattr(_pi, "SYNTHESIS_MODEL", _pi.MODEL),
+                    client=_pi.make_client(_pi.OLLAMA_URLS[0]),
+                    should_cancel=_chat_cancel.is_set,
                 )
-            )
-            client = _pi.make_client(_pi.OLLAMA_URLS[0])
-            # Streamed so a cancel can land mid-answer: breaking out of the
-            # iterator closes the connection and Ollama stops generating.
-            # (The UI still receives the answer in one piece — this is about
-            # being able to STOP, not about showing tokens as they arrive.)
-            chunks, prompt_eval = [], 0
-            for part in client.chat(
-                model=getattr(_pi, "SYNTHESIS_MODEL", _pi.MODEL),
-                messages=[{"role": "user", "content": prompt}],
-                options=app_config.chat_options("agent"),
-                keep_alive=app_config.keep_alive(),
-                stream=True,
-            ):
-                if _chat_cancel.is_set():
-                    raise ChatCancelled()
-                chunks.append((part.get("message") or {}).get("content") or "")
-                prompt_eval = int(part.get("prompt_eval_count") or prompt_eval)
-            app_tokens.observe(prompt, prompt_eval)
-            answer_text = "".join(chunks)
-            # Strip thought blocks
-            answer_text = re.sub(r"<thought>.*?(</thought>|$)", "", answer_text, flags=re.S).strip()
-            sections = _parse_answer_sections(answer_text)
+            except app_synthesis.SynthesisCancelled:
+                raise ChatCancelled()
+            answer_text = synth.answer_text
+            sections = synth.sections
+            synthesis_ms = synth.ms
 
         if cached is None:
             _cache.put(cache_key, query=query, results=results,
@@ -2549,10 +2513,14 @@ def chat(req: ChatRequest):
                              "thread": []}
             _active_run_id = run_id
 
-        cited = set(_cited_numbers(answer_text))
-        valid_cited = {n for n in cited if 1 <= n <= len(sources)}
+        status, valid_cited = app_synthesis.grounding_status(answer_text, len(sources))
+        # The model's OWN claim about its evidence, raw string included. This
+        # is independent of `status` above and deliberately kept separate:
+        # `status` is mechanical (were sources cited?), this is a judgement
+        # (were they enough?), and the two can disagree.
+        judgment = app_synthesis.interpret_judgment(sections)
+        timing = _timing_payload(ctx, synthesis_ms)
         if not sources:
-            status = "insufficient_evidence"
             summary = "No passage in the library was judged relevant to this question."
             # With the pre-filter on, "nothing found" may be the filter's doing
             # rather than the library's. Saying which one it was is the
@@ -2565,14 +2533,22 @@ def chat(req: ChatRequest):
                     f"{'' if len(picked) == 1 else 's'} narrowed the search"
                     f"{' hard (Fast mode)' if mode == app_choices.ALL else ''}"
                     f" — clearing them searches the whole library.")
-        elif valid_cited:
-            status = "grounded"
+        elif status == "grounded":
             summary = (f"{len(valid_cited)} of {len(sources)} retrieved passages are "
                        f"cited inline; every source below was selected with a verbatim quote.")
         else:
-            status = "partially_grounded"
             summary = (f"{len(sources)} passages were retrieved, but the answer text "
                        f"carries no inline citations — verify against the sources below.")
+
+        if app_runlog.enabled():
+            app_runlog.append(app_runlog.build_record(
+                kind="chat", query=query, results=results, budget=budget,
+                timing=timing, index_dir=_index_dir(), run_id=run_id,
+                sources=sources, answer_text=answer_text,
+                grounding_status=status, judgment=judgment,
+                cited=sorted(valid_cited),
+                extra={"cache": cache_info, "tags": req.tags,
+                       "selected_answers": req.selected_answers}))
 
         return JSONResponse({
             "query": query,
@@ -2582,6 +2558,8 @@ def chat(req: ChatRequest):
             # here, by a whitelist written when there were only four.
             "answer": {"content": answer_text, **sections},
             "grounding": {"status": status, "summary": summary, "sources": sources},
+            "judgment": judgment,
+            "timing": timing,
             "budget": budget,
             "choices": _choice_payload(results, req.selected_answers,
                                        req.selection_mode),
