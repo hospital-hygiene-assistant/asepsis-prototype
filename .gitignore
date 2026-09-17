@@ -89,3 +89,16 @@ htmlcov/
 #                          This is an application, not a library: the lock
 #                          file is what makes a teammate's build reproducible.
 # ═══════════════════════════════════════════════════════════════════
+
+# Golden eval labels: which page answers which question. Derived data —
+# regenerate with `python3 evaluation/golden_from_csv.py <questions.csv>`.
+# Committing it would publish exactly which pages a question set sampled.
+knowledge_base/.golden.json
+
+# MinerU ingest working area and its source-folder setting. Crops are
+# regenerable from the PDF in seconds; captions.json is 20 minutes of vision
+# model per document and is hash-keyed, so it is kept — the same split as
+# .betteringest_out/.
+/.mineru_out/*
+!/.mineru_out/captions.json
+/.mineru.json

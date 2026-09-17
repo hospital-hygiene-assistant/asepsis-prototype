@@ -217,8 +217,14 @@ def block_text(block: Block, textpage, page_height: float, ocr_scale: float = 2.
     txt = textpage.get_text_bounded(
         left=x0 * s, bottom=page_height - y1 * s, right=x1 * s, top=page_height - y0 * s)
     txt = txt.replace("\x02", "").replace("\xad", "")     # discretionary/soft hyphens
-    txt = " ".join(txt.split())
-    return re.sub(r"(\w)-\s(\w)", r"\1\2", txt)           # join line-break hyphenation
+    # Join hyphenation across a LINE BREAK, and do it BEFORE newlines collapse
+    # into spaces.  Afterwards "infec-\ntion" and "low- and" are indistinguishable,
+    # and the old `(\w)-\s(\w)` rule glued both: measured on one WHO report, it
+    # repaired 5 real line-break hyphenations and corrupted 29 suspended ones
+    # ("low- and" -> "lowand", "MDR- and" -> "MDRand" x26), which silently
+    # breaks any query quoting those words.
+    txt = re.sub(r"(\w)-\r?\n(\w)", r"\1\2", txt)
+    return " ".join(txt.split())
 
 
 # "Figure 3", "Fig. 3", "Table 1", "Tab 2" → (type, number) mention in prose
