@@ -38,7 +38,7 @@ from typing import Optional
 from evaluation.common import (Query, append_jsonl, derive_record, file_sha256,
                                load_queries, load_records)
 
-DEFAULT_SERVER = "http://127.0.0.1:8765"
+DEFAULT_SERVER = "http://127.0.0.1:8791"
 DEFERRED_OUTCOMES = {"deferred", "deferred_judged_relevant"}
 
 

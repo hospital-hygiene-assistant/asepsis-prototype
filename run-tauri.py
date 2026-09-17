@@ -5,7 +5,7 @@ One-click launcher for the Asepsis Prototype.
   python3 run-tauri.py
 
 Runs the full pipeline (ingest → index) if needed, starts the Python backend
-on localhost:8765, then opens a native Tauri window or falls back to the browser.
+on localhost:8791, then opens a native Tauri window or falls back to the browser.
 """
 
 import os
@@ -22,7 +22,7 @@ TAURI_DIR = ROOT / "tauri-app"
 KB_DIR    = ROOT / "knowledge_base"
 INDEX_DIR = ROOT / "index"
 DOCS_DIR  = ROOT / "docs"
-PORT      = 8765
+PORT      = 8791
 URL       = f"http://127.0.0.1:{PORT}"
 
 

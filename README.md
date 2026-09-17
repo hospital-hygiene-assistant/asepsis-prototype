@@ -64,11 +64,11 @@ the same moment is described from two angles:
 ## Two views, one timeline
 
 The application is a **Tauri desktop window** (a WKWebView) that loads a UI served by a
-**local FastAPI backend** on `http://127.0.0.1:8765`. The same UI runs in a normal
+**local FastAPI backend** on `http://127.0.0.1:8791`. The same UI runs in a normal
 browser if Tauri isn't installed.
 
 ```
-┌─────────────────────────────┐        HTTP (localhost:8765)        ┌──────────────────────────────┐
+┌─────────────────────────────┐        HTTP (localhost:8791)        ┌──────────────────────────────┐
 │        FRONTEND              │  ───────  GET / , /api/* ────────▶  │          BACKEND               │
 │  Tauri WKWebView / browser   │                                     │  FastAPI (tauri-app/server.py) │
 │  index.html · main.js · D3   │  ◀──────  JSON + live status ─────  │  pageindex.py (index + LLM)    │
@@ -87,7 +87,7 @@ backend owns the document index, the LLM calls, and all run state.
 |-------|------|-------|
 | Desktop shell | Tauri (WKWebView) | `tauri-app/src-tauri/` |
 | UI | HTML + vanilla JS + D3 v7 (vendored offline) | `tauri-app/ui/` |
-| Server | FastAPI + Uvicorn, port `8765` | `tauri-app/server.py` |
+| Server | FastAPI + Uvicorn, port `8791` | `tauri-app/server.py` |
 | Index + retrieval | Deterministic heading parser + LLM retrieval | `pageindex.py` |
 | LLM runtime | Ollama, model `gemma3:4b` | pool on `11434+`, explainer on `11500` |
 | Pipeline modules | ingest / index / query strategies | `modules/` |
@@ -108,7 +108,7 @@ Both phases run in parallel across the configured Ollama instances.
 
 ⚙️ **Backend**
 - `run-tauri.py` installs Python deps if missing, then **runs the pipeline only if needed**: ingest (`docs/ → knowledge_base/`) if the knowledge base is stale, and index (`knowledge_base/ → index/*.json`) if any document is unindexed.
-- Starts FastAPI on `127.0.0.1:8765` and waits until it responds, then opens the window pointing at it.
+- Starts FastAPI on `127.0.0.1:8791` and waits until it responds, then opens the window pointing at it.
 - **Outcome:** the server is up; document trees exist as `index/<doc>.json`. No LLM work yet.
 - *Note:* every response is sent `Cache-Control: no-store`, and asset URLs are versioned by file mtime, so the webview never serves a stale UI across launches.
 

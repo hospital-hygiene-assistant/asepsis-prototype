@@ -3,7 +3,7 @@
   "description": "Default window capability",
   "windows": ["main"],
   "remote": {
-    "urls": ["http://localhost:8765"]
+    "urls": ["http://localhost:8791"]
   },
   "permissions": ["core:default", "dialog:default"]
 }

@@ -550,6 +550,11 @@ class ConfigRequest(BaseModel):
     agent_ctx: Optional[int] = None
     concurrency_per_instance: Optional[int] = None
     max_leaf_evals: Optional[int] = None
+    # 0 = weigh all sibling sections in one pruning call (default, faster);
+    # N = weigh them N at a time (slower, higher recall in the walk itself).
+    child_select_batch: Optional[int] = None
+    # Paint golden eval labels on passages. Off by default — see config.py.
+    eval_mode: Optional[bool] = None
     debug_cache_enabled: Optional[bool] = None
     completeness_check: Optional[bool] = None
 
@@ -567,6 +572,8 @@ def post_config(req: ConfigRequest):
         agent_ctx=req.agent_ctx,
         concurrency_per_instance=req.concurrency_per_instance,
         max_leaf_evals=req.max_leaf_evals,
+        child_select_batch=req.child_select_batch,
+        eval_mode=req.eval_mode,
         debug_cache_enabled=req.debug_cache_enabled,
         completeness_check=req.completeness_check,
     )
@@ -2632,4 +2639,4 @@ def _eval_test(test, results):
 
 
 if __name__ == "__main__":
-    uvicorn.run(app, host="127.0.0.1", port=8765, log_level="warning")
+    uvicorn.run(app, host="127.0.0.1", port=8791, log_level="warning")
