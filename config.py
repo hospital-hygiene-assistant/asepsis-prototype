@@ -34,8 +34,12 @@ INDEX_FORMAT_VERSION = 2
 # Bumped per-prompt whenever wording changes, so summaries, facet precomputes
 # and debug-cache entries all invalidate correctly.
 PROMPT_VERSIONS: dict[str, int] = {
-    "leaf_summary": 1,
-    "section_summary": 1,
+    "leaf_summary": 2,  # bumped: summaries must carry headline figures/dates,
+                        # or a factoid query prunes the branch that answers it
+    "section_summary": 3,  # bumped: roll-ups must carry their parts' headline
+                           # figures, or the walk prunes the branch that
+                           # answers; and must account for prose, real
+                           # tables/figures and likely-icon groups separately
     "child_select": 2,  # bumped: multi-part queries must not drop a part
     "leaf_eval": 2,     # bumped: judge CONTRIBUTION, not whole-query answering
     "explain": 2,       # bumped: same criterion as the evaluator
@@ -123,6 +127,28 @@ class RuntimeConfig:
     concurrency_per_instance: int = 4
     keep_alive: str = "10m"
     max_leaf_evals: int = 400  # wall-clock guard, independent of the token budget
+    # How many subsections the pruner weighs in ONE call. Two modes:
+    #
+    #   0 (default) — all siblings in a single call. The model sees the whole
+    #     comparison and keeps the best few: measured on the BPPL report, 19
+    #     sections in, 2-3 out. Fast.
+    #   N > 0 — the list is split into batches of N, each judged on its own, so
+    #     a section that is the best of its batch survives even when it would
+    #     not place in the top three of nineteen. Higher recall in the walk.
+    #
+    # Measured on the five queries whose branch the walk lost (BPPL, 2026-09-17):
+    # batching recovered 2 of 5 into the walk and cost 2.7x wall clock
+    # (54s -> 145s per query). END recall was identical either way, because
+    # lexical rehydration already caught all five. So 0 is the default: the
+    # cheap path matches the thorough one on lexically-rich questions, and the
+    # knob exists to show that rather than to assume it.
+    child_select_batch: int = 0
+    # Eval mode. Off by default: it paints the golden labels (which passage is
+    # supposed to answer which question) onto every surface that shows a
+    # passage. Useful when measuring retrieval, wrong the rest of the time —
+    # a human judging an answer must not be shown where the answer was meant
+    # to come from before they judge it.
+    eval_mode: bool = False
     debug_cache_enabled: bool = False
     # When on, the answering model reports whether the retrieved passages were
     # ENOUGH, and says what is missing when they were not. Off by default: it
@@ -295,6 +321,8 @@ def describe() -> dict:
         "min_ctx": MIN_CTX,
         "concurrency_per_instance": cfg.concurrency_per_instance,
         "max_leaf_evals": cfg.max_leaf_evals,
+        "child_select_batch": cfg.child_select_batch,
+        "eval_mode": cfg.eval_mode,
         "debug_cache_enabled": cfg.debug_cache_enabled,
         "completeness_check": cfg.completeness_check,
         "known_models": sorted(MODEL_SPECS),

@@ -674,8 +674,13 @@ CONTENT_PLACEHOLDER
 --- END ---
 
 Rules:
-- 1-2 sentences, under 50 words.
+- 1-3 sentences, under 80 words.
 - Name the specific topics, entities, drugs, values or conditions covered.
+- CARRY THE PASSAGE'S DISTINCTIVE FACTS OVER VERBATIM: headline figures and
+  statistics, dates and years, quantities, thresholds, percentages, named
+  organisms, drugs and studies. A reader must be able to tell from the
+  summary alone that a question about one of those numbers is answered here.
+  Prefer the passage's own wording for them over a paraphrase.
 - Describe the content only. Do not evaluate it, do not answer any question,
   do not add commentary.
 - Plain text. No markdown, no bullet points, no preamble.
@@ -693,10 +698,24 @@ CHILDREN_PLACEHOLDER
 --- END ---
 
 Rules:
-- 1-2 sentences, under 60 words.
+- 2-4 sentences, under 110 words.
 - State the range of topics this section covers, specifically enough that a
   reader could tell whether an answer to a question is likely to be inside it.
 - Cover the breadth of the parts; do not fixate on the first one.
+- ACCOUNT FOR EACH KIND OF PART IN TURN, skipping any that are absent:
+    1. the section's own prose — what it says;
+    2. its tables and figures — what they show and what can be looked up in
+       them, kept distinct from the prose;
+    3. last, and only as a short closing clause, any part labelled as likely
+       icons or broken infographics.
+  Never present that last group as figures. Nothing in it has been described,
+  so describing it invents content that is not there — say only that the
+  section contains graphics of that kind.
+- CARRY THE PARTS' DISTINCTIVE FACTS UP: headline figures and statistics,
+  dates and years, quantities, thresholds, percentages, named organisms,
+  drugs and studies. This summary is what decides whether the whole branch
+  is opened at all, so a fact dropped here is a fact nothing below can be
+  asked for. Keep the parts' own wording for them.
 - Plain text. No markdown, no bullet points, no preamble.
 
 Write the summary now:"""
@@ -1192,6 +1211,61 @@ def _chat_call(client: ollama.Client, model: str, prompt: str, kind: str):
         return client.chat(**kwargs)
 
 
+def _repair_json(raw: str) -> str:
+    """Re-escape a model's stray quotes, and close what it left open.
+
+    The leaf evaluator asks for a VERBATIM quote from the passage, so any
+    passage containing a quotation mark — `referred to as the "global survey"`
+    — makes the model emit a string value with raw `"` inside it, and
+    json.loads fails on JSON the model was right to want to produce. The
+    passage is not malformed and neither is the intent; only the escaping is.
+
+    A `"` inside a string closes it only when the next meaningful character
+    ends a value (`,`, `:`, `}`, `]`, or end of input); anywhere else it is a
+    stray quote and gets escaped. Raw newlines inside strings are escaped for
+    the same reason. A response cut off mid-string is closed, and any open
+    braces or brackets are balanced, so a truncated answer degrades to a
+    partial object rather than to nothing.
+    """
+    out: list[str] = []
+    closers: list[str] = []
+    in_string = escaped = False
+    n = len(raw)
+    for i, ch in enumerate(raw):
+        if in_string:
+            if escaped:
+                out.append(ch)
+                escaped = False
+            elif ch == "\\":
+                out.append(ch)
+                escaped = True
+            elif ch == '"':
+                j = i + 1
+                while j < n and raw[j] in " \t\r\n":
+                    j += 1
+                if j >= n or raw[j] in ",:}]":
+                    out.append(ch)
+                    in_string = False
+                else:
+                    out.append('\\"')
+            elif ch in "\n\r\t":
+                out.append({"\n": "\\n", "\r": "\\r", "\t": "\\t"}[ch])
+            else:
+                out.append(ch)
+        else:
+            if ch == '"':
+                in_string = True
+            elif ch in "{[":
+                closers.append("}" if ch == "{" else "]")
+            elif ch in "}]" and closers:
+                closers.pop()
+            out.append(ch)
+    if in_string:
+        out.append('"')
+    out.extend(reversed(closers))
+    return "".join(out)
+
+
 def _parse_json_response(raw: str) -> object:
     raw = raw.strip()
     raw = re.sub(r"<think>.*?</think>", "", raw, flags=re.DOTALL).strip()
@@ -1201,6 +1275,18 @@ def _parse_json_response(raw: str) -> object:
     raw = raw.replace("“", '"').replace("”", '"').replace("‘", "'").replace("’", "'")
     try:
         data = json.loads(raw)
+        if isinstance(data, dict):
+            for v in data.values():
+                if isinstance(v, list):
+                    return v
+        return data
+    except json.JSONDecodeError:
+        pass
+    # Repair before the regex fallbacks: those match the FIRST balanced-looking
+    # span, which on a stray-quote response is a truncated prefix of the object
+    # — it parses, so the real content is silently thrown away.
+    try:
+        data = json.loads(_repair_json(raw))
         if isinstance(data, dict):
             for v in data.values():
                 if isinstance(v, list):
@@ -1522,21 +1608,43 @@ def _format_children_block(children: list["PageNode"]) -> str:
     return "\n".join(lines)
 
 
-def _child_batches(children: list["PageNode"], breadcrumb: str, query: str) -> list[list["PageNode"]]:
-    """Split a child list into groups that each fit the retrieval window.
+# How many subsections the selector may weigh in one call.
+#
+# The prompt asks the model to COMPARE the children against each other, and a
+# comparison over a long list collapses to "pick the best few" however loudly
+# the rules ask for recall.  Measured on the BPPL report: the root offers 19
+# sections and 2-3 survive, and four of the five queries whose answer the walk
+# lost died in that single decision.  Capping the list keeps each judgement a
+# local one, so a section that is the best of its group survives even when it
+# would not have placed in the top three of nineteen.
+#
+# It costs calls: 19 children become 4 sequential calls instead of 1.  They
+# cannot be parallelised — _select_children already runs inside the shared
+# pool and nesting it deadlocks (tests/test_runcontext.py) — so this is real
+# latency at high-fan-out nodes, traded for recall.
+# The batch size used when batching is switched ON; the mode itself lives in
+# the runtime config (`child_select_batch`), 0 meaning "compare all at once".
+CHILD_SELECT_MAX_PER_CALL = 5
 
-    Splitting costs the model its full comparative view, so it only happens
-    when the alternative is an overflowing prompt.
+
+def _child_batches(children: list["PageNode"], breadcrumb: str, query: str) -> list[list["PageNode"]]:
+    """Split a child list into groups the selector can weigh fairly.
+
+    Two limits, whichever bites first: the retrieval window, and
+    CHILD_SELECT_MAX_PER_CALL.  Splitting does cost the model its full
+    comparative view — but at high fan-out that view is what over-prunes, so
+    the loss is the point rather than a side effect.
     """
     budget = app_config.runtime().resolved_retrieval_ctx()
     overhead = app_tokens.estimate_tokens(CHILD_SELECT_PROMPT + breadcrumb + query) + 512
     available = max(256, budget - overhead)
 
     batches, current, used = [], [], 0
+    cap = app_config.runtime().child_select_batch or len(children) or 1
     for child in children:
         cost = app_tokens.estimate_tokens(
             f"{child.node_id}{child.title}{child.summary or ''}") + 8
-        if current and used + cost > available:
+        if current and (used + cost > available or len(current) >= cap):
             batches.append(current)
             current, used = [], 0
         current.append(child)
@@ -1793,6 +1901,69 @@ class DocCandidates:
     choice_filter: dict = field(default_factory=dict)
 
 
+# How many pruned leaves a strong lexical match may reinstate, per document.
+# Small on purpose: this is a safety net for the summary walk's blind spot,
+# not a second retrieval strategy competing with it.
+LEXICAL_RESCUE_LEAVES = 3
+
+
+def _rehydrate_pruned_leaves(
+    leaves: list["PageNode"], candidates: list["PageNode"], query: str,
+    node_meta: dict, ctx: Optional[RunContext] = None,
+) -> list["PageNode"]:
+    """Reinstate the best lexical matches among the leaves pruning threw away.
+
+    The tree walk judges a section on its SUMMARY, and a summary is lossy by
+    construction. A passage opening "associated with an estimated 4.95 million
+    deaths in 2019" can be summarised as "categorizes pathogens into priority
+    groups" — and then a query quoting that number loses not just the leaf but
+    every leaf under the same ancestor, because one decision at the top prunes
+    the whole branch. Nothing downstream could recover it: BM25 only ever
+    ranked the leaves that already survived.
+
+    So score every leaf against the query, kept or not, and put back the few
+    dropped ones that match strongly. It costs no LLM call, and it covers
+    exactly the factoid and verbatim queries the summary walk is worst at.
+
+    Returns the reinstated leaves (possibly empty); `candidates` is untouched.
+    """
+    if not leaves:
+        return []
+    kept = {leaf.node_id for leaf in candidates}
+    dropped = [leaf for leaf in leaves if leaf.node_id not in kept]
+    if not dropped:
+        return []
+
+    rescued: list["PageNode"] = []
+    for scored in ranking.rank(dropped, query, text_of=lambda leaf: (
+            f"{leaf.title}\n{leaf.summary or ''}\n{leaf.content or ''}")):
+        if scored.score <= 0 or len(rescued) >= LEXICAL_RESCUE_LEAVES:
+            break
+        leaf = scored.item
+        reason = (f"Rehydrated by lexical match (BM25 score "
+                  f"{scored.score:.2f}): the summary-based walk pruned this "
+                  f"passage, but its text matches the query strongly — "
+                  f"re-queued for evaluation, not admitted.")
+        # NO "relevant" key. retrieve() returns exactly the leaves whose meta
+        # says relevant, so setting it here would admit the passage to the
+        # answer without any model having read it — which is what happens
+        # whenever evaluation never reaches it (budget exhausted, deferred).
+        # Rehydrating puts the leaf back in the QUEUE; the evaluator still
+        # decides, the same as for every leaf the walk kept.
+        node_meta[leaf.node_id] = {
+            "status": "kept", "reason": reason,
+            "rehydrated": True, "bm25_score": round(scored.score, 4),
+        }
+        if ctx is not None:
+            ctx.mark(leaf.node_id, "kept", reason)
+            # Pruning already counted this leaf as finished; evaluation is
+            # about to count it again. Give the tally back so progress does
+            # not run past its own total.
+            ctx.inc_done(-1)
+        rescued.append(leaf)
+    return rescued
+
+
 def prune_document(doc_name: str, query: str, ctx: Optional[RunContext] = None,
                    selected_answers: Optional[list[str]] = None,
                    selection_mode: str = choices.ANY) -> DocCandidates:
@@ -1898,6 +2069,13 @@ def prune_document(doc_name: str, query: str, ctx: Optional[RunContext] = None,
                                         node_assignment, node_meta, ctx=ctx)
         print(f"  [prune] {doc_name}: {len(candidates)}/{len(leaves)} leaves after pruning",
               file=sys.stderr)
+        rescued = _rehydrate_pruned_leaves(leaves, candidates, query,
+                                           node_meta, ctx=ctx)
+        if rescued:
+            candidates = candidates + rescued
+            print(f"  [rehydrate] {doc_name}: {len(rescued)} leaf(s) re-queued "
+                  f"by lexical match: {', '.join(l.node_id for l in rescued)}",
+                  file=sys.stderr)
 
     return DocCandidates(doc_name, nodes, leaves, parent_map, nodes_by_id,
                          node_assignment, candidates, node_meta, choice_tags,
@@ -1983,6 +2161,15 @@ def evaluate_ranked(
             committed += 1
             meta["bm25_score"] = round(scored.score, 4)
             meta["bm25_rank"] = scored.rank
+            # Carry forward the fact that pruning dropped this leaf and a
+            # lexical match put it back. The evaluator returns a fresh meta
+            # dict, so assigning it wholesale would erase the only record of
+            # WHY the passage is in play — and a rescued passage is exactly
+            # the one whose provenance a reader needs.
+            prior = doc.node_meta.get(node_id) or {}
+            if prior.get("rehydrated"):
+                meta["rehydrated"] = True
+                meta["rehydrate_reason"] = prior.get("reason", "")
             doc.node_meta[node_id] = meta
             ctx.inc_done()
             evaluated += 1

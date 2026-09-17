@@ -50,23 +50,40 @@ def _prune(tree, recorder, response=None):
 
 
 class TestBatching:
-    def test_one_call_per_parent_not_per_node(self, fake_ollama):
-        """6 siblings under one parent used to cost 6 calls."""
-        tree = [_section("root", [_leaf(i) for i in range(6)])]
+    def test_one_call_per_batch_not_per_node(self, fake_ollama):
+        """N siblings under one parent cost one call per BATCH, never N.
+
+        Was one call per parent. The selector compares children against each
+        other, and that comparison collapses to "pick the best few" over a long
+        list, so the list is capped (CHILD_SELECT_MAX_PER_CALL) and a wide
+        fan-out now costs several calls — but still far fewer than one per node.
+        """
+        cap = pageindex.CHILD_SELECT_MAX_PER_CALL
+        app_config.update(child_select_batch=cap)
+        n = cap + 1
+        tree = [_section("root", [_leaf(i) for i in range(n)])]
         fake_ollama.default_response = _keep("root")
         _prune(tree, fake_ollama)
 
-        # One call for the root group, one for root's children.
-        fake_ollama.assert_count(2, "child-selection calls")
+        # 1 root call + ceil(n / cap) for root's children — not n.
+        expected = 1 + -(-n // cap)
+        fake_ollama.assert_count(expected, "child-selection calls")
+        assert expected < 1 + n
 
-    def test_all_siblings_appear_in_a_single_prompt(self, fake_ollama):
-        tree = [_section("root", [_leaf(i) for i in range(6)])]
-        fake_ollama.default_response = _keep("root", *[f"leaf-{i}" for i in range(6)])
+    def test_siblings_within_a_batch_are_compared_together(self, fake_ollama):
+        """Up to the cap, siblings are still weighed against each other.
+
+        The cap bounds the comparison; it does not remove it. A fan-out at or
+        below the cap must still go out as one prompt.
+        """
+        n = pageindex.CHILD_SELECT_MAX_PER_CALL
+        tree = [_section("root", [_leaf(i) for i in range(n)])]
+        fake_ollama.default_response = _keep("root", *[f"leaf-{i}" for i in range(n)])
         _prune(tree, fake_ollama)
 
         child_prompt = fake_ollama.prompts[1]
-        for i in range(6):
-            assert f"id=leaf-{i}" in child_prompt, "siblings must be compared together"
+        for i in range(n):
+            assert f"id=leaf-{i}" in child_prompt
 
     def test_prompt_carries_summaries_not_descendant_content(self, fake_ollama):
         deep = _section("branch", [_leaf(1, content="SECRET-CONTENT-STRING")],
@@ -232,8 +249,28 @@ class TestChunking:
         assert len(batches) > 1
         assert seen == [c.node_id for c in children]
 
-    def test_small_fanout_is_a_single_batch(self, fake_ollama):
-        children = [_leaf(i) for i in range(8)]
+    def test_fanout_at_the_cap_is_a_single_batch(self, fake_ollama):
+        children = [_leaf(i) for i in range(pageindex.CHILD_SELECT_MAX_PER_CALL)]
+        assert len(pageindex._child_batches(children, "crumb", "query")) == 1
+
+    def test_no_batch_exceeds_the_cap_when_batching_is_on(self, fake_ollama):
+        cap = pageindex.CHILD_SELECT_MAX_PER_CALL
+        app_config.update(child_select_batch=cap)
+        children = [_leaf(i) for i in range(19)]        # the BPPL root fan-out
+        batches = pageindex._child_batches(children, "crumb", "query")
+        assert all(len(b) <= cap for b in batches)
+        assert [c.node_id for b in batches for c in b] == [c.node_id for c in children]
+
+    def test_default_mode_weighs_every_sibling_in_one_call(self, fake_ollama):
+        """0 is the default: all siblings compared at once.
+
+        Batching recovered 2 of 5 lost branches and cost 2.7x wall clock, with
+        no change to end recall because rehydration already caught all five —
+        so the cheap mode ships on, and the knob exists to reproduce that
+        comparison rather than to be assumed correct.
+        """
+        assert app_config.runtime().child_select_batch == 0
+        children = [_leaf(i) for i in range(19)]
         assert len(pageindex._child_batches(children, "crumb", "query")) == 1
 
     def test_union_across_batches(self, fake_ollama):
