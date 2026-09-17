@@ -1,0 +1,482 @@
+{
+  "knowledge_base/.sources.json": {
+    "pdf": "/Users/fede/Desktop/VSCODEProjects/asepsis-prototype/knowledge_base/sources/2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_Prevention_and_Control_Programmes_2026-09-11.pdf",
+    "ocr_scale": 2.0,
+    "module": "mineru_json",
+    "assets": [
+      {
+        "asset_id": "table_1",
+        "type": "table",
+        "number": 1,
+        "caption": "Acknowledgement of financial support — Table 1",
+        "page": 6,
+        "image": "/Users/fede/Desktop/VSCODEProjects/asepsis-prototype/.mineru_out/2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_Prevention_and_Control_Programmes_2026-09-11/assets/table_1.png",
+        "bbox": [
+          92.9,
+          362.1,
+          574.4,
+          1100.0
+        ],
+        "sections": [
+          "Acknowledgement of financial support"
+        ],
+        "description": "This table functions as an index linking various acronyms related to antimicrobial resistance (AMR), healthcare quality, research methodology, and infection control. It serves as a reference for specialized terminology covering topics such as systematic reviews (PRISMA, SIGHT), guidelines development (GRADE, PICO), infection management (IPC, SSI, WASH), and global health organizations (WHO). A reader can use this list to look up the definitions and context of specific terms used in literature concerning healthcare and antimicrobial resistance.",
+        "table_markdown": "| AMR | antimicrobial resistance |\n| --- | --- |\n| CINAHL | Cumulative Index to Nursing and Allied Health |\n|  | Literature |\n| EMBASE | Excerpta Medica Database |\n| EPOC | Effective practice and organisation of care |\n| GDG | Guidelines Development Group |\n| GRADE | Grading of Recommendations Assessment, |\n|  | Development and Evaluation |\n| HAI ICROMS | health care-associated infection |\n|  | Integrated quality criteria for review of multiple study designs |\n| ICU | intensive care unit |\n| IHR | International Health Regulations |\n| IPC | infection prevention and control |\n| LMICs | low- and middle-income countries |\n| MRSA | methicillin-resistant Staphylococcus aureus |\n| PICO | Population (P), intervention (I), comparator (C) and |\n| PRISMA | outcome(s) (0) |\n|  | Preferred reporting items for systematic reviews and |\n| RCT | meta-analyses |\n| SDG | randomized controlled trial |\n|  | Sustainable Development Goals |\n| SIGHT | Systematic review and evidence-based guidance |\n|  | on organization of hospital infection control |\n| SSI | programmes |\n| UK | surgical site infections |\n|  | United Kingdom |\n| USA | United States of America |\n| WASH | Water sanitation and hygiene |\n| WHO | World Health Organization |"
+      },
+      {
+        "asset_id": "table_2",
+        "type": "table",
+        "number": 2,
+        "caption": "Table 1: Summary of IPC core components and key remarks",
+        "page": 11,
+        "image": "/Users/fede/Desktop/VSCODEProjects/asepsis-prototype/.mineru_out/2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_Prevention_and_Control_Programmes_2026-09-11/assets/table_2.png",
+        "bbox": [
+          108.7,
+          162.0,
+          1089.1,
+          1526.8
+        ],
+        "sections": [
+          "Guideline implementation"
+        ],
+        "description": "This table outlines specific recommendations for Infection Prevention and Control (IPC) programs, focusing on strategies to prevent Healthcare-Associated Infections (HAIs) and combat Antimicrobial Resistance (AMR). It details facility-level requirements, such as dedicated trained staff ratios in acute care settings, alongside national-level mandates for clearly defined IPC objectives and linked programs. Readers can use this data to understand the evidence-based requirements for establishing effective IPC policies at both local and national levels.",
+        "table_markdown": "| Corecomponent |  | Recommendationor good practicestatement |  |  |  | Key remarks |  |  |  | Strength ofrecommendation andquality of evidence |  |  |  |\n| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |\n| 1. IPC |  | 1a. Health care |  |  |  | • The organization of IPC programmes must have clearlydefined objectives based on local epidemiology andpriorities according to risk assessment and functions thatalign with and contribute to the prevention of HAl and thespread of AMR in health care.• It is critical for a functioning IPC programme to havededicated, trained professionals in every acute care facility.A minimum ratio of one full-time or equivalent infectionpreventionist (nurse or doctor) per 250 beds should beavailable. However, there was a strong opinion that a higherratio should be considered, for example, one infectionpreventionist per 100 beds, due to increasing patientacuity and complexity, as well as the multiple roles andresponsibilities of the modern preventionist.• Good quality microbiological laboratory support is a verycritical factor an effective IPC programme. |  |  |  | Strong,very low quality |  |  |  |\n| programmes |  | facility level |  |  |  |  |  |  |  |  |  |  |  |\n|  |  | The panel |  |  |  |  |  |  |  |  |  |  |  |\n|  |  | recommends thatan IPC programme |  |  |  |  |  |  |  |  | ap |  |  |\n|  |  | with a dedicated, |  |  |  |  |  |  |  |  |  |  |  |\n|  |  | trained team |  |  |  |  |  |  |  |  |  |  |  |\n|  |  | should be in place |  |  |  |  |  |  |  |  |  |  |  |\n|  |  | in each acute |  |  |  |  |  |  |  |  |  |  |  |\n|  |  | health care facility |  |  |  |  |  |  |  |  |  |  |  |\n|  |  | for the purpose of |  |  |  |  |  |  |  |  |  |  |  |\n|  |  | preventing HAl and |  |  |  |  |  |  |  |  |  |  |  |\n|  |  | combating AMR |  |  |  |  |  |  |  |  |  |  |  |\n|  |  | through IPC good |  |  |  |  |  |  |  |  |  |  |  |\n|  |  | practices. |  |  |  |  |  |  |  |  |  |  |  |\n|  |  |  |  |  |  |  |  |  |  |  |  |  |  |\n|  |  | 1b. National level |  |  |  |  |  |  |  |  |  |  |  |\n|  |  | Active, stand- |  |  |  |  |  |  |  |  |  |  |  |\n|  |  | alone, national IPCprogrammes with |  |  |  |  |  |  |  |  |  |  |  |\n|  |  | clearly defined |  |  |  |  |  |  |  |  |  |  |  |\n|  |  | objectives, functions |  |  |  |  |  |  |  |  |  |  |  |\n|  |  | and activities shouldbe establishedfor the purposeof preventing HAIand combating |  |  |  |  |  |  |  |  |  |  |  |\n|  |  |  |  |  |  | and combating |  |  |  |  |  |  |  |\n|  |  | AMR through IPC |  |  |  |  |  |  |  |  |  |  |  |\n|  |  | good practices.National IPC |  |  |  |  |  |  |  |  |  |  |  |\n|  |  | programmes should |  |  |  |  |  |  |  |  |  |  |  |\n|  |  | be linked with other |  |  |  |  |  |  |  |  |  |  |  |\n|  |  | relevant national |  |  |  |  |  |  |  |  |  |  |  |\n|  |  | programmesand professional |  |  |  |  |  |  |  |  |  |  |  |"
+      },
+      {
+        "asset_id": "table_3",
+        "type": "table",
+        "number": 3,
+        "caption": "Guideline implementation — Table 3",
+        "page": 12,
+        "image": "/Users/fede/Desktop/VSCODEProjects/asepsis-prototype/.mineru_out/2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_Prevention_and_Control_Programmes_2026-09-11/assets/table_3.png",
+        "bbox": [
+          97.2,
+          161.3,
+          1077.5,
+          1539.1
+        ],
+        "sections": [
+          "Guideline implementation"
+        ],
+        "description": "This table outlines recommendations for developing and implementing effective Infection Prevention and Control (IPC) guidelines at both national and health care facility levels. It details specific actions, such as developing evidence-based guidelines, providing targeted education and training for healthcare workers, and monitoring adherence to ensure successful implementation. The information is useful for understanding the necessary strategies and infrastructure required to reduce Healthcare-Associated Infections (HAI) and Antimicrobial Resistance (AMR).",
+        "table_markdown": "| Corecomponent | Recommendationor good practicestatement |  | Key remarks | Strength ofrecommendation andquality of evidence |  |\n| --- | --- | --- | --- | --- | --- |\n| 2. IPC | The panel |  | Health care facility• Appropriate IPC expertise is necessary to write or adaptand adopt a guideline both at the national and health carefacility level. Guidelines should be evidence-based andreference international or national standards. Adaptation tolocal conditions should be considered for the most effectiveuptake and implementation.• Monitoring adherence to guideline implementation isessential.National level• Developing relevant evidence-based national IPC guidelinesand related implementation strategies is one of the keyfunctions of the national IPC programme.• The national IPC programme should also ensure that thenecessary infrastructures and supplies to enable guidelineimplementation are in place.The national IPC programme should support and mandatehealth care workers' education and training focused on theguideline recommendations. | Strong,very low quality |  |\n| guidelines | recommends thatevidence-basedguidelines shouldbe developed andimplemented for thepurpose of reducingHAI and AMR. Theeducation and |  |  |  |  |\n|  |  |  |  |  |  |\n|  |  |  |  |  |  |\n|  |  |  |  |  | education a |\n|  | training of relevant |  |  |  |  |\n|  | health care workers |  |  |  |  |\n|  | on the guidelinerecommendationsand the monitoringof adherence |  |  |  |  |\n|  |  |  |  |  |  |\n|  |  |  |  |  |  |\n|  | recommendations |  |  |  |  |\n|  | should be undertaken |  |  |  |  |\n|  | to achieve successfulimplementation |  |  |  |  |\n| 3. IPC | 3a. Health carefacility level |  | IPC education and training should be a part of an overallhealth facility education strategy, including new employeeorientation and the provision of continuous educationalopportunities for existing staff, regardless of level andposition (for example, including also senior administrativeand housekeeping staff).• Three categories of human resources were identified astargets for IPC training and requiring different strategiesand training contents: IPC specialists, all health careworkers involved in service delivery and patient care,and other personnel that support health service delivery(administrative and managerial staff, auxiliary service staff,cleaners, etc.).Periodic evaluations of both the effectiveness of trainingprogrammes and assessment of staff knowledge shouldbe undertaken on a routine basis. | Strong,moderate quality |  |\n| education |  |  |  |  |  |\n| and training | The panelrecommends thatIPC education shouldbe in place for allhealth care workersby utilizing team- andtask-based strategiesthat are participatoryand include bedsideand simulationtraining to reduce therisk of HAI and AMR. |  |  |  |  |\n|  | 3b. National levelThe national IPCprogramme should |  | • The IPC national team plays a key role to support and Good practicemake IPC training happen at the facility levei. statementTo support the development and maintenance of a skilled,knowledgeable health workforce, national pregraduateand postgraduate IPC curricula should be developed incollaboration with local academic institutions.• In the curricula development process, it is advisableto refer to international curricula and networks forspecialized IPC programmes and to adapt these documentsand approaches to national needs and local availableresources.The national IPC programme should provide guidanceand recommendations for in-service training to be rolledout at the facility level according to detailed IPC corecompetencies for health care workers and covering allprofessional categories listed in core component 3a. |  |  |\n|  | support the educationand training of thehealth workforceas one of its corefunctions. |  |  |  |  |"
+      },
+      {
+        "asset_id": "table_4",
+        "type": "table",
+        "number": 4,
+        "caption": "Guideline implementation — Table 4",
+        "page": 13,
+        "image": "/Users/fede/Desktop/VSCODEProjects/asepsis-prototype/.mineru_out/2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_Prevention_and_Control_Programmes_2026-09-11/assets/table_4.png",
+        "bbox": [
+          111.6,
+          161.3,
+          1091.9,
+          1590.2
+        ],
+        "sections": [
+          "Guideline implementation"
+        ],
+        "description": "This table presents recommendations from a panel regarding surveillance systems for Healthcare-Associated Infections (HAIs) and Antimicrobial Resistance (AMR). It details specific guidance on implementing facility-based surveillance to inform infection prevention and control (IPC) interventions, as well as establishing national surveillance programs to detect outbreaks and inform antimicrobial policies. The data assesses the strength of these recommendations, noting that while the need for robust surveillance is strongly supported, the quality of evidence varies.",
+        "table_markdown": "| Corecomponent |  | Recommendationor good practicestatement |  | Key remarks | Strength ofrecommendation andquality of evidence |  |\n| --- | --- | --- | --- | --- | --- | --- |\n| 4. Surveillance |  | 4a. Health care |  |  |  |  |\n|  |  | facility level |  |  |  |  |\n|  |  | The panelrecommends that |  |  |  |  |\n|  |  |  |  |  |  |  |\n|  |  | facility-based HAIsurveillance shouldbe performed to guideIPC interventions anddetect outbreaks,including AMRsurveillance withtimely feedback of |  |  |  |  |\n|  |  |  |  | be performe |  |  |\n|  |  |  |  | IPC interver |  |  |\n|  |  |  |  | detect outbr |  |  |\n|  |  |  |  |  |  |  |\n|  |  | results to healthcare workers andstakeholders andthrough national |  |  |  |  |\n|  |  | 4b. National level National HAl surveillance systems feed in to general publicThe panel health capacity building and the strengthening of essentialrecommends public health functions. National surveillance programmesare also crucial for the early detection of some outbreaksthat nationalin which cases are described by the identification ofHAl surveillancethe pathogen concerned or a distinct AMR pattern.programmes andFurthermore, national microbiological data about HAlnetworks thataetiology and resistance patterns also provide informationinclude mechanismsrelevant for policies on the use of antimicrobials and otherfor timely dataAMR-related strategies and interventions.feedback and with theEstablishing a national HAl surveillance programmepotential to be usedfor benchmarking requires full support and engagement by governments andother respective authorities and the allocation of humanpurposes should beand financial resources.established to reduceNational surveillance should have clear objectives, aHAI and AMR.standardized set of case definitions, methods for detectinginfections (numerators) and the exposed population(denominators), a process for the analysis of data andreports and a method for evaluating the quality of the data. |  |  | Strong,very low quality |  |"
+      },
+      {
+        "asset_id": "table_5",
+        "type": "table",
+        "number": 5,
+        "caption": "Guideline implementation — Table 5",
+        "page": 14,
+        "image": "/Users/fede/Desktop/VSCODEProjects/asepsis-prototype/.mineru_out/2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_Prevention_and_Control_Programmes_2026-09-11/assets/table_5.png",
+        "bbox": [
+          98.6,
+          161.3,
+          1074.7,
+          1515.3
+        ],
+        "sections": [
+          "Guideline implementation"
+        ],
+        "description": "This table outlines recommendations from a panel regarding the implementation of multimodal strategies to improve Infection Prevention and Control (IPC) surveillance for Health-related Adverse Events (HAl) and Antimicrobial Resistance (AMR). It details requirements for national coordination, standardized definitions, laboratory capacity, and organizational culture change necessary for effective surveillance programs. Readers can use this information to understand the evidence base and implementation requirements for establishing effective national IPC surveillance initiatives.",
+        "table_markdown": "| Core component | Recommendation or good practice statement | Key remarks Clear regular reporting lines of HAl surveillance data from | Strength of recommendation and quality of evidence |\n| --- | --- | --- | --- |\n| 5. Multimodal strategies | 5a. Health care facility level The panel recommends that IPC activities using multimodal | the local facility to the national level should be established. International guidelines on HAl definitions are important, but it is the adaptation at country level that is critical for implementation. Microbiology and laboratory capacity and quality are |  |\n|  |  | critical for national and hospital-based HAl and AMR surveillance. Standardized definitions and laboratory methods should be adopted. Good quality microbiological support provided by at least one national reference laboratory is a critical factor for an effective national IPC surveillance programme. A national training programme for performing surveillance |  |\n|  |  | should be established to ensure the appropriate and consistent application of national surveillance guidelines and corresponding implementation toolkits. Surveillance data is needed to guide the development and implementation of effective control interventions. |  |\n|  |  | Successful multimodal interventions should be associated Strong, with an overall organizational culture change as low quality effective IPC can be a reflector of quality care, a positive organizational culture and an enhanced patient safety climate. Successful multimodal strategies include the involvement of champions or role models in several cases. |  |\n|  |  | Implementation of multimodal strategies within health care institutions needs to be linked with national quality aims and initiatives, including health care quality improvement initiatives or health facility accreditation bodies. The national approach to coordinating and supporting local (health facility level) multimodal interventions should be within the mandate of the national IPC programme |  |\n| The panel | strategies should be implemented to improve practices and reduce HAl and AMR. 5b. National level recommends that national IPC programmes should coordinate and facilitate the implementation of IPĆ activities through multimodal strategies on a nationwide or subnational level. |  | Strong, low quality |\n|  |  | and be considered within the context of other quality improvement programmes or health facility accreditation bodies. Ministry of health support and the necessary resources, including policies, regulations and tools, are essential for effective central coordination. This recommendation is to support facility level improvement. Successful multimodal interventions should be associated with overall cross-organizational culture change as effective IPC can be a reflector of quality care, a positive organizational culture and an enhanced patient safety climate. Strong consideration should be given to country adaptation of implementation strategies reported in the literature, as well as to feedback of results to key |  |"
+      },
+      {
+        "asset_id": "table_6",
+        "type": "table",
+        "number": 6,
+        "caption": "Guideline implementation — Table 6",
+        "page": 15,
+        "image": "/Users/fede/Desktop/VSCODEProjects/asepsis-prototype/.mineru_out/2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_Prevention_and_Control_Programmes_2026-09-11/assets/table_6.png",
+        "bbox": [
+          113.0,
+          161.3,
+          1093.4,
+          1322.4
+        ],
+        "sections": [
+          "Guideline implementation"
+        ],
+        "description": "This table outlines recommendations from a panel regarding the monitoring and evaluation of Infection Prevention and Control (IPC) practices in healthcare facilities to reduce Healthcare-Associated Infections (HAI) and Antimicrobial Resistance (AMR). The core recommendations emphasize establishing regular audits, providing timely feedback to staff and management, and implementing national monitoring programs based on indicators like hand hygiene compliance. Readers can use this information to understand the necessary steps for systematically assessing and improving IPC quality at both facility",
+        "table_markdown": "| Corecomponent |  | Recommendationor good practicestatement |  | Key remarks | Strength ofrecommendation andquality of evidence |  |\n| --- | --- | --- | --- | --- | --- | --- |\n| 6. Monitoring/ |  | 6a. Health care |  | Strong,low qualityychange or other process modification to improve thequality of care and practice with the goal of reducingthe risk of HAl and AMR spread. Monitoring andfeedback are also aimed at engaging stakeholders,creating partnerships and developing working groupsand networks.Sharing the audit results and providing feedback notonly with those being audited (individual change),but also with hospital management and senioradministration (organizational change) are criticalsteps. IPC teams and committees (or quality of carecommittees) should also be included as IPC carepractices are quality markers for these programmes.IPC programmes should be periodically evaluated toassess the extent to which the objectives are met, thegoals accomplished, whether the activities are beingperformed according to requirements and to identifyaspects that may need improvement identified viastandardized audits. Important information that maybe used for this purpose includes the results of theassessment of compliance with IPC practices, otherprocess indicators (for example, training activities),dedicated time by the IPC team and resource allocation. |  |  |\n| audit of IPC |  | facility level |  |  |  |  |\n| practices andfeedback |  | The panel |  |  |  |  |\n|  |  | feedb | recommends thatregular monitoring/audit and timelyfeedback of healthcare practicesaccording to IPC |  |  |  |\n|  |  | standards should be |  |  |  |  |\n|  |  | performed to prevent |  |  |  |  |\n|  |  | and control HAl and |  |  |  |  |\n|  |  | AMR at the health care |  |  |  |  |\n|  |  | facility level. Feedback |  |  |  |  |\n|  |  | should be provided |  |  |  |  |\n|  |  | to all audited personsand relevant staff. |  |  |  |  |\n|  |  |  |  |  |  |  |\n|  |  | 6b. National levelThe panelrecommends thata national IPCmonitoring andevaluation programmeshould be established |  | Regular monitoring and evaluation provides a Strong,systematic method to document the progress and moderate qualityimpact of national programmes in terms of definedindicators, for example, tracking hand hygieneimprovement as a key indicator, including hand hygienecompliance monitoring.National level monitoring and evaluation should have inplace mechanisms that:Provide regular reports on the state of the nationalgoals (outcomes and processes) and strategies.Regularly monitor and evaluate the WASH services,IPC activities and structure of the health carefacilities through audits or other officially recognizedmeans.Promote the evaluation of the performance of localIPC programmes in a non- punitive institutionalculture. |  |  |\n|  |  | to assess the extent |  |  |  |  |\n|  |  | to which standardsare being met andactivities are beingperformed accordingto the programme'sgoals and objectives. |  |  |  |  |\n|  |  |  |  |  |  |  |\n|  |  | Hand hygiene |  |  |  |  |\n|  |  | monitoring with |  |  |  |  |\n|  |  | feedback should be |  |  |  |  |\n|  |  | considered as a keyperformance indicatorat the national level. |  |  |  |  |"
+      },
+      {
+        "asset_id": "table_7",
+        "type": "table",
+        "number": 7,
+        "caption": "Guideline implementation — Table 7",
+        "page": 16,
+        "image": "/Users/fede/Desktop/VSCODEProjects/asepsis-prototype/.mineru_out/2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_Prevention_and_Control_Programmes_2026-09-11/assets/table_7.png",
+        "bbox": [
+          97.9,
+          159.8,
+          1077.5,
+          753.7
+        ],
+        "sections": [
+          "Guideline implementation"
+        ],
+        "description": "This table outlines recommendations for managing patient workload, staffing, and bed occupancy in healthcare facilities to reduce the risk of Healthcare-Associated Infections (HAI) and Antimicrobial Resistance (AMR). It recommends adhering to standards where bed capacity is limited and ensuring that health worker staffing levels are adequate to meet patient demand. Readers can look up guidelines on ward design and the use of methods like the WHO Workload Indicators of Staffing Need to optimize resource allocation.",
+        "table_markdown": "| Corecomponent |  | Recommendationor good practicestatement | Key remarks |  | Strength ofrecommendation andquality of evidence |  |\n| --- | --- | --- | --- | --- | --- | --- |\n| 7. Workload, |  | The panel | • Standards for bed occupancy should be one patient perbed with adequate spacing between patient beds andthat this should not be exceeded.Intended capacity may vary from original designs andacross facilities and countries. For these reasons,it was proposed that ward design regarding bedcapacity should be adhered to and in accordance withstandards. In exceptional circumstances where bedcapacity is exceeded, hospital management should actto ensure appropriate staffing levels that meet patientdemand and an adequate distance between beds.These principles apply to all units and departments withinpatient beds, including emergency departments.The WHO Workload Indicators of Staffing Need methodprovides health managers with a systematic way todetermine how many health workers of a particular type |  |  |  |\n| staffing and |  | recommends that the |  |  |  |  |\n| bed occupancy |  | following elements |  |  |  |  |\n| (acute health |  | should be adhered to |  |  |  |  |\n| care facility | care facility only) |  |  |  | in order to reduce therisk of HAl and thespread of AMR: |  |\n|  |  |  |  |  |  |  |\n|  |  |  |  |  | (1) bed occupancyshould not exceed thestandard capacity ofthe facility; |  |\n|  |  |  |  |  | (2) health care |  |\n|  |  | worker staffing levels |  |  |  |  |\n|  |  | should be adequately |  |  |  |  |\n|  |  | assigned according to |  |  |  |  |\n|  |  | patient workload. | are required to cope with the workload of a given health |  |  |  |"
+      },
+      {
+        "asset_id": "table_8",
+        "type": "table",
+        "number": 8,
+        "caption": "Guideline implementation — Table 8",
+        "page": 17,
+        "image": "/Users/fede/Desktop/VSCODEProjects/asepsis-prototype/.mineru_out/2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_Prevention_and_Control_Programmes_2026-09-11/assets/table_8.png",
+        "bbox": [
+          112.3,
+          159.1,
+          1090.5,
+          842.2
+        ],
+        "sections": [
+          "Guideline implementation"
+        ],
+        "description": "This table details recommendations regarding the built environment and infrastructure necessary for effective Infection Prevention and Control (IPC) programs in healthcare facilities. It outlines specific good practices, such as ensuring adequate WASH services, hygienic environments, and the availability of IPC materials and hand hygiene equipment at the point of care. The data provides context on these recommendations by referencing WHO standards and national program implementation, allowing readers to assess the strength of the proposed actions.",
+        "table_markdown": "| Corecomponent |  |  | Recommendationor good practicestatement | Key remarks | Strength ofrecommendation andquality of evidence |\n| --- | --- | --- | --- | --- | --- |\n| 8. Built |  |  | 8a. Patient care | An appropriate environment, WASH services and | Good practicestatement |\n| environment, |  |  | activities should | materials and equipment for IPC are a core componentof effective IPC programmes at health care facilities.Ensuring an adequate hygienic environment is theresponsibility of senior facility managers and localauthorities. However, the central government andnational IPC and WASH programmes also playan important role in developing standards andrecommending their implementation regardingadequate WASH services in health care facilities,the hygienic environment, and the availability of IPCmaterials and equipment at the point of care.WHO standards for drinking water quality, sanitationand environmental health in health care facilities shouldbe implemented. |  |\n| materials and |  |  | be undertaken in a |  |  |\n| equipment for |  |  | clean and/or hygienicenvironment thatfacilitates practicesrelated to theprevention and control |  |  |\n| IPC at the facilitylevel (acute |  |  |  |  |  |\n| health care |  |  |  |  |  |\n| facility only) |  |  |  |  |  |\n|  |  |  | of HAl, as well asAMR, including allelements around theWASH infrastructureand services andthe availability of |  |  |\n|  |  |  |  |  |  |\n|  |  |  |  |  |  |\n|  |  |  |  |  |  |\n|  |  |  |  |  |  |\n|  |  |  |  |  |  |\n|  |  |  | appropriate IPC |  |  |\n|  |  |  | materials andequipment. |  |  |\n|  |  |  |  |  |  |\n|  |  |  |  | 8b. The panelrecommends that | WHO standards for the adequate number andappropriate position of hand hygiene facilities should beimplemented in all health care facilities. |\n|  |  |  | materials and |  |  |\n|  |  |  | equipment to perform |  |  |\n|  |  |  | appropriate hand |  |  |\n|  |  |  | hygiene should bereadily available at the |  |  |\n|  |  |  | point of care. |  |  |"
+      },
+      {
+        "asset_id": "table_9",
+        "type": "table",
+        "number": 9,
+        "caption": "Table 4.1: SIGHT search stratified by dimension",
+        "page": 22,
+        "image": "/Users/fede/Desktop/VSCODEProjects/asepsis-prototype/.mineru_out/2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_Prevention_and_Control_Programmes_2026-09-11/assets/table_9.png",
+        "bbox": [
+          600.3,
+          788.3,
+          1077.5,
+          1159.0
+        ],
+        "sections": [
+          "4.6.1 Systematic review: facility level"
+        ],
+        "description": "This table outlines five thematic dimensions used to assess or structure programs related to Infection Prevention and Control (IPC). The dimensions cover critical areas including organizational arrangements, surveillance and outbreak management, health worker training, behavioral change in care quality, and local policies for isolation precautions. A reader can use this framework to evaluate the components and effectiveness of IPC implementation strategies.",
+        "table_markdown": "| Dimension no | Thematic area |\n| --- | --- |\n| 1 | Organizational and structural arrangements toimplement IPC programmes |\n| 2 | Targets and methods of HAl surveillance,outbreak management and the role of feedback |\n| 3 | Methods and effectiveness of educating andtraining health care workers |\n| 4 | Effectiveness of interventions on behaviouralchange and quality of care, particularly in thecontext of multimodal prevention strategies |\n| 5 | Overview and effectiveness of local policies andresources for standard and transmission-basedisolation precautions |"
+      },
+      {
+        "asset_id": "table_10",
+        "type": "table",
+        "number": 10,
+        "caption": "Table 4.2: Dimensions and corresponding components used for the SIGHT review update",
+        "page": 24,
+        "image": "/Users/fede/Desktop/VSCODEProjects/asepsis-prototype/.mineru_out/2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_Prevention_and_Control_Programmes_2026-09-11/assets/table_10.png",
+        "bbox": [
+          97.9,
+          218.1,
+          578.0,
+          1047.4
+        ],
+        "sections": [
+          "4.6.1 Systematic review: facility level"
+        ],
+        "description": "This table outlines nine critical dimensions for implementing effective infection prevention and control programs. The variables detail components such as organizational structure, surveillance methods, education strategies, behavior change interventions, and knowledge management within healthcare settings. It serves as a framework for assessing and improving the holistic approach to controlling healthcare-associated infections (HAIs).",
+        "table_markdown": "| Dimension N° | Components | Description |\n| --- | --- | --- |\n| 1 | Organization | Organizational andstructural arrangementsto implement infectionprevention and controlprogrammes, includingaccess to qualified infectioncontrol professionals andmanagement roles |\n|  | and structure |  |\n|  | of infection |  |\n|  | prevention |  |\n|  | and controlprogrammes |  |\n| 2 | Surveillance | Targets and methods ofHAl surveillance, outbreakmanagement and the role offeedback |\n| 3 | Education andtraining | Methods and effectiveness ofeducating and training healthcare workers |\n| 4 | Behaviour changestrategies | Effectiveness of interventionson behavioural changeand quality of care (that is,multimodal strategies) |\n| 5 | Standard andtransmission-basedprecautions | Overview and effectivenessof local policies andresources for standard andtransmission-based isolationprecautions |\n| 6 | Auditing | The process of auditing andits impact on HAls |\n| 7 | Patientparticipation | Patient empowerment andinvolvement in the preventionof HAls |\n| 8 | Target setting | Setting targets or goals andthe impact on HAl prevention |\n| 9 | Knowledgemanagement | A range of strategies toidentify, create and distributeinformation and data withinand outside of an institution |"
+      },
+      {
+        "asset_id": "table_11",
+        "type": "table",
+        "number": 11,
+        "caption": "ANNEX V A Holmes declaration of interests",
+        "page": 90,
+        "image": "/Users/fede/Desktop/VSCODEProjects/asepsis-prototype/.mineru_out/2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_Prevention_and_Control_Programmes_2026-09-11/assets/table_11.png",
+        "bbox": [
+          97.9,
+          381.5,
+          1077.5,
+          1407.3
+        ],
+        "sections": [
+          "ANNEX IV. External Peer Review Group"
+        ],
+        "description": "This table details various research projects focused primarily on antimicrobial resistance (AMR), infection management, and patient safety, spanning from 2013 to 2018. The data includes funding amounts ranging from £20,000 to over £749,000, along with the project names, principal investigators, funders, and start/end dates. A reader can use this information to track specific research grants, identify collaborative efforts in health science, and review the timelines of projects related to antibiotic stewardship.",
+        "table_markdown": "| Value | Project name | Principalinvestigator | Funder | Start | End |\n| --- | --- | --- | --- | --- | --- |\n| £101 611 | Networks for Excellence – Engineeringsolutions to AMR | Holmes | WellcomeTrust via ISSF | 01/10/2015 | 28/02/2017 |\n| £687 740 | NIHR i4i “EPIC IMPOC” – 'Enhancedpoint of care infection managementpolicy application in critical care andtherapeutics' | Holmes | NIHR | 05/08/2015 | 04/08/2018 |\n| £749 583 | Engineering, Physical, Natural Sciencesand Medicine Bridging Research inAntimicrobial resistance: Collaborationand Exchange (EMBRACE). | Toumazou/Holmes/Armstrong | EPSRC | 01/08/2015 | 31/07/2017 |\n| £50 000 | Collaborative in AMR: Life Science andEngineering, Scoping, Community-buildingand Engaging (COALESCE) | Holmes/Toumazou/Armstrong/ Young/Donaldson | EPSRCInstitutionalsponsorship | 01/06/2015 | 31/03/2016 |\n| £137 625 | Investigating stratified antimicrobials usefor improved management of infectionsand to minimise AMR: Through theintegration and application of enhanceduse of existing NHS data, advances indiagnostics technology, bacterial geneticsand clinical pharmacology | Holmes | BRC | 01/04/2015 | 31/03/2017 |\n| £30 000 | Reducing neonatal mortality andpaediatric infection through improvedpatient safety in Rwanda | Holmes | TropicalHealthEducationTrust | 01/03/2013 | 30/06/2015 |\n| £165 941 | Eleanor Murray Health Foundation SharePurpose | Holmes | HealthFoundation | 01/01/2013 | 31/12/2015 |\n| £117 843 | Health foundation spotlight on health care-associated infection | Holmes | HealthFoundation | 01/01/2013 | 15/03/2014 |\n| £456 042 | Patient Safety Translational ResearchCentre | Holmes | ICHNT /NIHR | 01/08/2012 | 31/07/2017 |\n| £20 000 | Enhances prescribing through CBR-basedImperial Antibiotic Prescribing Policysmartphone application (ENIAPP) | Holmes / Georgiou | ImperialCollege | 01/04/2013 | 31/03/2013 |\n| £7155 | Systematic review and meta-analysisof interventions to improve antibioticprescribing practices for hospitalinpatients | Holmes | CSO researchgrant | 01/03/2013 | 28/02/2015 |"
+      },
+      {
+        "asset_id": "figure_1",
+        "type": "figure",
+        "number": 1,
+        "caption": "ANNEX IV. External Peer Review Group — Figure 1",
+        "page": 91,
+        "image": "/Users/fede/Desktop/VSCODEProjects/asepsis-prototype/.mineru_out/2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_Prevention_and_Control_Programmes_2026-09-11/assets/figure_1.png",
+        "bbox": [
+          463.6,
+          567.3,
+          699.6,
+          778.2
+        ],
+        "sections": [
+          "ANNEX IV. External Peer Review Group"
+        ],
+        "description": "This figure is a conceptual graphic illustrating the theme of health care without avoidable infections, centered around a depiction of the Earth. It serves as a thematic visual for content found in the document's appendix section.",
+        "table_markdown": ""
+      }
+    ]
+  },
+  "knowledge_base/.manifest.json": {
+    "title": "2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_Prevention_and_Control_Programmes_2026-09-11",
+    "rel_path": "2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_Prevention_and_Control_Programmes_2026-09-11.pdf",
+    "source_path": "/Users/fede/Desktop/VSCODEProjects/asepsis-prototype/knowledge_base/sources/2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_Prevention_and_Control_Programmes_2026-09-11.pdf",
+    "sha256": "06538d51fe6e12d590621be62e6b17d0d1f28bce1e66dd83636ced86f96a4ce0",
+    "tags": [],
+    "manual_tags": [],
+    "ingest_module": "mineru_json",
+    "ingested_at": "2026-09-17T14:03:15+00:00",
+    "extra": {
+      "pdf": "/Users/fede/Desktop/VSCODEProjects/asepsis-prototype/knowledge_base/sources/2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_Prevention_and_Control_Programmes_2026-09-11.pdf",
+      "ocr_scale": 2.0,
+      "session": "/Users/fede/Downloads/annotation-session-72636aa2-b836-4760-841f-3339fb21c9ee",
+      "assets": [
+        {
+          "asset_id": "table_1",
+          "type": "table",
+          "number": 1,
+          "caption": "Acknowledgement of financial support — Table 1",
+          "page": 6,
+          "image": "/Users/fede/Desktop/VSCODEProjects/asepsis-prototype/.mineru_out/2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_Prevention_and_Control_Programmes_2026-09-11/assets/table_1.png",
+          "bbox": [
+            92.9,
+            362.1,
+            574.4,
+            1100.0
+          ],
+          "sections": [
+            "Acknowledgement of financial support"
+          ],
+          "description": "This table functions as an index linking various acronyms related to antimicrobial resistance (AMR), healthcare quality, research methodology, and infection control. It serves as a reference for specialized terminology covering topics such as systematic reviews (PRISMA, SIGHT), guidelines development (GRADE, PICO), infection management (IPC, SSI, WASH), and global health organizations (WHO). A reader can use this list to look up the definitions and context of specific terms used in literature concerning healthcare and antimicrobial resistance.",
+          "table_markdown": "| AMR | antimicrobial resistance |\n| --- | --- |\n| CINAHL | Cumulative Index to Nursing and Allied Health |\n|  | Literature |\n| EMBASE | Excerpta Medica Database |\n| EPOC | Effective practice and organisation of care |\n| GDG | Guidelines Development Group |\n| GRADE | Grading of Recommendations Assessment, |\n|  | Development and Evaluation |\n| HAI ICROMS | health care-associated infection |\n|  | Integrated quality criteria for review of multiple study designs |\n| ICU | intensive care unit |\n| IHR | International Health Regulations |\n| IPC | infection prevention and control |\n| LMICs | low- and middle-income countries |\n| MRSA | methicillin-resistant Staphylococcus aureus |\n| PICO | Population (P), intervention (I), comparator (C) and |\n| PRISMA | outcome(s) (0) |\n|  | Preferred reporting items for systematic reviews and |\n| RCT | meta-analyses |\n| SDG | randomized controlled trial |\n|  | Sustainable Development Goals |\n| SIGHT | Systematic review and evidence-based guidance |\n|  | on organization of hospital infection control |\n| SSI | programmes |\n| UK | surgical site infections |\n|  | United Kingdom |\n| USA | United States of America |\n| WASH | Water sanitation and hygiene |\n| WHO | World Health Organization |"
+        },
+        {
+          "asset_id": "table_2",
+          "type": "table",
+          "number": 2,
+          "caption": "Table 1: Summary of IPC core components and key remarks",
+          "page": 11,
+          "image": "/Users/fede/Desktop/VSCODEProjects/asepsis-prototype/.mineru_out/2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_Prevention_and_Control_Programmes_2026-09-11/assets/table_2.png",
+          "bbox": [
+            108.7,
+            162.0,
+            1089.1,
+            1526.8
+          ],
+          "sections": [
+            "Guideline implementation"
+          ],
+          "description": "This table outlines specific recommendations for Infection Prevention and Control (IPC) programs, focusing on strategies to prevent Healthcare-Associated Infections (HAIs) and combat Antimicrobial Resistance (AMR). It details facility-level requirements, such as dedicated trained staff ratios in acute care settings, alongside national-level mandates for clearly defined IPC objectives and linked programs. Readers can use this data to understand the evidence-based requirements for establishing effective IPC policies at both local and national levels.",
+          "table_markdown": "| Corecomponent |  | Recommendationor good practicestatement |  |  |  | Key remarks |  |  |  | Strength ofrecommendation andquality of evidence |  |  |  |\n| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |\n| 1. IPC |  | 1a. Health care |  |  |  | • The organization of IPC programmes must have clearlydefined objectives based on local epidemiology andpriorities according to risk assessment and functions thatalign with and contribute to the prevention of HAl and thespread of AMR in health care.• It is critical for a functioning IPC programme to havededicated, trained professionals in every acute care facility.A minimum ratio of one full-time or equivalent infectionpreventionist (nurse or doctor) per 250 beds should beavailable. However, there was a strong opinion that a higherratio should be considered, for example, one infectionpreventionist per 100 beds, due to increasing patientacuity and complexity, as well as the multiple roles andresponsibilities of the modern preventionist.• Good quality microbiological laboratory support is a verycritical factor an effective IPC programme. |  |  |  | Strong,very low quality |  |  |  |\n| programmes |  | facility level |  |  |  |  |  |  |  |  |  |  |  |\n|  |  | The panel |  |  |  |  |  |  |  |  |  |  |  |\n|  |  | recommends thatan IPC programme |  |  |  |  |  |  |  |  | ap |  |  |\n|  |  | with a dedicated, |  |  |  |  |  |  |  |  |  |  |  |\n|  |  | trained team |  |  |  |  |  |  |  |  |  |  |  |\n|  |  | should be in place |  |  |  |  |  |  |  |  |  |  |  |\n|  |  | in each acute |  |  |  |  |  |  |  |  |  |  |  |\n|  |  | health care facility |  |  |  |  |  |  |  |  |  |  |  |\n|  |  | for the purpose of |  |  |  |  |  |  |  |  |  |  |  |\n|  |  | preventing HAl and |  |  |  |  |  |  |  |  |  |  |  |\n|  |  | combating AMR |  |  |  |  |  |  |  |  |  |  |  |\n|  |  | through IPC good |  |  |  |  |  |  |  |  |  |  |  |\n|  |  | practices. |  |  |  |  |  |  |  |  |  |  |  |\n|  |  |  |  |  |  |  |  |  |  |  |  |  |  |\n|  |  | 1b. National level |  |  |  |  |  |  |  |  |  |  |  |\n|  |  | Active, stand- |  |  |  |  |  |  |  |  |  |  |  |\n|  |  | alone, national IPCprogrammes with |  |  |  |  |  |  |  |  |  |  |  |\n|  |  | clearly defined |  |  |  |  |  |  |  |  |  |  |  |\n|  |  | objectives, functions |  |  |  |  |  |  |  |  |  |  |  |\n|  |  | and activities shouldbe establishedfor the purposeof preventing HAIand combating |  |  |  |  |  |  |  |  |  |  |  |\n|  |  |  |  |  |  | and combating |  |  |  |  |  |  |  |\n|  |  | AMR through IPC |  |  |  |  |  |  |  |  |  |  |  |\n|  |  | good practices.National IPC |  |  |  |  |  |  |  |  |  |  |  |\n|  |  | programmes should |  |  |  |  |  |  |  |  |  |  |  |\n|  |  | be linked with other |  |  |  |  |  |  |  |  |  |  |  |\n|  |  | relevant national |  |  |  |  |  |  |  |  |  |  |  |\n|  |  | programmesand professional |  |  |  |  |  |  |  |  |  |  |  |"
+        },
+        {
+          "asset_id": "table_3",
+          "type": "table",
+          "number": 3,
+          "caption": "Guideline implementation — Table 3",
+          "page": 12,
+          "image": "/Users/fede/Desktop/VSCODEProjects/asepsis-prototype/.mineru_out/2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_Prevention_and_Control_Programmes_2026-09-11/assets/table_3.png",
+          "bbox": [
+            97.2,
+            161.3,
+            1077.5,
+            1539.1
+          ],
+          "sections": [
+            "Guideline implementation"
+          ],
+          "description": "This table outlines recommendations for developing and implementing effective Infection Prevention and Control (IPC) guidelines at both national and health care facility levels. It details specific actions, such as developing evidence-based guidelines, providing targeted education and training for healthcare workers, and monitoring adherence to ensure successful implementation. The information is useful for understanding the necessary strategies and infrastructure required to reduce Healthcare-Associated Infections (HAI) and Antimicrobial Resistance (AMR).",
+          "table_markdown": "| Corecomponent | Recommendationor good practicestatement |  | Key remarks | Strength ofrecommendation andquality of evidence |  |\n| --- | --- | --- | --- | --- | --- |\n| 2. IPC | The panel |  | Health care facility• Appropriate IPC expertise is necessary to write or adaptand adopt a guideline both at the national and health carefacility level. Guidelines should be evidence-based andreference international or national standards. Adaptation tolocal conditions should be considered for the most effectiveuptake and implementation.• Monitoring adherence to guideline implementation isessential.National level• Developing relevant evidence-based national IPC guidelinesand related implementation strategies is one of the keyfunctions of the national IPC programme.• The national IPC programme should also ensure that thenecessary infrastructures and supplies to enable guidelineimplementation are in place.The national IPC programme should support and mandatehealth care workers' education and training focused on theguideline recommendations. | Strong,very low quality |  |\n| guidelines | recommends thatevidence-basedguidelines shouldbe developed andimplemented for thepurpose of reducingHAI and AMR. Theeducation and |  |  |  |  |\n|  |  |  |  |  |  |\n|  |  |  |  |  |  |\n|  |  |  |  |  | education a |\n|  | training of relevant |  |  |  |  |\n|  | health care workers |  |  |  |  |\n|  | on the guidelinerecommendationsand the monitoringof adherence |  |  |  |  |\n|  |  |  |  |  |  |\n|  |  |  |  |  |  |\n|  | recommendations |  |  |  |  |\n|  | should be undertaken |  |  |  |  |\n|  | to achieve successfulimplementation |  |  |  |  |\n| 3. IPC | 3a. Health carefacility level |  | IPC education and training should be a part of an overallhealth facility education strategy, including new employeeorientation and the provision of continuous educationalopportunities for existing staff, regardless of level andposition (for example, including also senior administrativeand housekeeping staff).• Three categories of human resources were identified astargets for IPC training and requiring different strategiesand training contents: IPC specialists, all health careworkers involved in service delivery and patient care,and other personnel that support health service delivery(administrative and managerial staff, auxiliary service staff,cleaners, etc.).Periodic evaluations of both the effectiveness of trainingprogrammes and assessment of staff knowledge shouldbe undertaken on a routine basis. | Strong,moderate quality |  |\n| education |  |  |  |  |  |\n| and training | The panelrecommends thatIPC education shouldbe in place for allhealth care workersby utilizing team- andtask-based strategiesthat are participatoryand include bedsideand simulationtraining to reduce therisk of HAI and AMR. |  |  |  |  |\n|  | 3b. National levelThe national IPCprogramme should |  | • The IPC national team plays a key role to support and Good practicemake IPC training happen at the facility levei. statementTo support the development and maintenance of a skilled,knowledgeable health workforce, national pregraduateand postgraduate IPC curricula should be developed incollaboration with local academic institutions.• In the curricula development process, it is advisableto refer to international curricula and networks forspecialized IPC programmes and to adapt these documentsand approaches to national needs and local availableresources.The national IPC programme should provide guidanceand recommendations for in-service training to be rolledout at the facility level according to detailed IPC corecompetencies for health care workers and covering allprofessional categories listed in core component 3a. |  |  |\n|  | support the educationand training of thehealth workforceas one of its corefunctions. |  |  |  |  |"
+        },
+        {
+          "asset_id": "table_4",
+          "type": "table",
+          "number": 4,
+          "caption": "Guideline implementation — Table 4",
+          "page": 13,
+          "image": "/Users/fede/Desktop/VSCODEProjects/asepsis-prototype/.mineru_out/2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_Prevention_and_Control_Programmes_2026-09-11/assets/table_4.png",
+          "bbox": [
+            111.6,
+            161.3,
+            1091.9,
+            1590.2
+          ],
+          "sections": [
+            "Guideline implementation"
+          ],
+          "description": "This table presents recommendations from a panel regarding surveillance systems for Healthcare-Associated Infections (HAIs) and Antimicrobial Resistance (AMR). It details specific guidance on implementing facility-based surveillance to inform infection prevention and control (IPC) interventions, as well as establishing national surveillance programs to detect outbreaks and inform antimicrobial policies. The data assesses the strength of these recommendations, noting that while the need for robust surveillance is strongly supported, the quality of evidence varies.",
+          "table_markdown": "| Corecomponent |  | Recommendationor good practicestatement |  | Key remarks | Strength ofrecommendation andquality of evidence |  |\n| --- | --- | --- | --- | --- | --- | --- |\n| 4. Surveillance |  | 4a. Health care |  |  |  |  |\n|  |  | facility level |  |  |  |  |\n|  |  | The panelrecommends that |  |  |  |  |\n|  |  |  |  |  |  |  |\n|  |  | facility-based HAIsurveillance shouldbe performed to guideIPC interventions anddetect outbreaks,including AMRsurveillance withtimely feedback of |  |  |  |  |\n|  |  |  |  | be performe |  |  |\n|  |  |  |  | IPC interver |  |  |\n|  |  |  |  | detect outbr |  |  |\n|  |  |  |  |  |  |  |\n|  |  | results to healthcare workers andstakeholders andthrough national |  |  |  |  |\n|  |  | 4b. National level National HAl surveillance systems feed in to general publicThe panel health capacity building and the strengthening of essentialrecommends public health functions. National surveillance programmesare also crucial for the early detection of some outbreaksthat nationalin which cases are described by the identification ofHAl surveillancethe pathogen concerned or a distinct AMR pattern.programmes andFurthermore, national microbiological data about HAlnetworks thataetiology and resistance patterns also provide informationinclude mechanismsrelevant for policies on the use of antimicrobials and otherfor timely dataAMR-related strategies and interventions.feedback and with theEstablishing a national HAl surveillance programmepotential to be usedfor benchmarking requires full support and engagement by governments andother respective authorities and the allocation of humanpurposes should beand financial resources.established to reduceNational surveillance should have clear objectives, aHAI and AMR.standardized set of case definitions, methods for detectinginfections (numerators) and the exposed population(denominators), a process for the analysis of data andreports and a method for evaluating the quality of the data. |  |  | Strong,very low quality |  |"
+        },
+        {
+          "asset_id": "table_5",
+          "type": "table",
+          "number": 5,
+          "caption": "Guideline implementation — Table 5",
+          "page": 14,
+          "image": "/Users/fede/Desktop/VSCODEProjects/asepsis-prototype/.mineru_out/2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_Prevention_and_Control_Programmes_2026-09-11/assets/table_5.png",
+          "bbox": [
+            98.6,
+            161.3,
+            1074.7,
+            1515.3
+          ],
+          "sections": [
+            "Guideline implementation"
+          ],
+          "description": "This table outlines recommendations from a panel regarding the implementation of multimodal strategies to improve Infection Prevention and Control (IPC) surveillance for Health-related Adverse Events (HAl) and Antimicrobial Resistance (AMR). It details requirements for national coordination, standardized definitions, laboratory capacity, and organizational culture change necessary for effective surveillance programs. Readers can use this information to understand the evidence base and implementation requirements for establishing effective national IPC surveillance initiatives.",
+          "table_markdown": "| Core component | Recommendation or good practice statement | Key remarks Clear regular reporting lines of HAl surveillance data from | Strength of recommendation and quality of evidence |\n| --- | --- | --- | --- |\n| 5. Multimodal strategies | 5a. Health care facility level The panel recommends that IPC activities using multimodal | the local facility to the national level should be established. International guidelines on HAl definitions are important, but it is the adaptation at country level that is critical for implementation. Microbiology and laboratory capacity and quality are |  |\n|  |  | critical for national and hospital-based HAl and AMR surveillance. Standardized definitions and laboratory methods should be adopted. Good quality microbiological support provided by at least one national reference laboratory is a critical factor for an effective national IPC surveillance programme. A national training programme for performing surveillance |  |\n|  |  | should be established to ensure the appropriate and consistent application of national surveillance guidelines and corresponding implementation toolkits. Surveillance data is needed to guide the development and implementation of effective control interventions. |  |\n|  |  | Successful multimodal interventions should be associated Strong, with an overall organizational culture change as low quality effective IPC can be a reflector of quality care, a positive organizational culture and an enhanced patient safety climate. Successful multimodal strategies include the involvement of champions or role models in several cases. |  |\n|  |  | Implementation of multimodal strategies within health care institutions needs to be linked with national quality aims and initiatives, including health care quality improvement initiatives or health facility accreditation bodies. The national approach to coordinating and supporting local (health facility level) multimodal interventions should be within the mandate of the national IPC programme |  |\n| The panel | strategies should be implemented to improve practices and reduce HAl and AMR. 5b. National level recommends that national IPC programmes should coordinate and facilitate the implementation of IPĆ activities through multimodal strategies on a nationwide or subnational level. |  | Strong, low quality |\n|  |  | and be considered within the context of other quality improvement programmes or health facility accreditation bodies. Ministry of health support and the necessary resources, including policies, regulations and tools, are essential for effective central coordination. This recommendation is to support facility level improvement. Successful multimodal interventions should be associated with overall cross-organizational culture change as effective IPC can be a reflector of quality care, a positive organizational culture and an enhanced patient safety climate. Strong consideration should be given to country adaptation of implementation strategies reported in the literature, as well as to feedback of results to key |  |"
+        },
+        {
+          "asset_id": "table_6",
+          "type": "table",
+          "number": 6,
+          "caption": "Guideline implementation — Table 6",
+          "page": 15,
+          "image": "/Users/fede/Desktop/VSCODEProjects/asepsis-prototype/.mineru_out/2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_Prevention_and_Control_Programmes_2026-09-11/assets/table_6.png",
+          "bbox": [
+            113.0,
+            161.3,
+            1093.4,
+            1322.4
+          ],
+          "sections": [
+            "Guideline implementation"
+          ],
+          "description": "This table outlines recommendations from a panel regarding the monitoring and evaluation of Infection Prevention and Control (IPC) practices in healthcare facilities to reduce Healthcare-Associated Infections (HAI) and Antimicrobial Resistance (AMR). The core recommendations emphasize establishing regular audits, providing timely feedback to staff and management, and implementing national monitoring programs based on indicators like hand hygiene compliance. Readers can use this information to understand the necessary steps for systematically assessing and improving IPC quality at both facility",
+          "table_markdown": "| Corecomponent |  | Recommendationor good practicestatement |  | Key remarks | Strength ofrecommendation andquality of evidence |  |\n| --- | --- | --- | --- | --- | --- | --- |\n| 6. Monitoring/ |  | 6a. Health care |  | Strong,low qualityychange or other process modification to improve thequality of care and practice with the goal of reducingthe risk of HAl and AMR spread. Monitoring andfeedback are also aimed at engaging stakeholders,creating partnerships and developing working groupsand networks.Sharing the audit results and providing feedback notonly with those being audited (individual change),but also with hospital management and senioradministration (organizational change) are criticalsteps. IPC teams and committees (or quality of carecommittees) should also be included as IPC carepractices are quality markers for these programmes.IPC programmes should be periodically evaluated toassess the extent to which the objectives are met, thegoals accomplished, whether the activities are beingperformed according to requirements and to identifyaspects that may need improvement identified viastandardized audits. Important information that maybe used for this purpose includes the results of theassessment of compliance with IPC practices, otherprocess indicators (for example, training activities),dedicated time by the IPC team and resource allocation. |  |  |\n| audit of IPC |  | facility level |  |  |  |  |\n| practices andfeedback |  | The panel |  |  |  |  |\n|  |  | feedb | recommends thatregular monitoring/audit and timelyfeedback of healthcare practicesaccording to IPC |  |  |  |\n|  |  | standards should be |  |  |  |  |\n|  |  | performed to prevent |  |  |  |  |\n|  |  | and control HAl and |  |  |  |  |\n|  |  | AMR at the health care |  |  |  |  |\n|  |  | facility level. Feedback |  |  |  |  |\n|  |  | should be provided |  |  |  |  |\n|  |  | to all audited personsand relevant staff. |  |  |  |  |\n|  |  |  |  |  |  |  |\n|  |  | 6b. National levelThe panelrecommends thata national IPCmonitoring andevaluation programmeshould be established |  | Regular monitoring and evaluation provides a Strong,systematic method to document the progress and moderate qualityimpact of national programmes in terms of definedindicators, for example, tracking hand hygieneimprovement as a key indicator, including hand hygienecompliance monitoring.National level monitoring and evaluation should have inplace mechanisms that:Provide regular reports on the state of the nationalgoals (outcomes and processes) and strategies.Regularly monitor and evaluate the WASH services,IPC activities and structure of the health carefacilities through audits or other officially recognizedmeans.Promote the evaluation of the performance of localIPC programmes in a non- punitive institutionalculture. |  |  |\n|  |  | to assess the extent |  |  |  |  |\n|  |  | to which standardsare being met andactivities are beingperformed accordingto the programme'sgoals and objectives. |  |  |  |  |\n|  |  |  |  |  |  |  |\n|  |  | Hand hygiene |  |  |  |  |\n|  |  | monitoring with |  |  |  |  |\n|  |  | feedback should be |  |  |  |  |\n|  |  | considered as a keyperformance indicatorat the national level. |  |  |  |  |"
+        },
+        {
+          "asset_id": "table_7",
+          "type": "table",
+          "number": 7,
+          "caption": "Guideline implementation — Table 7",
+          "page": 16,
+          "image": "/Users/fede/Desktop/VSCODEProjects/asepsis-prototype/.mineru_out/2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_Prevention_and_Control_Programmes_2026-09-11/assets/table_7.png",
+          "bbox": [
+            97.9,
+            159.8,
+            1077.5,
+            753.7
+          ],
+          "sections": [
+            "Guideline implementation"
+          ],
+          "description": "This table outlines recommendations for managing patient workload, staffing, and bed occupancy in healthcare facilities to reduce the risk of Healthcare-Associated Infections (HAI) and Antimicrobial Resistance (AMR). It recommends adhering to standards where bed capacity is limited and ensuring that health worker staffing levels are adequate to meet patient demand. Readers can look up guidelines on ward design and the use of methods like the WHO Workload Indicators of Staffing Need to optimize resource allocation.",
+          "table_markdown": "| Corecomponent |  | Recommendationor good practicestatement | Key remarks |  | Strength ofrecommendation andquality of evidence |  |\n| --- | --- | --- | --- | --- | --- | --- |\n| 7. Workload, |  | The panel | • Standards for bed occupancy should be one patient perbed with adequate spacing between patient beds andthat this should not be exceeded.Intended capacity may vary from original designs andacross facilities and countries. For these reasons,it was proposed that ward design regarding bedcapacity should be adhered to and in accordance withstandards. In exceptional circumstances where bedcapacity is exceeded, hospital management should actto ensure appropriate staffing levels that meet patientdemand and an adequate distance between beds.These principles apply to all units and departments withinpatient beds, including emergency departments.The WHO Workload Indicators of Staffing Need methodprovides health managers with a systematic way todetermine how many health workers of a particular type |  |  |  |\n| staffing and |  | recommends that the |  |  |  |  |\n| bed occupancy |  | following elements |  |  |  |  |\n| (acute health |  | should be adhered to |  |  |  |  |\n| care facility | care facility only) |  |  |  | in order to reduce therisk of HAl and thespread of AMR: |  |\n|  |  |  |  |  |  |  |\n|  |  |  |  |  | (1) bed occupancyshould not exceed thestandard capacity ofthe facility; |  |\n|  |  |  |  |  | (2) health care |  |\n|  |  | worker staffing levels |  |  |  |  |\n|  |  | should be adequately |  |  |  |  |\n|  |  | assigned according to |  |  |  |  |\n|  |  | patient workload. | are required to cope with the workload of a given health |  |  |  |"
+        },
+        {
+          "asset_id": "table_8",
+          "type": "table",
+          "number": 8,
+          "caption": "Guideline implementation — Table 8",
+          "page": 17,
+          "image": "/Users/fede/Desktop/VSCODEProjects/asepsis-prototype/.mineru_out/2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_Prevention_and_Control_Programmes_2026-09-11/assets/table_8.png",
+          "bbox": [
+            112.3,
+            159.1,
+            1090.5,
+            842.2
+          ],
+          "sections": [
+            "Guideline implementation"
+          ],
+          "description": "This table details recommendations regarding the built environment and infrastructure necessary for effective Infection Prevention and Control (IPC) programs in healthcare facilities. It outlines specific good practices, such as ensuring adequate WASH services, hygienic environments, and the availability of IPC materials and hand hygiene equipment at the point of care. The data provides context on these recommendations by referencing WHO standards and national program implementation, allowing readers to assess the strength of the proposed actions.",
+          "table_markdown": "| Corecomponent |  |  | Recommendationor good practicestatement | Key remarks | Strength ofrecommendation andquality of evidence |\n| --- | --- | --- | --- | --- | --- |\n| 8. Built |  |  | 8a. Patient care | An appropriate environment, WASH services and | Good practicestatement |\n| environment, |  |  | activities should | materials and equipment for IPC are a core componentof effective IPC programmes at health care facilities.Ensuring an adequate hygienic environment is theresponsibility of senior facility managers and localauthorities. However, the central government andnational IPC and WASH programmes also playan important role in developing standards andrecommending their implementation regardingadequate WASH services in health care facilities,the hygienic environment, and the availability of IPCmaterials and equipment at the point of care.WHO standards for drinking water quality, sanitationand environmental health in health care facilities shouldbe implemented. |  |\n| materials and |  |  | be undertaken in a |  |  |\n| equipment for |  |  | clean and/or hygienicenvironment thatfacilitates practicesrelated to theprevention and control |  |  |\n| IPC at the facilitylevel (acute |  |  |  |  |  |\n| health care |  |  |  |  |  |\n| facility only) |  |  |  |  |  |\n|  |  |  | of HAl, as well asAMR, including allelements around theWASH infrastructureand services andthe availability of |  |  |\n|  |  |  |  |  |  |\n|  |  |  |  |  |  |\n|  |  |  |  |  |  |\n|  |  |  |  |  |  |\n|  |  |  |  |  |  |\n|  |  |  | appropriate IPC |  |  |\n|  |  |  | materials andequipment. |  |  |\n|  |  |  |  |  |  |\n|  |  |  |  | 8b. The panelrecommends that | WHO standards for the adequate number andappropriate position of hand hygiene facilities should beimplemented in all health care facilities. |\n|  |  |  | materials and |  |  |\n|  |  |  | equipment to perform |  |  |\n|  |  |  | appropriate hand |  |  |\n|  |  |  | hygiene should bereadily available at the |  |  |\n|  |  |  | point of care. |  |  |"
+        },
+        {
+          "asset_id": "table_9",
+          "type": "table",
+          "number": 9,
+          "caption": "Table 4.1: SIGHT search stratified by dimension",
+          "page": 22,
+          "image": "/Users/fede/Desktop/VSCODEProjects/asepsis-prototype/.mineru_out/2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_Prevention_and_Control_Programmes_2026-09-11/assets/table_9.png",
+          "bbox": [
+            600.3,
+            788.3,
+            1077.5,
+            1159.0
+          ],
+          "sections": [
+            "4.6.1 Systematic review: facility level"
+          ],
+          "description": "This table outlines five thematic dimensions used to assess or structure programs related to Infection Prevention and Control (IPC). The dimensions cover critical areas including organizational arrangements, surveillance and outbreak management, health worker training, behavioral change in care quality, and local policies for isolation precautions. A reader can use this framework to evaluate the components and effectiveness of IPC implementation strategies.",
+          "table_markdown": "| Dimension no | Thematic area |\n| --- | --- |\n| 1 | Organizational and structural arrangements toimplement IPC programmes |\n| 2 | Targets and methods of HAl surveillance,outbreak management and the role of feedback |\n| 3 | Methods and effectiveness of educating andtraining health care workers |\n| 4 | Effectiveness of interventions on behaviouralchange and quality of care, particularly in thecontext of multimodal prevention strategies |\n| 5 | Overview and effectiveness of local policies andresources for standard and transmission-basedisolation precautions |"
+        },
+        {
+          "asset_id": "table_10",
+          "type": "table",
+          "number": 10,
+          "caption": "Table 4.2: Dimensions and corresponding components used for the SIGHT review update",
+          "page": 24,
+          "image": "/Users/fede/Desktop/VSCODEProjects/asepsis-prototype/.mineru_out/2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_Prevention_and_Control_Programmes_2026-09-11/assets/table_10.png",
+          "bbox": [
+            97.9,
+            218.1,
+            578.0,
+            1047.4
+          ],
+          "sections": [
+            "4.6.1 Systematic review: facility level"
+          ],
+          "description": "This table outlines nine critical dimensions for implementing effective infection prevention and control programs. The variables detail components such as organizational structure, surveillance methods, education strategies, behavior change interventions, and knowledge management within healthcare settings. It serves as a framework for assessing and improving the holistic approach to controlling healthcare-associated infections (HAIs).",
+          "table_markdown": "| Dimension N° | Components | Description |\n| --- | --- | --- |\n| 1 | Organization | Organizational andstructural arrangementsto implement infectionprevention and controlprogrammes, includingaccess to qualified infectioncontrol professionals andmanagement roles |\n|  | and structure |  |\n|  | of infection |  |\n|  | prevention |  |\n|  | and controlprogrammes |  |\n| 2 | Surveillance | Targets and methods ofHAl surveillance, outbreakmanagement and the role offeedback |\n| 3 | Education andtraining | Methods and effectiveness ofeducating and training healthcare workers |\n| 4 | Behaviour changestrategies | Effectiveness of interventionson behavioural changeand quality of care (that is,multimodal strategies) |\n| 5 | Standard andtransmission-basedprecautions | Overview and effectivenessof local policies andresources for standard andtransmission-based isolationprecautions |\n| 6 | Auditing | The process of auditing andits impact on HAls |\n| 7 | Patientparticipation | Patient empowerment andinvolvement in the preventionof HAls |\n| 8 | Target setting | Setting targets or goals andthe impact on HAl prevention |\n| 9 | Knowledgemanagement | A range of strategies toidentify, create and distributeinformation and data withinand outside of an institution |"
+        },
+        {
+          "asset_id": "table_11",
+          "type": "table",
+          "number": 11,
+          "caption": "ANNEX V A Holmes declaration of interests",
+          "page": 90,
+          "image": "/Users/fede/Desktop/VSCODEProjects/asepsis-prototype/.mineru_out/2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_Prevention_and_Control_Programmes_2026-09-11/assets/table_11.png",
+          "bbox": [
+            97.9,
+            381.5,
+            1077.5,
+            1407.3
+          ],
+          "sections": [
+            "ANNEX IV. External Peer Review Group"
+          ],
+          "description": "This table details various research projects focused primarily on antimicrobial resistance (AMR), infection management, and patient safety, spanning from 2013 to 2018. The data includes funding amounts ranging from £20,000 to over £749,000, along with the project names, principal investigators, funders, and start/end dates. A reader can use this information to track specific research grants, identify collaborative efforts in health science, and review the timelines of projects related to antibiotic stewardship.",
+          "table_markdown": "| Value | Project name | Principalinvestigator | Funder | Start | End |\n| --- | --- | --- | --- | --- | --- |\n| £101 611 | Networks for Excellence – Engineeringsolutions to AMR | Holmes | WellcomeTrust via ISSF | 01/10/2015 | 28/02/2017 |\n| £687 740 | NIHR i4i “EPIC IMPOC” – 'Enhancedpoint of care infection managementpolicy application in critical care andtherapeutics' | Holmes | NIHR | 05/08/2015 | 04/08/2018 |\n| £749 583 | Engineering, Physical, Natural Sciencesand Medicine Bridging Research inAntimicrobial resistance: Collaborationand Exchange (EMBRACE). | Toumazou/Holmes/Armstrong | EPSRC | 01/08/2015 | 31/07/2017 |\n| £50 000 | Collaborative in AMR: Life Science andEngineering, Scoping, Community-buildingand Engaging (COALESCE) | Holmes/Toumazou/Armstrong/ Young/Donaldson | EPSRCInstitutionalsponsorship | 01/06/2015 | 31/03/2016 |\n| £137 625 | Investigating stratified antimicrobials usefor improved management of infectionsand to minimise AMR: Through theintegration and application of enhanceduse of existing NHS data, advances indiagnostics technology, bacterial geneticsand clinical pharmacology | Holmes | BRC | 01/04/2015 | 31/03/2017 |\n| £30 000 | Reducing neonatal mortality andpaediatric infection through improvedpatient safety in Rwanda | Holmes | TropicalHealthEducationTrust | 01/03/2013 | 30/06/2015 |\n| £165 941 | Eleanor Murray Health Foundation SharePurpose | Holmes | HealthFoundation | 01/01/2013 | 31/12/2015 |\n| £117 843 | Health foundation spotlight on health care-associated infection | Holmes | HealthFoundation | 01/01/2013 | 15/03/2014 |\n| £456 042 | Patient Safety Translational ResearchCentre | Holmes | ICHNT /NIHR | 01/08/2012 | 31/07/2017 |\n| £20 000 | Enhances prescribing through CBR-basedImperial Antibiotic Prescribing Policysmartphone application (ENIAPP) | Holmes / Georgiou | ImperialCollege | 01/04/2013 | 31/03/2013 |\n| £7155 | Systematic review and meta-analysisof interventions to improve antibioticprescribing practices for hospitalinpatients | Holmes | CSO researchgrant | 01/03/2013 | 28/02/2015 |"
+        },
+        {
+          "asset_id": "figure_1",
+          "type": "figure",
+          "number": 1,
+          "caption": "ANNEX IV. External Peer Review Group — Figure 1",
+          "page": 91,
+          "image": "/Users/fede/Desktop/VSCODEProjects/asepsis-prototype/.mineru_out/2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_Prevention_and_Control_Programmes_2026-09-11/assets/figure_1.png",
+          "bbox": [
+            463.6,
+            567.3,
+            699.6,
+            778.2
+          ],
+          "sections": [
+            "ANNEX IV. External Peer Review Group"
+          ],
+          "description": "This figure is a conceptual graphic illustrating the theme of health care without avoidable infections, centered around a depiction of the Earth. It serves as a thematic visual for content found in the document's appendix section.",
+          "table_markdown": ""
+        }
+      ]
+    }
+  }
+}

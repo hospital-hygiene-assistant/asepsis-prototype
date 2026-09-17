@@ -1,0 +1,70 @@
+{
+  "formatVersion": 2,
+  "doc": "ddb35d27_41b50400-a607-11f1-8b82-5f5342bdc0ca",
+  "summaryModel": "gemma4:e4b",
+  "summaryPromptVersion": 2003,
+  "nodes": [
+    {
+      "nodeId": "proportion-of-bloodstream-infection-due-to-methicillin-resistant-staphylococcus-aureus-mrsa",
+      "title": "Proportion of bloodstream infection due to methicillin-resistant Staphylococcus aureus (MRSA) (%)",
+      "headingLevel": 1,
+      "lineIdx": 0,
+      "summary": "This section details the Proportion of bloodstream infection due to methicillin-resistant Staphylococcus aureus (MRSA) (%). Table 1 presents this proportion across various locations from 2016 through 2023. Specific data examples include Argentina's rates of 35.7% in 2016 and 42.7% in 2019, alongside Bangladesh's rate of 78.7% in 2016, allowing tracking of MRSA prevalence over time across different geographical areas. The section contains graphics of the kind.",
+      "isLeaf": false,
+      "synthetic": false,
+      "parentTitle": null,
+      "content": null,
+      "pin": {
+        "id": "proportion-of-bloodstream-infection-due-to-methicillin-resistant-staphylococcus-aureus-mrsa",
+        "kind": "section",
+        "doc": "ddb35d27_41b50400-a607-11f1-8b82-5f5342bdc0ca",
+        "page": 1,
+        "bbox": [
+          0.0,
+          5.8,
+          1901.6,
+          64.2
+        ],
+        "scale": 2.0
+      },
+      "contentHash": "a5dbdb485b9034ab4c647749f480a8a4081926053fbe623161516c95f312b1f2",
+      "summarySource": "llm",
+      "summaryModel": "gemma4:e4b",
+      "summaryPromptVersion": 2003,
+      "children": [
+        {
+          "nodeId": "proportion-of-bloodstream-infection-due-to-methicillin-resistant-staphylococcus-aureus-mrsa-table-1",
+          "title": "Proportion of bloodstream infection due to methicillin-resistant Staphylococcus aureus (MRSA) (%) — Table 1",
+          "headingLevel": 2,
+          "lineIdx": 11,
+          "summary": "This table presents the Proportion of bloodstream infection due to methicillin-resistant Staphylococcus aureus (MRSA) (%) for various locations from 2016 through 2023. Specific data points include Argentina's rates like 35.7% in 2016 and 42.7% in 2019, and Bangladesh's rate of 78.7% in 2016. The table allows tracking MRSA prevalence across different geographical areas over time.",
+          "isLeaf": true,
+          "synthetic": false,
+          "parentTitle": null,
+          "content": "| Indicator | Proportion of bloodstream infection due to methicillin-resistant Staphylococcus aureus (MRSA) (%)2016 |  |  |  |  |  |  |  |  |  |  |  |  |  |  |\n| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |\n| Location |  |  |  |  |  |  |  |  | 2023 | 2022 | 2021 | 2020 | 2019 | 2018 | 2017 |\n| Algeria | 467 |  |  |  |  |  |  |  |  |  |  |  |  |  |  |\n| Argentina | 35.7 | 32.8 | 34.3 | 38.4 | 42 7 | 42.5 | 45 7 |  |  |  |  |  |  |  |  |\n| Australia | 15.8 | 15 7 | 16.9 | 17.7 | 18.5 |  |  |  |  |  |  |  |  |  |  |\n| Austria | 4.37 | 3.97 | 3.17 | 4.57 | 5.37 | 6.47 | 5.9 7 |  |  |  |  |  |  |  |  |\n| Bahrain | 53.3 | 42.1 |  | 34.4 | 40 7 | 35.5 |  |  |  |  |  |  |  |  |  |\n| Bangladesh | 78 7 | 88.5 |  |  |  |  |  |  |  |  |  |  |  |  |  |\n| Belgium | 7 7 | 4.6 7 | 4.2 | 6.8 |  |  |  |  |  |  |  |  |  |  |  |\n| Benin | 62.8 | 52.6 |  |  |  |  |  |  |  |  |  |  |  |  |  |\n| Bhutan | 5 7 |  |  | 11.7 | 20.8 |  |  |  |  |  |  |  |  |  |  |\n| Bosnia and Herzegovina | 28.4 | 26.5 | 20.8 | 23.2 | 10.6 | 16.3 | 25.8 | 18 7 |  |  |  |  |  |  |  |\n| Brazil | 27.5 | 31.6 | 7 7 | 24.4 | 20.6 | 11.1 |  |  |  |  |  |  |  |  |  |\n| Brunei Darussalam | 5.3 7 | 12.2 | 14.6 | 12.5 | 12.3 |  |  |  |  |  |  |  |  |  |  |\n| Burkina Faso | 22 7 | 30.4 | 51.2 | 68.8 |  |  |  |  |  |  |  |  |  |  |  |\n| Cote d'Ivoire | 1007 |  |  | 71.5 |  |  |  |  |  |  |  |  |  |  |  |\n| Cambodia | 54.2 | 81.3 |  | 68.1 |  | 48.8 |  |  |  |  |  |  |  |  |  |\n| Cameroon | 62.5 | 76 7 | 45.5 |  |  |  |  |  |  |  |  |  |  |  |  |\n| Canada | 18.3 | 21 7 |  |  |  |  |  |  |  |  |  |  |  |  |  |\n| China, Hong Kong Special Administrative Region | 45.7 | 45.8 |  |  |  |  |  |  |  |  |  |  |  |  |  |\n| Colombia | 47.8 | 45.2 | 45.2 |  |  |  |  |  |  |  |  |  |  |  |  |\n| Croatia | 27.4 | 53.8 | 66.7 | 50 7 | 24.9 | 26.4 | 28.5 |  |  |  |  |  |  |  |  |\n| Cyprus | 53 7 | 55.9 | 42.9 | 49.5 | 100 | 40.2 | 31.2 |  |  |  |  |  |  |  |  |\n| Czechia | 28.5 | 7.67 | 9.47 | 9.37 | 12.5 | 13.6 | 13.2 |  |  |  |  |  |  |  |  |\n| Democratic Renublic of the Conao | 90.4 | 88.5 | 100 |  |  |  |  |  |  |  |  |  |  |  |  |\n\nProportion of bloodstream infection due to methicillin-resistant Staphylococcus aureus (MRSA) (%) — Table 1 This table displays the proportion of bloodstream infections due to methicillin-resistant *Staphylococcus aureus* (MRSA) across various locations and years, spanning from 2016 to 2023. The data provides specific values for countries such as Algeria, Argentina, Australia, and Bangladesh, allowing readers to track temporal trends in MRSA infection rates within these regions. It serves as a source for epidemiological comparisons of MRSA prevalence across different geographical areas over time.",
+          "pin": {
+            "id": "proportion-of-bloodstream-infection-due-to-methicillin-resistant-staphylococcus-aureus-mrsa-table-1",
+            "kind": "asset",
+            "doc": "ddb35d27_41b50400-a607-11f1-8b82-5f5342bdc0ca",
+            "asset": "table_1",
+            "type": "table",
+            "page": 1,
+            "bbox": [
+              2.5,
+              237.8,
+              2144.4,
+              1614.4
+            ],
+            "image": "/assets/ddb35d27_41b50400-a607-11f1-8b82-5f5342bdc0ca/table_1.png",
+            "scale": 2.0
+          },
+          "contentHash": "062ecca5873a0af9989177da99cfac896e24d198f3175d22b6e3807db551d4cb",
+          "summarySource": "llm",
+          "summaryModel": "gemma4:e4b",
+          "summaryPromptVersion": 2003,
+          "children": []
+        }
+      ]
+    }
+  ]
+}
