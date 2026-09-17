@@ -1192,3 +1192,79 @@ body[data-tab="chat"] #command-bar { display: none !important; }
   background: var(--as-amber-bg);
 }
 .ev-resume.restore:hover { border-color: var(--amber); }
+
+
+/* ── Golden chunks ────────────────────────────────────────────
+   The passages an eval question's answer should be in. Marked in the answer
+   (on the citation chip) and on the source card, so "did it cite the right
+   passage" is answerable at a glance instead of by opening each source. */
+:root {
+  --golden: #d4a017;
+  --golden-soft: rgba(212, 160, 23, 0.14);
+  --golden-glow: rgba(212, 160, 23, 0.35);
+}
+.eval-mode .cite-chip.is-golden {
+  border: 1.5px solid var(--golden);
+  background: var(--golden-soft);
+  color: var(--golden);
+  font-weight: 700;
+  box-shadow: 0 0 0 2px var(--golden-glow);
+}
+.eval-mode .cite-chip.is-golden:hover { background: rgba(212, 160, 23, 0.26); }
+.eval-mode .source-card.is-golden {
+  border: 1.5px solid var(--golden);
+  box-shadow: 0 0 0 3px var(--golden-glow), 0 0 18px -4px var(--golden-glow);
+}
+.golden-pill, .ev-golden { display: none; }
+.eval-mode .golden-pill {
+  display: inline-block; margin-left: 4px; padding: 0 6px;
+  border: 1px solid var(--golden); border-radius: 999px;
+  color: var(--golden); font-weight: 700; font-size: 10px;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  letter-spacing: 0.02em;
+}
+
+/* Golden evidence cards in the live deck.
+   The deck is the one place a passage is READ rather than scanned, so the
+   marker is the loud one: a gold rim, a glow, and a slow sweep across the
+   card. Only the front card animates — a stack of shimmering cards behind it
+   would be noise, and they are transformed away anyway. */
+.eval-mode .ev-card.is-golden {
+  border-color: var(--golden);
+  border-left-color: var(--golden);
+  background:
+    linear-gradient(var(--golden-soft), var(--golden-soft)),
+    var(--as-surface);
+}
+.eval-mode .ev-card.front.is-golden {
+  box-shadow:
+    0 0 0 2px var(--golden-glow),
+    0 10px 34px -6px var(--golden-glow),
+    0 16px 38px rgba(15, 23, 42, .12);
+}
+.eval-mode .ev-card.front.is-golden::after {
+  content: ''; position: absolute; inset: 0; border-radius: inherit;
+  pointer-events: none;                 /* the whole card is a click target */
+  background: linear-gradient(115deg,
+    transparent 34%,
+    rgba(255, 233, 160, .30) 47%,
+    rgba(255, 246, 214, .42) 50%,
+    rgba(255, 233, 160, .30) 53%,
+    transparent 66%);
+  background-size: 260% 100%;
+  animation: golden-sweep 2.8s linear infinite;
+}
+@keyframes golden-sweep {
+  from { background-position: 190% 0; }
+  to   { background-position: -90% 0; }
+}
+.eval-mode .ev-golden {
+  display: inline-block; flex: none; font-size: 10px; font-weight: 700; letter-spacing: .02em;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  color: var(--golden); padding: 1px 6px; border-radius: 999px;
+  border: 1px solid var(--golden);
+  background: var(--golden-soft);
+}
+@media (prefers-reduced-motion: reduce) {
+  .eval-mode .ev-card.front.is-golden::after { animation: none; background: none; }
+}

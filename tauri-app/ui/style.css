@@ -844,6 +844,41 @@ button { font-family: inherit; }
 .pin-chip-hint { color: var(--accent); font-size: 10px; }
 .pin-block pre { margin: 0; font-size: 10.5px; opacity: 0.8; }
 
+/* Golden chunks — the passages an eval question's answer should be in.
+   Deliberately loud: when you are checking whether retrieval found the right
+   passage, you want to spot it without reading, so the border is a full gold
+   ring with a soft glow rather than another muted tag among the tags. */
+:root {
+  --golden: #d4a017;
+  --golden-soft: rgba(212, 160, 23, 0.14);
+  --golden-glow: rgba(212, 160, 23, 0.35);
+}
+.eval-mode .pin-chip.is-golden {
+  border: 1.5px solid var(--golden);
+  background: var(--golden-soft);
+  color: var(--text);
+  box-shadow: 0 0 0 3px var(--golden-glow), 0 0 12px -2px var(--golden-glow);
+}
+.eval-mode .pin-chip.is-golden b { color: var(--golden); }
+.eval-mode .pin-chip.is-golden:hover { border-color: var(--golden); }
+/* Eval-only elements: present in the DOM, invisible until eval mode is on,
+   so toggling costs no re-render and nothing leaks by default. */
+.golden-label, .tag.golden-tag { display: none; }
+.eval-mode .golden-label {
+  display: inline-block;
+  font-family: var(--font-mono); font-size: 10px; font-weight: 700;
+  letter-spacing: 0.02em; color: var(--golden);
+  border: 1px solid var(--golden); border-radius: 4px; padding: 0 4px;
+}
+.eval-mode .tag.golden-tag {
+  display: inline-flex;
+  background: var(--golden-soft); color: var(--golden);
+  border: 1.5px solid var(--golden);
+  box-shadow: 0 0 0 2px var(--golden-glow);
+  font-weight: 700; font-family: var(--font-mono);
+}
+.eval-mode .tag.golden-tag:hover { background: rgba(212, 160, 23, 0.26); }
+
 /* ═══ Explain popover ("why not selected") ═════════════════════════ */
 
 #doc-explain-popover {

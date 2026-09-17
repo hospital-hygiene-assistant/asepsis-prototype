@@ -132,6 +132,27 @@
       rewritten. Costs a little more output per answer.</p>
 
     <label class="settings-row settings-check">
+      <span class="settings-label">Eval mode</span>
+      <input id="eval-mode-toggle" type="checkbox">
+    </label>
+    <p class="settings-hint">Marks the passages a question set says should hold
+      the answer, with a gold border wherever a passage is shown. For measuring
+      retrieval — leave it off when anyone is judging answers, since it reveals
+      where the answer was meant to come from before they read it.</p>
+
+    <label class="settings-row settings-check">
+      <span class="settings-label">Thorough section search</span>
+      <input id="child-batch-toggle" type="checkbox">
+    </label>
+    <p class="settings-hint">Off (default), the search weighs all of a
+      document's sections against each other in one pass and follows the best
+      few — fast. On, it weighs them a few at a time, so a section that is the
+      best of its group is followed even when it would not have placed overall.
+      Measured on this corpus: it recovered 2 of 5 branches the fast pass
+      missed and took about 2.7&times; as long, with no change to what was
+      finally retrieved — the lexical backstop had already caught all five.</p>
+
+    <label class="settings-row settings-check">
       <span class="settings-label">Debug cache</span>
       <input id="debug-cache-toggle" type="checkbox">
     </label>

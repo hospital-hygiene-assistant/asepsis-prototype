@@ -375,6 +375,50 @@ function initEngineControls(config) {
     }
   });
 
+  // Eval mode paints the golden labels. Driven by ONE class on <html>, so the
+  // markup never changes and a toggle cannot leave a stale badge behind.
+  const applyEvalMode = on =>
+    document.documentElement.classList.toggle('eval-mode', !!on);
+  applyEvalMode(config.eval_mode);
+
+  const evalToggle = document.getElementById('eval-mode-toggle');
+  if (evalToggle) {
+    evalToggle.checked = !!config.eval_mode;
+    evalToggle.addEventListener('change', async () => {
+      const on = evalToggle.checked;
+      applyEvalMode(on);
+      try {
+        await apiPost('/api/config', { eval_mode: on });
+        toast(on ? 'Eval mode on — golden labels are showing.'
+                 : 'Eval mode off — golden labels hidden.');
+      } catch (err) {
+        evalToggle.checked = !on;
+        applyEvalMode(!on);
+        toast('Could not change eval mode.');
+      }
+    });
+  }
+
+  // Thorough section search — see config.child_select_batch. A checkbox, not a
+  // number: the two modes are what anyone actually chooses between, and the
+  // batch size is a tuning detail that belongs in the config file.
+  const childBatch = document.getElementById('child-batch-toggle');
+  if (childBatch) {
+    childBatch.checked = (config.child_select_batch || 0) > 0;
+    childBatch.addEventListener('change', async () => {
+      const on = childBatch.checked;
+      try {
+        await apiPost('/api/config', { child_select_batch: on ? 5 : 0 });
+        toast(on
+          ? 'Thorough section search on — slower, follows more branches.'
+          : 'Thorough section search off — one pass over each section list.');
+      } catch (err) {
+        childBatch.checked = !on;
+        toast('Could not change the section search mode.');
+      }
+    });
+  }
+
   const completeness = document.getElementById('completeness-toggle');
   if (completeness) {
     completeness.checked = config.completeness_check !== false;
@@ -1896,6 +1940,13 @@ function renderSnippets(data) {
       if (node.synthetic) tags.appendChild(badge('synth-tag', 'synthetic'));
       if (expSet.has(node.node_id)) tags.appendChild(badge('expected-tag', 'expected'));
 
+      // Golden chunk — an eval question's answer should be in this passage.
+      if (node.pin?.golden) {
+        const g = badge('golden-tag', `★ ${node.pin.golden}`);
+        g.title = `Golden chunk — holds the answer to ${node.pin.golden}`;
+        tags.appendChild(g);
+      }
+
       // Provenance pin — one click to the exact page/bbox in the source PDF.
       if (node.pin?.page) {
         const pinBadge = badge('pin-tag', `📍 p.${node.pin.page}`);
@@ -2352,9 +2403,12 @@ function decoratePinBlocks(bodyEl, stem) {
     const wrap = document.createElement('div');
     wrap.className = 'pin-block';
     const chip = document.createElement('button');
-    chip.className = 'pin-chip';
+    const golden = pin.golden ? String(pin.golden) : '';
+    chip.className = 'pin-chip' + (golden ? ' is-golden' : '');
+    if (golden) chip.title = `Golden chunk — holds the answer to ${golden}`;
     chip.innerHTML = `📍 <b>${escHtml(pin.id || 'pin')}</b> · ${escHtml(pin.kind || '')}` +
       (pin.page ? ` · p.${escHtml(String(pin.page))}` : '') +
+      (golden ? ` <span class="golden-label">★ ${escHtml(golden)}</span>` : '') +
       (pin.page ? ` <span class="pin-chip-hint">view in PDF ↗</span>` : '');
     chip.addEventListener('click', () => { if (pin.page) openSourceView(stem, pin); });
     pre.replaceWith(wrap);

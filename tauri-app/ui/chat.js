@@ -972,12 +972,19 @@ function mountDeck(p, cards) {
     card.dataset.i = String(i);
     card.style.setProperty('--folder', folderHue(c.folder));
 
+    const golden = c.pin?.golden ? String(c.pin.golden) : '';
+    if (golden) {
+      card.classList.add('is-golden');
+      card.title = `Golden chunk — holds the answer to ${golden}`;
+    }
+
     const ch = el('div', 'ev-head');
     const chip = el('span', 'ev-chip' + (c.folder && c.folder.length > 1 ? ' nested' : ''),
                     folderLabel(c.folder));
     chip.style.setProperty('--folder', chipHue(c.folder));
     ch.appendChild(chip);
     ch.appendChild(el('span', 'ev-doc', prettyDoc(c.doc)));
+    if (golden) ch.appendChild(el('span', 'ev-golden', `\u2605 ${golden}`));
     ch.appendChild(el('span', 'ev-n', `[${c.n}]`));
     card.appendChild(ch);
 
@@ -1213,7 +1220,12 @@ function renderRichText(text, sources, answerId) {
     return nums.map(num => {
       const hue = sourceHues.get(num);
       const tint = hue ? ` style="--folder:${hue}"` : '';
-      return `<button type="button" class="cite-chip${hue ? ' tinted' : ''}"${tint} data-cite="${num}" data-answer="${answerId}" title="Jump to source [${num}]">${num}</button>`;
+      // A citation that lands on a golden chunk is the thing you are checking
+      // for when reading an answer against an eval question, so it is marked
+      // in the answer itself rather than only down in the source list.
+      const golden = sources[num - 1]?.pin?.golden;
+      const gTitle = golden ? ` — golden chunk for ${golden}` : '';
+      return `<button type="button" class="cite-chip${hue ? ' tinted' : ''}${golden ? ' is-golden' : ''}"${tint} data-cite="${num}" data-answer="${answerId}" title="Jump to source [${num}]${gTitle}">${num}</button>`;
     }).join('');
   });
   return html;
@@ -1559,10 +1571,17 @@ function buildSourceCard(s, answerId) {
   const hue = sourceHues.get(s.n);
   if (hue) { card.style.setProperty('--folder', hue); card.classList.add('tinted'); }
 
+  const golden = s.pin?.golden ? String(s.pin.golden) : '';
+  if (golden) {
+    card.classList.add('is-golden');
+    card.title = `Golden chunk — holds the answer to ${golden}`;
+  }
+
   const eyebrow = el('p', 'source-eyebrow');
   eyebrow.innerHTML = `<span class="source-num">${s.n}</span> ${escHtml(prettyDoc(s.doc))}` +
     (s.page ? ` <span class="source-page-pill">p. ${escHtml(String(s.page))}</span>` : '') +
-    (s.synthetic ? ` <span class="source-page-pill">overview</span>` : '');
+    (s.synthetic ? ` <span class="source-page-pill">overview</span>` : '') +
+    (golden ? ` <span class="golden-pill">★ ${escHtml(golden)}</span>` : '');
   card.appendChild(eyebrow);
 
   const title = el('h3', 'source-title');
