@@ -1,0 +1,20 @@
+[     0s] parse     Reading annotation-session-dfd0c460-9b90-49d9-a132-12201b1e5a34…
+[     0s] text      Reading text layer for c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_202
+[     1s] assets    Cropping assets of c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09
+[     2s] captions  Captioning 165 asset(s) of c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009
+[     2s] captions  Captioning c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11: ass
+[   208s] captions  Captioning c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11: ass
+[   461s] captions  Captioning c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11: ass
+[   701s] captions  Captioning c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11: ass
+[   945s] captions  Captioning c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11: ass
+[  1156s] captions  Captioning c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11: ass
+[  1364s] captions  Captioning c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11: ass
+[  1555s] massage   Writing c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11.md with
+  annotation-session-dfd0c460-9b90-49d9-a132-12201b1e5a34 → /Users/fede/Desktop/VSCODEProjects/asepsis-prototype/knowledge_base/c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11.md (165 assets, 3544 regions)
+[  1555s] done-doc  
+
+Ingested 1 session(s) into /Users/fede/Desktop/VSCODEProjects/asepsis-prototype/knowledge_base/
+
+DONE in 1555s: ['c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11']
+WARN: c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11: 51 region(s) had no text layer (scanned pages?) — ingested without their text
+WARN: c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11: 30 asset(s) grouped as 'Likely icons/broken infographics' — same-size uncaptioned runs, not described

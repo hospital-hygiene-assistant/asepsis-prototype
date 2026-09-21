@@ -1,0 +1,702 @@
+[
+ {
+  "id": "A001",
+  "hit": true,
+  "how": "walk",
+  "rescue_pos": null,
+  "n_rehydrated": 2
+ },
+ {
+  "id": "A002",
+  "hit": true,
+  "how": "walk",
+  "rescue_pos": null,
+  "n_rehydrated": 1
+ },
+ {
+  "id": "A003",
+  "hit": true,
+  "how": "walk",
+  "rescue_pos": null,
+  "n_rehydrated": 5
+ },
+ {
+  "id": "A004",
+  "hit": true,
+  "how": "walk",
+  "rescue_pos": null,
+  "n_rehydrated": 5
+ },
+ {
+  "id": "A005",
+  "hit": true,
+  "how": "walk",
+  "rescue_pos": null,
+  "n_rehydrated": 5
+ },
+ {
+  "id": "A006",
+  "hit": true,
+  "how": "walk",
+  "rescue_pos": null,
+  "n_rehydrated": 5
+ },
+ {
+  "id": "A007",
+  "hit": true,
+  "how": "walk",
+  "rescue_pos": null,
+  "n_rehydrated": 5
+ },
+ {
+  "id": "A008",
+  "hit": true,
+  "how": "walk",
+  "rescue_pos": null,
+  "n_rehydrated": 5
+ },
+ {
+  "id": "A009",
+  "hit": true,
+  "how": "walk",
+  "rescue_pos": null,
+  "n_rehydrated": 5
+ },
+ {
+  "id": "A010",
+  "hit": true,
+  "how": "rehydrated",
+  "rescue_pos": 1,
+  "n_rehydrated": 5
+ },
+ {
+  "id": "A011",
+  "hit": true,
+  "how": "walk",
+  "rescue_pos": null,
+  "n_rehydrated": 5
+ },
+ {
+  "id": "A012",
+  "hit": true,
+  "how": "rehydrated",
+  "rescue_pos": 1,
+  "n_rehydrated": 5
+ },
+ {
+  "id": "A013",
+  "hit": true,
+  "how": "walk",
+  "rescue_pos": null,
+  "n_rehydrated": 5
+ },
+ {
+  "id": "A014",
+  "hit": true,
+  "how": "walk",
+  "rescue_pos": null,
+  "n_rehydrated": 5
+ },
+ {
+  "id": "A015",
+  "hit": true,
+  "how": "rehydrated",
+  "rescue_pos": 1,
+  "n_rehydrated": 5
+ },
+ {
+  "id": "A016",
+  "hit": true,
+  "how": "walk",
+  "rescue_pos": null,
+  "n_rehydrated": 5
+ },
+ {
+  "id": "A017",
+  "hit": true,
+  "how": "walk",
+  "rescue_pos": null,
+  "n_rehydrated": 5
+ },
+ {
+  "id": "A018",
+  "hit": true,
+  "how": "walk",
+  "rescue_pos": null,
+  "n_rehydrated": 5
+ },
+ {
+  "id": "A019",
+  "hit": true,
+  "how": "walk",
+  "rescue_pos": null,
+  "n_rehydrated": 5
+ },
+ {
+  "id": "A020",
+  "hit": true,
+  "how": "walk",
+  "rescue_pos": null,
+  "n_rehydrated": 5
+ },
+ {
+  "id": "A021",
+  "hit": true,
+  "how": "rehydrated",
+  "rescue_pos": 1,
+  "n_rehydrated": 5
+ },
+ {
+  "id": "A022",
+  "hit": true,
+  "how": "walk",
+  "rescue_pos": null,
+  "n_rehydrated": 5
+ },
+ {
+  "id": "A023",
+  "hit": true,
+  "how": "rehydrated",
+  "rescue_pos": 1,
+  "n_rehydrated": 5
+ },
+ {
+  "id": "A024",
+  "hit": true,
+  "how": "walk",
+  "rescue_pos": null,
+  "n_rehydrated": 5
+ },
+ {
+  "id": "A025",
+  "hit": true,
+  "how": "rehydrated",
+  "rescue_pos": 1,
+  "n_rehydrated": 5
+ },
+ {
+  "id": "A026",
+  "hit": true,
+  "how": "walk",
+  "rescue_pos": null,
+  "n_rehydrated": 5
+ },
+ {
+  "id": "A027",
+  "hit": true,
+  "how": "walk",
+  "rescue_pos": null,
+  "n_rehydrated": 5
+ },
+ {
+  "id": "A028",
+  "hit": true,
+  "how": "rehydrated",
+  "rescue_pos": 1,
+  "n_rehydrated": 5
+ },
+ {
+  "id": "A029",
+  "hit": true,
+  "how": "walk",
+  "rescue_pos": null,
+  "n_rehydrated": 5
+ },
+ {
+  "id": "A030",
+  "hit": true,
+  "how": "walk",
+  "rescue_pos": null,
+  "n_rehydrated": 5
+ },
+ {
+  "id": "A031",
+  "hit": true,
+  "how": "rehydrated",
+  "rescue_pos": 5,
+  "n_rehydrated": 5
+ },
+ {
+  "id": "A032",
+  "hit": true,
+  "how": "walk",
+  "rescue_pos": null,
+  "n_rehydrated": 5
+ },
+ {
+  "id": "A033",
+  "hit": true,
+  "how": "rehydrated",
+  "rescue_pos": 1,
+  "n_rehydrated": 5
+ },
+ {
+  "id": "A034",
+  "hit": true,
+  "how": "walk",
+  "rescue_pos": null,
+  "n_rehydrated": 5
+ },
+ {
+  "id": "A035",
+  "hit": true,
+  "how": "walk",
+  "rescue_pos": null,
+  "n_rehydrated": 5
+ },
+ {
+  "id": "A036",
+  "hit": true,
+  "how": "walk",
+  "rescue_pos": null,
+  "n_rehydrated": 5
+ },
+ {
+  "id": "A037",
+  "hit": true,
+  "how": "rehydrated",
+  "rescue_pos": 5,
+  "n_rehydrated": 5
+ },
+ {
+  "id": "A038",
+  "hit": true,
+  "how": "walk",
+  "rescue_pos": null,
+  "n_rehydrated": 5
+ },
+ {
+  "id": "A039",
+  "hit": true,
+  "how": "walk",
+  "rescue_pos": null,
+  "n_rehydrated": 5
+ },
+ {
+  "id": "A040",
+  "hit": true,
+  "how": "walk",
+  "rescue_pos": null,
+  "n_rehydrated": 5
+ },
+ {
+  "id": "A041",
+  "hit": true,
+  "how": "walk",
+  "rescue_pos": null,
+  "n_rehydrated": 5
+ },
+ {
+  "id": "A042",
+  "hit": true,
+  "how": "walk",
+  "rescue_pos": null,
+  "n_rehydrated": 5
+ },
+ {
+  "id": "A043",
+  "hit": true,
+  "how": "walk",
+  "rescue_pos": null,
+  "n_rehydrated": 5
+ },
+ {
+  "id": "A044",
+  "hit": true,
+  "how": "walk",
+  "rescue_pos": null,
+  "n_rehydrated": 5
+ },
+ {
+  "id": "A045",
+  "hit": true,
+  "how": "walk",
+  "rescue_pos": null,
+  "n_rehydrated": 5
+ },
+ {
+  "id": "A046",
+  "hit": true,
+  "how": "walk",
+  "rescue_pos": null,
+  "n_rehydrated": 5
+ },
+ {
+  "id": "A047",
+  "hit": true,
+  "how": "walk",
+  "rescue_pos": null,
+  "n_rehydrated": 5
+ },
+ {
+  "id": "A048",
+  "hit": true,
+  "how": "walk",
+  "rescue_pos": null,
+  "n_rehydrated": 5
+ },
+ {
+  "id": "A049",
+  "hit": true,
+  "how": "walk",
+  "rescue_pos": null,
+  "n_rehydrated": 5
+ },
+ {
+  "id": "A050",
+  "hit": true,
+  "how": "walk",
+  "rescue_pos": null,
+  "n_rehydrated": 5
+ },
+ {
+  "id": "A051",
+  "hit": true,
+  "how": "walk",
+  "rescue_pos": null,
+  "n_rehydrated": 5
+ },
+ {
+  "id": "A052",
+  "hit": true,
+  "how": "rehydrated",
+  "rescue_pos": 1,
+  "n_rehydrated": 5
+ },
+ {
+  "id": "A053",
+  "hit": true,
+  "how": "walk",
+  "rescue_pos": null,
+  "n_rehydrated": 5
+ },
+ {
+  "id": "A054",
+  "hit": true,
+  "how": "rehydrated",
+  "rescue_pos": 1,
+  "n_rehydrated": 5
+ },
+ {
+  "id": "A055",
+  "hit": true,
+  "how": "rehydrated",
+  "rescue_pos": 1,
+  "n_rehydrated": 5
+ },
+ {
+  "id": "A056",
+  "hit": true,
+  "how": "rehydrated",
+  "rescue_pos": 1,
+  "n_rehydrated": 5
+ },
+ {
+  "id": "A057",
+  "hit": true,
+  "how": "walk",
+  "rescue_pos": null,
+  "n_rehydrated": 5
+ },
+ {
+  "id": "A058",
+  "hit": true,
+  "how": "rehydrated",
+  "rescue_pos": 1,
+  "n_rehydrated": 5
+ },
+ {
+  "id": "A059",
+  "hit": true,
+  "how": "walk",
+  "rescue_pos": null,
+  "n_rehydrated": 5
+ },
+ {
+  "id": "A060",
+  "hit": true,
+  "how": "walk",
+  "rescue_pos": null,
+  "n_rehydrated": 5
+ },
+ {
+  "id": "A061",
+  "hit": true,
+  "how": "rehydrated",
+  "rescue_pos": 1,
+  "n_rehydrated": 5
+ },
+ {
+  "id": "A062",
+  "hit": true,
+  "how": "rehydrated",
+  "rescue_pos": 1,
+  "n_rehydrated": 5
+ },
+ {
+  "id": "A063",
+  "hit": true,
+  "how": "rehydrated",
+  "rescue_pos": 1,
+  "n_rehydrated": 5
+ },
+ {
+  "id": "A064",
+  "hit": true,
+  "how": "walk",
+  "rescue_pos": null,
+  "n_rehydrated": 5
+ },
+ {
+  "id": "A065",
+  "hit": true,
+  "how": "rehydrated",
+  "rescue_pos": 1,
+  "n_rehydrated": 5
+ },
+ {
+  "id": "A066",
+  "hit": true,
+  "how": "rehydrated",
+  "rescue_pos": 1,
+  "n_rehydrated": 5
+ },
+ {
+  "id": "A067",
+  "hit": true,
+  "how": "walk",
+  "rescue_pos": null,
+  "n_rehydrated": 5
+ },
+ {
+  "id": "A068",
+  "hit": true,
+  "how": "walk",
+  "rescue_pos": null,
+  "n_rehydrated": 5
+ },
+ {
+  "id": "A069",
+  "hit": true,
+  "how": "rehydrated",
+  "rescue_pos": 2,
+  "n_rehydrated": 5
+ },
+ {
+  "id": "A070",
+  "hit": true,
+  "how": "walk",
+  "rescue_pos": null,
+  "n_rehydrated": 5
+ },
+ {
+  "id": "A071",
+  "hit": true,
+  "how": "rehydrated",
+  "rescue_pos": 1,
+  "n_rehydrated": 5
+ },
+ {
+  "id": "A072",
+  "hit": true,
+  "how": "walk",
+  "rescue_pos": null,
+  "n_rehydrated": 5
+ },
+ {
+  "id": "A073",
+  "hit": true,
+  "how": "rehydrated",
+  "rescue_pos": 1,
+  "n_rehydrated": 5
+ },
+ {
+  "id": "A074",
+  "hit": true,
+  "how": "rehydrated",
+  "rescue_pos": 2,
+  "n_rehydrated": 5
+ },
+ {
+  "id": "A075",
+  "hit": true,
+  "how": "rehydrated",
+  "rescue_pos": 1,
+  "n_rehydrated": 5
+ },
+ {
+  "id": "A076",
+  "hit": true,
+  "how": "rehydrated",
+  "rescue_pos": 1,
+  "n_rehydrated": 5
+ },
+ {
+  "id": "A077",
+  "hit": true,
+  "how": "walk",
+  "rescue_pos": null,
+  "n_rehydrated": 5
+ },
+ {
+  "id": "A078",
+  "hit": true,
+  "how": "walk",
+  "rescue_pos": null,
+  "n_rehydrated": 5
+ },
+ {
+  "id": "A079",
+  "hit": true,
+  "how": "rehydrated",
+  "rescue_pos": 1,
+  "n_rehydrated": 5
+ },
+ {
+  "id": "A080",
+  "hit": true,
+  "how": "walk",
+  "rescue_pos": null,
+  "n_rehydrated": 5
+ },
+ {
+  "id": "A081",
+  "hit": true,
+  "how": "walk",
+  "rescue_pos": null,
+  "n_rehydrated": 5
+ },
+ {
+  "id": "A082",
+  "hit": true,
+  "how": "rehydrated",
+  "rescue_pos": 1,
+  "n_rehydrated": 5
+ },
+ {
+  "id": "A083",
+  "hit": true,
+  "how": "walk",
+  "rescue_pos": null,
+  "n_rehydrated": 5
+ },
+ {
+  "id": "A084",
+  "hit": true,
+  "how": "walk",
+  "rescue_pos": null,
+  "n_rehydrated": 5
+ },
+ {
+  "id": "A085",
+  "hit": true,
+  "how": "walk",
+  "rescue_pos": null,
+  "n_rehydrated": 5
+ },
+ {
+  "id": "A086",
+  "hit": true,
+  "how": "rehydrated",
+  "rescue_pos": 1,
+  "n_rehydrated": 5
+ },
+ {
+  "id": "A087",
+  "hit": true,
+  "how": "walk",
+  "rescue_pos": null,
+  "n_rehydrated": 5
+ },
+ {
+  "id": "A088",
+  "hit": true,
+  "how": "walk",
+  "rescue_pos": null,
+  "n_rehydrated": 5
+ },
+ {
+  "id": "A089",
+  "hit": true,
+  "how": "walk",
+  "rescue_pos": null,
+  "n_rehydrated": 5
+ },
+ {
+  "id": "A090",
+  "hit": true,
+  "how": "walk",
+  "rescue_pos": null,
+  "n_rehydrated": 5
+ },
+ {
+  "id": "A091",
+  "hit": true,
+  "how": "walk",
+  "rescue_pos": null,
+  "n_rehydrated": 5
+ },
+ {
+  "id": "A092",
+  "hit": true,
+  "how": "walk",
+  "rescue_pos": null,
+  "n_rehydrated": 5
+ },
+ {
+  "id": "A093",
+  "hit": true,
+  "how": "rehydrated",
+  "rescue_pos": 4,
+  "n_rehydrated": 5
+ },
+ {
+  "id": "A094",
+  "hit": true,
+  "how": "walk",
+  "rescue_pos": null,
+  "n_rehydrated": 5
+ },
+ {
+  "id": "A095",
+  "hit": true,
+  "how": "walk",
+  "rescue_pos": null,
+  "n_rehydrated": 5
+ },
+ {
+  "id": "A096",
+  "hit": true,
+  "how": "walk",
+  "rescue_pos": null,
+  "n_rehydrated": 5
+ },
+ {
+  "id": "A097",
+  "hit": true,
+  "how": "walk",
+  "rescue_pos": null,
+  "n_rehydrated": 5
+ },
+ {
+  "id": "A098",
+  "hit": true,
+  "how": "walk",
+  "rescue_pos": null,
+  "n_rehydrated": 5
+ },
+ {
+  "id": "A099",
+  "hit": true,
+  "how": "rehydrated",
+  "rescue_pos": 1,
+  "n_rehydrated": 5
+ },
+ {
+  "id": "A100",
+  "hit": true,
+  "how": "rehydrated",
+  "rescue_pos": 1,
+  "n_rehydrated": 5
+ }
+]

@@ -1,0 +1,1402 @@
+[
+ {
+  "id": "A001",
+  "doc": "e52f664f_MRSA_2014_hygiene_2026-09-01",
+  "gold_node": "antimicrobial-resistance-and-good-hand-hygiene",
+  "satisfying_targets": [
+   "antimicrobial-resistance-and-good-hand-hygiene"
+  ],
+  "n_leaves": 4,
+  "bm25_rank_0based": 0,
+  "bm25_rank": 1,
+  "bm25_score": 12.0331,
+  "top1_node": "antimicrobial-resistance-and-good-hand-hygiene",
+  "top1_score": 12.0331
+ },
+ {
+  "id": "A002",
+  "doc": "e52f664f_MRSA_2014_hygiene_2026-09-01",
+  "gold_node": "5-key-moments",
+  "satisfying_targets": [
+   "5-key-moments"
+  ],
+  "n_leaves": 4,
+  "bm25_rank_0based": 0,
+  "bm25_rank": 1,
+  "bm25_score": 13.2831,
+  "top1_node": "5-key-moments",
+  "top1_score": 13.2831
+ },
+ {
+  "id": "A003",
+  "doc": "2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_Prevention_and_Control_Programmes_2026-09-11",
+  "gold_node": "glossary-of-terms",
+  "satisfying_targets": [
+   "glossary-of-terms"
+  ],
+  "n_leaves": 176,
+  "bm25_rank_0based": 6,
+  "bm25_rank": 7,
+  "bm25_score": 15.7094,
+  "top1_node": "remarks-4",
+  "top1_score": 20.0869
+ },
+ {
+  "id": "A004",
+  "doc": "2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_Prevention_and_Control_Programmes_2026-09-11",
+  "gold_node": "introduction",
+  "satisfying_targets": [
+   "introduction"
+  ],
+  "n_leaves": 176,
+  "bm25_rank_0based": 0,
+  "bm25_rank": 1,
+  "bm25_score": 38.8355,
+  "top1_node": "introduction",
+  "top1_score": 38.8355
+ },
+ {
+  "id": "A005",
+  "doc": "2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_Prevention_and_Control_Programmes_2026-09-11",
+  "gold_node": "there-is-a-growing-body-of-evidence-on-the-global-burden-of-harm-caused-by-hai-as-well-as-the-strategies-necessary-for-its-reduction-4-in-2011-who-reported-that-3",
+  "satisfying_targets": [
+   "there-is-a-growing-body-of-evidence-on-the-global-burden-of-harm-caused-by-hai-as-well-as-the-strategies-necessary-for-its-reduction-4-in-2011-who-reported-that-3"
+  ],
+  "n_leaves": 176,
+  "bm25_rank_0based": 0,
+  "bm25_rank": 1,
+  "bm25_score": 29.7013,
+  "top1_node": "there-is-a-growing-body-of-evidence-on-the-global-burden-of-harm-caused-by-hai-as-well-as-the-strategies-necessary-for-its-reduction-4-in-2011-who-reported-that-3",
+  "top1_score": 29.7013
+ },
+ {
+  "id": "A006",
+  "doc": "2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_Prevention_and_Control_Programmes_2026-09-11",
+  "gold_node": "there-is-a-growing-body-of-evidence-on-the-global-burden-of-harm-caused-by-hai-as-well-as-the-strategies-necessary-for-its-reduction-4-in-2011-who-reported-that-3",
+  "satisfying_targets": [
+   "there-is-a-growing-body-of-evidence-on-the-global-burden-of-harm-caused-by-hai-as-well-as-the-strategies-necessary-for-its-reduction-4-in-2011-who-reported-that-3"
+  ],
+  "n_leaves": 176,
+  "bm25_rank_0based": 2,
+  "bm25_rank": 3,
+  "bm25_score": 18.4881,
+  "top1_node": "glossary-of-terms",
+  "top1_score": 22.8135
+ },
+ {
+  "id": "A007",
+  "doc": "2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_Prevention_and_Control_Programmes_2026-09-11",
+  "gold_node": "summary-of-the-evidence",
+  "satisfying_targets": [
+   "summary-of-the-evidence"
+  ],
+  "n_leaves": 176,
+  "bm25_rank_0based": 0,
+  "bm25_rank": 1,
+  "bm25_score": 53.9662,
+  "top1_node": "summary-of-the-evidence",
+  "top1_score": 53.9662
+ },
+ {
+  "id": "A008",
+  "doc": "2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_Prevention_and_Control_Programmes_2026-09-11",
+  "gold_node": "rationale-for-recommendation",
+  "satisfying_targets": [
+   "rationale-for-recommendation"
+  ],
+  "n_leaves": 176,
+  "bm25_rank_0based": 1,
+  "bm25_rank": 2,
+  "bm25_score": 16.6975,
+  "top1_node": "rationale-for-the-recommendation",
+  "top1_score": 21.7391
+ },
+ {
+  "id": "A009",
+  "doc": "2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_Prevention_and_Control_Programmes_2026-09-11",
+  "gold_node": "recommendation-2",
+  "satisfying_targets": [
+   "recommendation-2"
+  ],
+  "n_leaves": 176,
+  "bm25_rank_0based": 0,
+  "bm25_rank": 1,
+  "bm25_score": 28.2061,
+  "top1_node": "recommendation-2",
+  "top1_score": 28.2061
+ },
+ {
+  "id": "A010",
+  "doc": "2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_Prevention_and_Control_Programmes_2026-09-11",
+  "gold_node": "remarks-3",
+  "satisfying_targets": [
+   "remarks-3"
+  ],
+  "n_leaves": 176,
+  "bm25_rank_0based": 0,
+  "bm25_rank": 1,
+  "bm25_score": 25.4533,
+  "top1_node": "remarks-3",
+  "top1_score": 25.4533
+ },
+ {
+  "id": "A011",
+  "doc": "2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_Prevention_and_Control_Programmes_2026-09-11",
+  "gold_node": "rationale-for-the-recommendation-4",
+  "satisfying_targets": [
+   "rationale-for-the-recommendation-4-overview"
+  ],
+  "n_leaves": 176,
+  "bm25_rank_0based": 1,
+  "bm25_rank": 2,
+  "bm25_score": 14.9816,
+  "top1_node": "remarks-5",
+  "top1_score": 18.0279
+ },
+ {
+  "id": "A012",
+  "doc": "2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_Prevention_and_Control_Programmes_2026-09-11",
+  "gold_node": "additional-factors-considered-when-formulating-the-recommendation-7",
+  "satisfying_targets": [
+   "additional-factors-considered-when-formulating-the-recommendation-7-overview"
+  ],
+  "n_leaves": 176,
+  "bm25_rank_0based": 0,
+  "bm25_rank": 1,
+  "bm25_score": 40.5948,
+  "top1_node": "additional-factors-considered-when-formulating-the-recommendation-7-overview",
+  "top1_score": 40.5948
+ },
+ {
+  "id": "A013",
+  "doc": "2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_Prevention_and_Control_Programmes_2026-09-11",
+  "gold_node": "recommendation-6",
+  "satisfying_targets": [
+   "recommendation-6"
+  ],
+  "n_leaves": 176,
+  "bm25_rank_0based": 0,
+  "bm25_rank": 1,
+  "bm25_score": 22.0478,
+  "top1_node": "recommendation-6",
+  "top1_score": 22.0478
+ },
+ {
+  "id": "A014",
+  "doc": "2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_Prevention_and_Control_Programmes_2026-09-11",
+  "gold_node": "recommendation-7",
+  "satisfying_targets": [
+   "recommendation-7"
+  ],
+  "n_leaves": 176,
+  "bm25_rank_0based": 0,
+  "bm25_rank": 1,
+  "bm25_score": 29.4219,
+  "top1_node": "recommendation-7",
+  "top1_score": 29.4219
+ },
+ {
+  "id": "A015",
+  "doc": "2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_Prevention_and_Control_Programmes_2026-09-11",
+  "gold_node": "rationale-for-the-recommendation-7",
+  "satisfying_targets": [
+   "rationale-for-the-recommendation-7"
+  ],
+  "n_leaves": 176,
+  "bm25_rank_0based": 0,
+  "bm25_rank": 1,
+  "bm25_score": 26.3778,
+  "top1_node": "rationale-for-the-recommendation-7",
+  "top1_score": 26.3778
+ },
+ {
+  "id": "A016",
+  "doc": "2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_Prevention_and_Control_Programmes_2026-09-11",
+  "gold_node": "rationale-for-the-recommendation-8",
+  "satisfying_targets": [
+   "rationale-for-the-recommendation-8"
+  ],
+  "n_leaves": 176,
+  "bm25_rank_0based": 0,
+  "bm25_rank": 1,
+  "bm25_score": 38.0298,
+  "top1_node": "rationale-for-the-recommendation-8",
+  "top1_score": 38.0298
+ },
+ {
+  "id": "A017",
+  "doc": "2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_Prevention_and_Control_Programmes_2026-09-11",
+  "gold_node": "review-update-and-evaluation-of-the-recommendations",
+  "satisfying_targets": [
+   "review-update-and-evaluation-of-the-recommendations"
+  ],
+  "n_leaves": 176,
+  "bm25_rank_0based": 0,
+  "bm25_rank": 1,
+  "bm25_score": 17.1244,
+  "top1_node": "review-update-and-evaluation-of-the-recommendations",
+  "top1_score": 17.1244
+ },
+ {
+  "id": "A018",
+  "doc": "5d883081_WHO_Bacterial_Priority_Pathogens_List_2024_2026-09-11",
+  "gold_node": "executive-summary",
+  "satisfying_targets": [
+   "executive-summary-overview"
+  ],
+  "n_leaves": 86,
+  "bm25_rank_0based": 1,
+  "bm25_rank": 2,
+  "bm25_score": 13.247,
+  "top1_node": "background",
+  "top1_score": 14.6952
+ },
+ {
+  "id": "A019",
+  "doc": "5d883081_WHO_Bacterial_Priority_Pathogens_List_2024_2026-09-11",
+  "gold_node": "background",
+  "satisfying_targets": [
+   "background"
+  ],
+  "n_leaves": 86,
+  "bm25_rank_0based": 0,
+  "bm25_rank": 1,
+  "bm25_score": 23.9194,
+  "top1_node": "background",
+  "top1_score": 23.9194
+ },
+ {
+  "id": "A020",
+  "doc": "5d883081_WHO_Bacterial_Priority_Pathogens_List_2024_2026-09-11",
+  "gold_node": "methods",
+  "satisfying_targets": [
+   "methods-overview"
+  ],
+  "n_leaves": 86,
+  "bm25_rank_0based": 0,
+  "bm25_rank": 1,
+  "bm25_score": 26.9885,
+  "top1_node": "methods-overview",
+  "top1_score": 26.9885
+ },
+ {
+  "id": "A021",
+  "doc": "5d883081_WHO_Bacterial_Priority_Pathogens_List_2024_2026-09-11",
+  "gold_node": "methods",
+  "satisfying_targets": [
+   "methods-overview"
+  ],
+  "n_leaves": 86,
+  "bm25_rank_0based": 0,
+  "bm25_rank": 1,
+  "bm25_score": 27.15,
+  "top1_node": "methods-overview",
+  "top1_score": 27.15
+ },
+ {
+  "id": "A022",
+  "doc": "5d883081_WHO_Bacterial_Priority_Pathogens_List_2024_2026-09-11",
+  "gold_node": "determination-of-criteria-weights-2023-global-paprika-survey",
+  "satisfying_targets": [
+   "determination-of-criteria-weights-2023-global-paprika-survey-overview"
+  ],
+  "n_leaves": 86,
+  "bm25_rank_0based": 0,
+  "bm25_rank": 1,
+  "bm25_score": 29.8465,
+  "top1_node": "determination-of-criteria-weights-2023-global-paprika-survey-overview",
+  "top1_score": 29.8465
+ },
+ {
+  "id": "A023",
+  "doc": "5d883081_WHO_Bacterial_Priority_Pathogens_List_2024_2026-09-11",
+  "gold_node": "independent-assessment-of-rr-tb",
+  "satisfying_targets": [
+   "independent-assessment-of-rr-tb"
+  ],
+  "n_leaves": 86,
+  "bm25_rank_0based": 0,
+  "bm25_rank": 1,
+  "bm25_score": 39.5014,
+  "top1_node": "independent-assessment-of-rr-tb",
+  "top1_score": 39.5014
+ },
+ {
+  "id": "A024",
+  "doc": "5d883081_WHO_Bacterial_Priority_Pathogens_List_2024_2026-09-11",
+  "gold_node": "results-who-bacterial-priority-pathogen-list-2024",
+  "satisfying_targets": [
+   "results-who-bacterial-priority-pathogen-list-2024-overview"
+  ],
+  "n_leaves": 86,
+  "bm25_rank_0based": 0,
+  "bm25_rank": 1,
+  "bm25_score": 23.8127,
+  "top1_node": "results-who-bacterial-priority-pathogen-list-2024-overview",
+  "top1_score": 23.8127
+ },
+ {
+  "id": "A025",
+  "doc": "5d883081_WHO_Bacterial_Priority_Pathogens_List_2024_2026-09-11",
+  "gold_node": "methicillin-resistant-staphylococcus-aureus-mrsa-remains-a-high-priority",
+  "satisfying_targets": [
+   "methicillin-resistant-staphylococcus-aureus-mrsa-remains-a-high-priority"
+  ],
+  "n_leaves": 86,
+  "bm25_rank_0based": 0,
+  "bm25_rank": 1,
+  "bm25_score": 50.0128,
+  "top1_node": "methicillin-resistant-staphylococcus-aureus-mrsa-remains-a-high-priority",
+  "top1_score": 50.0128
+ },
+ {
+  "id": "A026",
+  "doc": "5d883081_WHO_Bacterial_Priority_Pathogens_List_2024_2026-09-11",
+  "gold_node": "addressing-bacterial-priority-pathogens-through-innovation-and-r-d-of-new-drugs",
+  "satisfying_targets": [
+   "addressing-bacterial-priority-pathogens-through-innovation-and-r-d-of-new-drugs"
+  ],
+  "n_leaves": 86,
+  "bm25_rank_0based": 0,
+  "bm25_rank": 1,
+  "bm25_score": 19.3119,
+  "top1_node": "addressing-bacterial-priority-pathogens-through-innovation-and-r-d-of-new-drugs",
+  "top1_score": 19.3119
+ },
+ {
+  "id": "A027",
+  "doc": "5d883081_WHO_Bacterial_Priority_Pathogens_List_2024_2026-09-11",
+  "gold_node": "the-pathogens-for-the-2024-update-were-selected-in-two-stages",
+  "satisfying_targets": [
+   "the-pathogens-for-the-2024-update-were-selected-in-two-stages-overview"
+  ],
+  "n_leaves": 86,
+  "bm25_rank_0based": 0,
+  "bm25_rank": 1,
+  "bm25_score": 30.1962,
+  "top1_node": "the-pathogens-for-the-2024-update-were-selected-in-two-stages-overview",
+  "top1_score": 30.1962
+ },
+ {
+  "id": "A028",
+  "doc": "5d883081_WHO_Bacterial_Priority_Pathogens_List_2024_2026-09-11",
+  "gold_node": "a2-1-1-mortality",
+  "satisfying_targets": [
+   "a2-1-1-mortality-overview"
+  ],
+  "n_leaves": 86,
+  "bm25_rank_0based": 0,
+  "bm25_rank": 1,
+  "bm25_score": 22.7006,
+  "top1_node": "a2-1-1-mortality-overview",
+  "top1_score": 22.7006
+ },
+ {
+  "id": "A029",
+  "doc": "5d883081_WHO_Bacterial_Priority_Pathogens_List_2024_2026-09-11",
+  "gold_node": "a2-2-1-transmissibility",
+  "satisfying_targets": [
+   "a2-2-1-transmissibility-overview"
+  ],
+  "n_leaves": 86,
+  "bm25_rank_0based": 0,
+  "bm25_rank": 1,
+  "bm25_score": 27.8864,
+  "top1_node": "a2-2-1-transmissibility-overview",
+  "top1_score": 27.8864
+ },
+ {
+  "id": "A030",
+  "doc": "dda0c28e_Global_Antimicrobial_Resistance_and_Use_Surveillance_System_GLASS_Report_2022_2026-09-11",
+  "gold_node": "global-antimicrobial-resistance-and-use-surveillance-system-glass-report-2022",
+  "satisfying_targets": [
+   "global-antimicrobial-resistance-and-use-surveillance-system-glass-report-2022-overview"
+  ],
+  "n_leaves": 96,
+  "bm25_rank_0based": 0,
+  "bm25_rank": 1,
+  "bm25_score": 31.6375,
+  "top1_node": "global-antimicrobial-resistance-and-use-surveillance-system-glass-report-2022-overview",
+  "top1_score": 31.6375
+ },
+ {
+  "id": "A031",
+  "doc": "dda0c28e_Global_Antimicrobial_Resistance_and_Use_Surveillance_System_GLASS_Report_2022_2026-09-11",
+  "gold_node": "1-2-what-s-new-in-the-2022-report",
+  "satisfying_targets": [
+   "1-2-what-s-new-in-the-2022-report"
+  ],
+  "n_leaves": 96,
+  "bm25_rank_0based": 5,
+  "bm25_rank": 6,
+  "bm25_score": 4.493,
+  "top1_node": "annex-2-methodology-for-the-measurement-and-surveillance-of-amc-overview",
+  "top1_score": 5.8639
+ },
+ {
+  "id": "A032",
+  "doc": "dda0c28e_Global_Antimicrobial_Resistance_and_Use_Surveillance_System_GLASS_Report_2022_2026-09-11",
+  "gold_node": "1-1-basic-facts-on-antimicrobial-resistance-amr",
+  "satisfying_targets": [
+   "1-1-basic-facts-on-antimicrobial-resistance-amr"
+  ],
+  "n_leaves": 96,
+  "bm25_rank_0based": 0,
+  "bm25_rank": 1,
+  "bm25_score": 27.8434,
+  "top1_node": "1-1-basic-facts-on-antimicrobial-resistance-amr",
+  "top1_score": 27.8434
+ },
+ {
+  "id": "A033",
+  "doc": "dda0c28e_Global_Antimicrobial_Resistance_and_Use_Surveillance_System_GLASS_Report_2022_2026-09-11",
+  "gold_node": "1-2-what-s-new-in-the-2022-report",
+  "satisfying_targets": [
+   "1-2-what-s-new-in-the-2022-report"
+  ],
+  "n_leaves": 96,
+  "bm25_rank_0based": 0,
+  "bm25_rank": 1,
+  "bm25_score": 20.9206,
+  "top1_node": "1-2-what-s-new-in-the-2022-report",
+  "top1_score": 20.9206
+ },
+ {
+  "id": "A034",
+  "doc": "dda0c28e_Global_Antimicrobial_Resistance_and_Use_Surveillance_System_GLASS_Report_2022_2026-09-11",
+  "gold_node": "2-1-glass-strategy-and-milestones",
+  "satisfying_targets": [
+   "2-1-glass-strategy-and-milestones-overview"
+  ],
+  "n_leaves": 96,
+  "bm25_rank_0based": 14,
+  "bm25_rank": 15,
+  "bm25_score": 7.4503,
+  "top1_node": "references",
+  "top1_score": 16.5196
+ },
+ {
+  "id": "A035",
+  "doc": "dda0c28e_Global_Antimicrobial_Resistance_and_Use_Surveillance_System_GLASS_Report_2022_2026-09-11",
+  "gold_node": "2-4-mortality-due-to-amr",
+  "satisfying_targets": [
+   "2-4-mortality-due-to-amr"
+  ],
+  "n_leaves": 96,
+  "bm25_rank_0based": 0,
+  "bm25_rank": 1,
+  "bm25_score": 53.3002,
+  "top1_node": "2-4-mortality-due-to-amr",
+  "top1_score": 53.3002
+ },
+ {
+  "id": "A036",
+  "doc": "dda0c28e_Global_Antimicrobial_Resistance_and_Use_Surveillance_System_GLASS_Report_2022_2026-09-11",
+  "gold_node": "3-2-participation-and-coverage",
+  "satisfying_targets": [
+   "3-2-participation-and-coverage-overview"
+  ],
+  "n_leaves": 96,
+  "bm25_rank_0based": 0,
+  "bm25_rank": 1,
+  "bm25_score": 31.5472,
+  "top1_node": "3-2-participation-and-coverage-overview",
+  "top1_score": 31.5472
+ },
+ {
+  "id": "A037",
+  "doc": "dda0c28e_Global_Antimicrobial_Resistance_and_Use_Surveillance_System_GLASS_Report_2022_2026-09-11",
+  "gold_node": "3-3-global-amr-data",
+  "satisfying_targets": [
+   "3-3-global-amr-data-overview"
+  ],
+  "n_leaves": 96,
+  "bm25_rank_0based": 6,
+  "bm25_rank": 7,
+  "bm25_score": 16.1944,
+  "top1_node": "fig-3-5d-progress-in-reporting-antimicrobial-susceptibility-test-results-to-glass-amr-for-selected-antimicrobial-grou",
+  "top1_score": 21.6811
+ },
+ {
+  "id": "A038",
+  "doc": "dda0c28e_Global_Antimicrobial_Resistance_and_Use_Surveillance_System_GLASS_Report_2022_2026-09-11",
+  "gold_node": "3-3-2-time-series-of-resistance-to-selected-antibacterials-2017-2020",
+  "satisfying_targets": [
+   "3-3-2-time-series-of-resistance-to-selected-antibacterials-2017-2020"
+  ],
+  "n_leaves": 96,
+  "bm25_rank_0based": 0,
+  "bm25_rank": 1,
+  "bm25_score": 29.5236,
+  "top1_node": "3-3-2-time-series-of-resistance-to-selected-antibacterials-2017-2020",
+  "top1_score": 29.5236
+ },
+ {
+  "id": "A039",
+  "doc": "dda0c28e_Global_Antimicrobial_Resistance_and_Use_Surveillance_System_GLASS_Report_2022_2026-09-11",
+  "gold_node": "4-1-implementation-indicators",
+  "satisfying_targets": [
+   "4-1-implementation-indicators-overview"
+  ],
+  "n_leaves": 96,
+  "bm25_rank_0based": 0,
+  "bm25_rank": 1,
+  "bm25_score": 42.0627,
+  "top1_node": "4-1-implementation-indicators-overview",
+  "top1_score": 42.0627
+ },
+ {
+  "id": "A040",
+  "doc": "dda0c28e_Global_Antimicrobial_Resistance_and_Use_Surveillance_System_GLASS_Report_2022_2026-09-11",
+  "gold_node": "4-2-participation-and-coverage",
+  "satisfying_targets": [
+   "4-2-participation-and-coverage-overview"
+  ],
+  "n_leaves": 96,
+  "bm25_rank_0based": 0,
+  "bm25_rank": 1,
+  "bm25_score": 18.6941,
+  "top1_node": "4-2-participation-and-coverage-overview",
+  "top1_score": 18.6941
+ },
+ {
+  "id": "A041",
+  "doc": "dda0c28e_Global_Antimicrobial_Resistance_and_Use_Surveillance_System_GLASS_Report_2022_2026-09-11",
+  "gold_node": "4-3-global-amc-data",
+  "satisfying_targets": [
+   "4-3-global-amc-data-overview"
+  ],
+  "n_leaves": 96,
+  "bm25_rank_0based": 0,
+  "bm25_rank": 1,
+  "bm25_score": 45.8074,
+  "top1_node": "4-3-global-amc-data-overview",
+  "top1_score": 45.8074
+ },
+ {
+  "id": "A042",
+  "doc": "dda0c28e_Global_Antimicrobial_Resistance_and_Use_Surveillance_System_GLASS_Report_2022_2026-09-11",
+  "gold_node": "4-3-global-amc-data",
+  "satisfying_targets": [
+   "4-3-global-amc-data-overview"
+  ],
+  "n_leaves": 96,
+  "bm25_rank_0based": 0,
+  "bm25_rank": 1,
+  "bm25_score": 32.6789,
+  "top1_node": "4-3-global-amc-data-overview",
+  "top1_score": 32.6789
+ },
+ {
+  "id": "A043",
+  "doc": "dda0c28e_Global_Antimicrobial_Resistance_and_Use_Surveillance_System_GLASS_Report_2022_2026-09-11",
+  "gold_node": "table-a2-list-of-indicators-used-in-the-report-to-describe-amc-table-16",
+  "satisfying_targets": [
+   "table-a2-list-of-indicators-used-in-the-report-to-describe-amc-table-16"
+  ],
+  "n_leaves": 96,
+  "bm25_rank_0based": 0,
+  "bm25_rank": 1,
+  "bm25_score": 20.626,
+  "top1_node": "table-a2-list-of-indicators-used-in-the-report-to-describe-amc-table-16",
+  "top1_score": 20.626
+ },
+ {
+  "id": "A044",
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "gold_node": "1-definition-of-terms",
+  "satisfying_targets": [
+   "1-definition-of-terms"
+  ],
+  "n_leaves": 230,
+  "bm25_rank_0based": 13,
+  "bm25_rank": 14,
+  "bm25_score": 7.1833,
+  "top1_node": "introduction",
+  "top1_score": 9.8786
+ },
+ {
+  "id": "A045",
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "gold_node": "1-definition-of-terms",
+  "satisfying_targets": [
+   "1-definition-of-terms"
+  ],
+  "n_leaves": 230,
+  "bm25_rank_0based": 0,
+  "bm25_rank": 1,
+  "bm25_score": 17.5061,
+  "top1_node": "1-definition-of-terms",
+  "top1_score": 17.5061
+ },
+ {
+  "id": "A046",
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "gold_node": "3-the-burden-of-health-care-associated-infection",
+  "satisfying_targets": [
+   "3-the-burden-of-health-care-associated-infection-overview"
+  ],
+  "n_leaves": 230,
+  "bm25_rank_0based": 0,
+  "bm25_rank": 1,
+  "bm25_score": 54.4126,
+  "top1_node": "3-the-burden-of-health-care-associated-infection-overview",
+  "top1_score": 54.4126
+ },
+ {
+  "id": "A047",
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "gold_node": "3-the-burden-of-health-care-associated-infection",
+  "satisfying_targets": [
+   "3-the-burden-of-health-care-associated-infection-overview"
+  ],
+  "n_leaves": 230,
+  "bm25_rank_0based": 0,
+  "bm25_rank": 1,
+  "bm25_score": 50.6002,
+  "top1_node": "3-the-burden-of-health-care-associated-infection-overview",
+  "top1_score": 50.6002
+ },
+ {
+  "id": "A048",
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "gold_node": "4-historical-perspective-on-hand-hygiene-in-health-care",
+  "satisfying_targets": [
+   "4-historical-perspective-on-hand-hygiene-in-health-care"
+  ],
+  "n_leaves": 230,
+  "bm25_rank_0based": 0,
+  "bm25_rank": 1,
+  "bm25_score": 62.7089,
+  "top1_node": "4-historical-perspective-on-hand-hygiene-in-health-care",
+  "top1_score": 62.7089
+ },
+ {
+  "id": "A049",
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "gold_node": "5-normal-bacterial-flora-on-hands",
+  "satisfying_targets": [
+   "5-normal-bacterial-flora-on-hands"
+  ],
+  "n_leaves": 230,
+  "bm25_rank_0based": 0,
+  "bm25_rank": 1,
+  "bm25_score": 42.98,
+  "top1_node": "5-normal-bacterial-flora-on-hands",
+  "top1_score": 42.98
+ },
+ {
+  "id": "A050",
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "gold_node": "6-physiology-of-normal-skin",
+  "satisfying_targets": [
+   "6-physiology-of-normal-skin-overview"
+  ],
+  "n_leaves": 230,
+  "bm25_rank_0based": 1,
+  "bm25_rank": 2,
+  "bm25_score": 9.0877,
+  "top1_node": "6-physiology-of-normal-skin-figure-2",
+  "top1_score": 9.199
+ },
+ {
+  "id": "A051",
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "gold_node": "8-models-of-hand-transmission",
+  "satisfying_targets": [
+   "8-models-of-hand-transmission"
+  ],
+  "n_leaves": 230,
+  "bm25_rank_0based": 0,
+  "bm25_rank": 1,
+  "bm25_score": 71.5822,
+  "top1_node": "8-models-of-hand-transmission",
+  "top1_score": 71.5822
+ },
+ {
+  "id": "A052",
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "gold_node": "9-relationship-between-hand-hygiene-and-the-acquisition-of-health-care-associated-pathogens",
+  "satisfying_targets": [
+   "9-relationship-between-hand-hygiene-and-the-acquisition-of-health-care-associated-pathogens"
+  ],
+  "n_leaves": 230,
+  "bm25_rank_0based": 0,
+  "bm25_rank": 1,
+  "bm25_score": 33.0768,
+  "top1_node": "9-relationship-between-hand-hygiene-and-the-acquisition-of-health-care-associated-pathogens",
+  "top1_score": 33.0768
+ },
+ {
+  "id": "A053",
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "gold_node": "10-methods-to-evaluate-the-antimicrobial-efficacy-of-handrub-and-handwash-agents-and-formulations-for-surgical-hand-preparation",
+  "satisfying_targets": [
+   "10-methods-to-evaluate-the-antimicrobial-efficacy-of-handrub-and-handwash-agents-and-formulations-for-surgical-hand-preparation-overview"
+  ],
+  "n_leaves": 230,
+  "bm25_rank_0based": 0,
+  "bm25_rank": 1,
+  "bm25_score": 68.7861,
+  "top1_node": "10-methods-to-evaluate-the-antimicrobial-efficacy-of-handrub-and-handwash-agents-and-formulations-for-surgical-hand-preparation-overview",
+  "top1_score": 68.7861
+ },
+ {
+  "id": "A054",
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "gold_node": "11-review-of-preparations-used-for-hand-hygiene",
+  "satisfying_targets": [
+   "11-review-of-preparations-used-for-hand-hygiene-overview"
+  ],
+  "n_leaves": 230,
+  "bm25_rank_0based": 0,
+  "bm25_rank": 1,
+  "bm25_score": 25.6045,
+  "top1_node": "11-review-of-preparations-used-for-hand-hygiene-overview",
+  "top1_score": 25.6045
+ },
+ {
+  "id": "A055",
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "gold_node": "11-review-of-preparations-used-for-hand-hygiene",
+  "satisfying_targets": [
+   "11-review-of-preparations-used-for-hand-hygiene-overview"
+  ],
+  "n_leaves": 230,
+  "bm25_rank_0based": 0,
+  "bm25_rank": 1,
+  "bm25_score": 18.7419,
+  "top1_node": "11-review-of-preparations-used-for-hand-hygiene-overview",
+  "top1_score": 18.7419
+ },
+ {
+  "id": "A056",
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "gold_node": "11-review-of-preparations-used-for-hand-hygiene",
+  "satisfying_targets": [
+   "11-review-of-preparations-used-for-hand-hygiene-overview"
+  ],
+  "n_leaves": 230,
+  "bm25_rank_0based": 0,
+  "bm25_rank": 1,
+  "bm25_score": 25.1867,
+  "top1_node": "11-review-of-preparations-used-for-hand-hygiene-overview",
+  "top1_score": 25.1867
+ },
+ {
+  "id": "A057",
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "gold_node": "11-review-of-preparations-used-for-hand-hygiene",
+  "satisfying_targets": [
+   "11-review-of-preparations-used-for-hand-hygiene-overview"
+  ],
+  "n_leaves": 230,
+  "bm25_rank_0based": 2,
+  "bm25_rank": 3,
+  "bm25_score": 33.6345,
+  "top1_node": "10-methods-to-evaluate-the-antimicrobial-efficacy-of-handrub-and-handwash-agents-and-formulations-for-surgical-hand-preparation-overview",
+  "top1_score": 39.1825
+ },
+ {
+  "id": "A058",
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "gold_node": "11-review-of-preparations-used-for-hand-hygiene",
+  "satisfying_targets": [
+   "11-review-of-preparations-used-for-hand-hygiene-overview"
+  ],
+  "n_leaves": 230,
+  "bm25_rank_0based": 0,
+  "bm25_rank": 1,
+  "bm25_score": 56.185,
+  "top1_node": "11-review-of-preparations-used-for-hand-hygiene-overview",
+  "top1_score": 56.185
+ },
+ {
+  "id": "A059",
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "gold_node": "12-who-recommended-handrub-formulations",
+  "satisfying_targets": [
+   "12-who-recommended-handrub-formulations"
+  ],
+  "n_leaves": 230,
+  "bm25_rank_0based": 0,
+  "bm25_rank": 1,
+  "bm25_score": 22.7858,
+  "top1_node": "12-who-recommended-handrub-formulations",
+  "top1_score": 22.7858
+ },
+ {
+  "id": "A060",
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "gold_node": "12-who-recommended-handrub-formulations",
+  "satisfying_targets": [
+   "12-who-recommended-handrub-formulations"
+  ],
+  "n_leaves": 230,
+  "bm25_rank_0based": 0,
+  "bm25_rank": 1,
+  "bm25_score": 33.3386,
+  "top1_node": "12-who-recommended-handrub-formulations",
+  "top1_score": 33.3386
+ },
+ {
+  "id": "A061",
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "gold_node": "13-surgical-hand-preparation-state-of-the-art",
+  "satisfying_targets": [
+   "13-surgical-hand-preparation-state-of-the-art-overview"
+  ],
+  "n_leaves": 230,
+  "bm25_rank_0based": 0,
+  "bm25_rank": 1,
+  "bm25_score": 39.2311,
+  "top1_node": "13-surgical-hand-preparation-state-of-the-art-overview",
+  "top1_score": 39.2311
+ },
+ {
+  "id": "A062",
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "gold_node": "13-surgical-hand-preparation-state-of-the-art",
+  "satisfying_targets": [
+   "13-surgical-hand-preparation-state-of-the-art-overview"
+  ],
+  "n_leaves": 230,
+  "bm25_rank_0based": 0,
+  "bm25_rank": 1,
+  "bm25_score": 30.5234,
+  "top1_node": "13-surgical-hand-preparation-state-of-the-art-overview",
+  "top1_score": 30.5234
+ },
+ {
+  "id": "A063",
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "gold_node": "13-surgical-hand-preparation-state-of-the-art",
+  "satisfying_targets": [
+   "13-surgical-hand-preparation-state-of-the-art-overview"
+  ],
+  "n_leaves": 230,
+  "bm25_rank_0based": 0,
+  "bm25_rank": 1,
+  "bm25_score": 42.6483,
+  "top1_node": "13-surgical-hand-preparation-state-of-the-art-overview",
+  "top1_score": 42.6483
+ },
+ {
+  "id": "A064",
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "gold_node": "14-skin-reactions-related-to-hand-hygiene",
+  "satisfying_targets": [
+   "14-skin-reactions-related-to-hand-hygiene"
+  ],
+  "n_leaves": 230,
+  "bm25_rank_0based": 0,
+  "bm25_rank": 1,
+  "bm25_score": 29.203,
+  "top1_node": "14-skin-reactions-related-to-hand-hygiene",
+  "top1_score": 29.203
+ },
+ {
+  "id": "A065",
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "gold_node": "16-hand-hygiene-practices-among-health-care-workers-and-adherence-to-recommendations",
+  "satisfying_targets": [
+   "16-hand-hygiene-practices-among-health-care-workers-and-adherence-to-recommendations-overview"
+  ],
+  "n_leaves": 230,
+  "bm25_rank_0based": 0,
+  "bm25_rank": 1,
+  "bm25_score": 42.7666,
+  "top1_node": "16-hand-hygiene-practices-among-health-care-workers-and-adherence-to-recommendations-overview",
+  "top1_score": 42.7666
+ },
+ {
+  "id": "A066",
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "gold_node": "17-religious-and-cultural-aspects-of-hand-hygiene",
+  "satisfying_targets": [
+   "17-religious-and-cultural-aspects-of-hand-hygiene-overview"
+  ],
+  "n_leaves": 230,
+  "bm25_rank_0based": 1,
+  "bm25_rank": 2,
+  "bm25_score": 28.5397,
+  "top1_node": "18-behavioural-considerations",
+  "top1_score": 32.309
+ },
+ {
+  "id": "A067",
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "gold_node": "18-behavioural-considerations",
+  "satisfying_targets": [
+   "18-behavioural-considerations"
+  ],
+  "n_leaves": 230,
+  "bm25_rank_0based": 0,
+  "bm25_rank": 1,
+  "bm25_score": 29.1249,
+  "top1_node": "18-behavioural-considerations",
+  "top1_score": 29.1249
+ },
+ {
+  "id": "A068",
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "gold_node": "21-the-who-multimodal-hand-hygiene-improvement-strategy",
+  "satisfying_targets": [
+   "21-the-who-multimodal-hand-hygiene-improvement-strategy-overview"
+  ],
+  "n_leaves": 230,
+  "bm25_rank_0based": 0,
+  "bm25_rank": 1,
+  "bm25_score": 31.9308,
+  "top1_node": "21-the-who-multimodal-hand-hygiene-improvement-strategy-overview",
+  "top1_score": 31.9308
+ },
+ {
+  "id": "A069",
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "gold_node": "21-the-who-multimodal-hand-hygiene-improvement-strategy",
+  "satisfying_targets": [
+   "21-the-who-multimodal-hand-hygiene-improvement-strategy-overview"
+  ],
+  "n_leaves": 230,
+  "bm25_rank_0based": 2,
+  "bm25_rank": 3,
+  "bm25_score": 28.4867,
+  "top1_node": "pilot-sites-for-the-testing-of-the-who-guidelines-on-hand-hygiene-in-health-care-and-its-strategy-and-tools",
+  "top1_score": 29.4171
+ },
+ {
+  "id": "A070",
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "gold_node": "21-the-who-multimodal-hand-hygiene-improvement-strategy",
+  "satisfying_targets": [
+   "21-the-who-multimodal-hand-hygiene-improvement-strategy-overview"
+  ],
+  "n_leaves": 230,
+  "bm25_rank_0based": 2,
+  "bm25_rank": 3,
+  "bm25_score": 41.835,
+  "top1_node": "lessons-learnt-from-testing-in-pilot-sites",
+  "top1_score": 48.8729
+ },
+ {
+  "id": "A071",
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "gold_node": "21-the-who-multimodal-hand-hygiene-improvement-strategy",
+  "satisfying_targets": [
+   "21-the-who-multimodal-hand-hygiene-improvement-strategy-overview"
+  ],
+  "n_leaves": 230,
+  "bm25_rank_0based": 0,
+  "bm25_rank": 1,
+  "bm25_score": 36.9432,
+  "top1_node": "21-the-who-multimodal-hand-hygiene-improvement-strategy-overview",
+  "top1_score": 36.9432
+ },
+ {
+  "id": "A072",
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "gold_node": "22-impact-of-improved-hand-hygiene",
+  "satisfying_targets": [
+   "22-impact-of-improved-hand-hygiene-overview"
+  ],
+  "n_leaves": 230,
+  "bm25_rank_0based": 0,
+  "bm25_rank": 1,
+  "bm25_score": 37.2469,
+  "top1_node": "22-impact-of-improved-hand-hygiene-overview",
+  "top1_score": 37.2469
+ },
+ {
+  "id": "A073",
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "gold_node": "23-practical-issues-and-potential-barriers-to-optimal-hand-hygiene-practices",
+  "satisfying_targets": [
+   "23-practical-issues-and-potential-barriers-to-optimal-hand-hygiene-practices-overview"
+  ],
+  "n_leaves": 230,
+  "bm25_rank_0based": 0,
+  "bm25_rank": 1,
+  "bm25_score": 31.7708,
+  "top1_node": "23-practical-issues-and-potential-barriers-to-optimal-hand-hygiene-practices-overview",
+  "top1_score": 31.7708
+ },
+ {
+  "id": "A074",
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "gold_node": "23-practical-issues-and-potential-barriers-to-optimal-hand-hygiene-practices",
+  "satisfying_targets": [
+   "23-practical-issues-and-potential-barriers-to-optimal-hand-hygiene-practices-overview"
+  ],
+  "n_leaves": 230,
+  "bm25_rank_0based": 1,
+  "bm25_rank": 2,
+  "bm25_score": 26.8981,
+  "top1_node": "7-transmission-of-pathogens-by-hands-overview",
+  "top1_score": 30.01
+ },
+ {
+  "id": "A075",
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "gold_node": "23-practical-issues-and-potential-barriers-to-optimal-hand-hygiene-practices",
+  "satisfying_targets": [
+   "23-practical-issues-and-potential-barriers-to-optimal-hand-hygiene-practices-overview"
+  ],
+  "n_leaves": 230,
+  "bm25_rank_0based": 1,
+  "bm25_rank": 2,
+  "bm25_score": 15.9581,
+  "top1_node": "7-other-aspects-of-hand-hygiene",
+  "top1_score": 21.9429
+ },
+ {
+  "id": "A076",
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "gold_node": "23-practical-issues-and-potential-barriers-to-optimal-hand-hygiene-practices",
+  "satisfying_targets": [
+   "23-practical-issues-and-potential-barriers-to-optimal-hand-hygiene-practices-overview"
+  ],
+  "n_leaves": 230,
+  "bm25_rank_0based": 0,
+  "bm25_rank": 1,
+  "bm25_score": 37.7967,
+  "top1_node": "23-practical-issues-and-potential-barriers-to-optimal-hand-hygiene-practices-overview",
+  "top1_score": 37.7967
+ },
+ {
+  "id": "A077",
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "gold_node": "ranking-system-for-evidence",
+  "satisfying_targets": [
+   "ranking-system-for-evidence-overview"
+  ],
+  "n_leaves": 230,
+  "bm25_rank_0based": 1,
+  "bm25_rank": 2,
+  "bm25_score": 34.9228,
+  "top1_node": "modified-cdc-hicpac-ranking-system-for-evidence",
+  "top1_score": 45.3327
+ },
+ {
+  "id": "A078",
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "gold_node": "3-recommendations-for-surgical-hand-preparation",
+  "satisfying_targets": [
+   "3-recommendations-for-surgical-hand-preparation"
+  ],
+  "n_leaves": 230,
+  "bm25_rank_0based": 0,
+  "bm25_rank": 1,
+  "bm25_score": 46.8911,
+  "top1_node": "3-recommendations-for-surgical-hand-preparation",
+  "top1_score": 46.8911
+ },
+ {
+  "id": "A079",
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "gold_node": "13-surgical-hand-preparation-state-of-the-art",
+  "satisfying_targets": [
+   "13-surgical-hand-preparation-state-of-the-art-overview"
+  ],
+  "n_leaves": 230,
+  "bm25_rank_0based": 0,
+  "bm25_rank": 1,
+  "bm25_score": 42.9495,
+  "top1_node": "13-surgical-hand-preparation-state-of-the-art-overview",
+  "top1_score": 42.9495
+ },
+ {
+  "id": "A080",
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "gold_node": "1-hand-hygiene-as-a-performance-indicator",
+  "satisfying_targets": [
+   "1-hand-hygiene-as-a-performance-indicator-overview"
+  ],
+  "n_leaves": 230,
+  "bm25_rank_0based": 0,
+  "bm25_rank": 1,
+  "bm25_score": 42.9709,
+  "top1_node": "1-hand-hygiene-as-a-performance-indicator-overview",
+  "top1_score": 42.9709
+ },
+ {
+  "id": "A081",
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "gold_node": "3-assessing-the-economic-impact-of-hand-hygiene-promotion",
+  "satisfying_targets": [
+   "3-assessing-the-economic-impact-of-hand-hygiene-promotion-overview"
+  ],
+  "n_leaves": 230,
+  "bm25_rank_0based": 0,
+  "bm25_rank": 1,
+  "bm25_score": 24.3829,
+  "top1_node": "3-assessing-the-economic-impact-of-hand-hygiene-promotion-overview",
+  "top1_score": 24.3829
+ },
+ {
+  "id": "A082",
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "gold_node": "3-assessing-the-economic-impact-of-hand-hygiene-promotion",
+  "satisfying_targets": [
+   "3-assessing-the-economic-impact-of-hand-hygiene-promotion-overview"
+  ],
+  "n_leaves": 230,
+  "bm25_rank_0based": 0,
+  "bm25_rank": 1,
+  "bm25_score": 48.289,
+  "top1_node": "3-assessing-the-economic-impact-of-hand-hygiene-promotion-overview",
+  "top1_score": 48.289
+ },
+ {
+  "id": "A083",
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "gold_node": "4-public-campaigning-who-and-the-mass-media",
+  "satisfying_targets": [
+   "4-public-campaigning-who-and-the-mass-media"
+  ],
+  "n_leaves": 230,
+  "bm25_rank_0based": 0,
+  "bm25_rank": 1,
+  "bm25_score": 42.0242,
+  "top1_node": "4-public-campaigning-who-and-the-mass-media",
+  "top1_score": 42.0242
+ },
+ {
+  "id": "A084",
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "gold_node": "8-nationally-driven-hand-hygiene-improvement-in-health-care",
+  "satisfying_targets": [
+   "8-nationally-driven-hand-hygiene-improvement-in-health-care"
+  ],
+  "n_leaves": 230,
+  "bm25_rank_0based": 0,
+  "bm25_rank": 1,
+  "bm25_score": 27.4297,
+  "top1_node": "8-nationally-driven-hand-hygiene-improvement-in-health-care",
+  "top1_score": 27.4297
+ },
+ {
+  "id": "A085",
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "gold_node": "2-patient-empowerment-and-health-care",
+  "satisfying_targets": [
+   "2-patient-empowerment-and-health-care"
+  ],
+  "n_leaves": 230,
+  "bm25_rank_0based": 0,
+  "bm25_rank": 1,
+  "bm25_score": 32.1148,
+  "top1_node": "2-patient-empowerment-and-health-care",
+  "top1_score": 32.1148
+ },
+ {
+  "id": "A086",
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "gold_node": "6-who-global-survey-of-patient-experiences",
+  "satisfying_targets": [
+   "6-who-global-survey-of-patient-experiences"
+  ],
+  "n_leaves": 230,
+  "bm25_rank_0based": 0,
+  "bm25_rank": 1,
+  "bm25_score": 26.9195,
+  "top1_node": "6-who-global-survey-of-patient-experiences",
+  "top1_score": 26.9195
+ },
+ {
+  "id": "A087",
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "gold_node": "guidelines-for-hand-hygiene-prepared-by-various-other-agencies-both-prior-to-and-after-the-publication-of-the-advanced-draft-of-these-guidelines-are-currently-available-an-analysis-of-recommendations-in-guidelines-produced-by-16-countries-was-published-in-2001-635-however-several-guidelines-included-in-the-analysis-were-not-formal-publications-agreed-upon-nationally-or-sub-nationally-and-the-level-of-details-provided-could-be-expanded-more-extensively-this-section-examines-the-scope-approaches-and-recommendations-of-some-national-and-sub-national-guidelines",
+  "satisfying_targets": [
+   "guidelines-for-hand-hygiene-prepared-by-various-other-agencies-both-prior-to-and-after-the-publication-of-the-advanced-draft-of-these-guidelines-are-currently-available-an-analysis-of-recommendations-in-guidelines-produced-by-16-countries-was-published-in-2001-635-however-several-guidelines-included-in-the-analysis-were-not-formal-publications-agreed-upon-nationally-or-sub-nationally-and-the-level-of-details-provided-could-be-expanded-more-extensively-this-section-examines-the-scope-approaches-and-recommendations-of-some-national-and-sub-national-guidelines-overview"
+  ],
+  "n_leaves": 230,
+  "bm25_rank_0based": 1,
+  "bm25_rank": 2,
+  "bm25_score": 25.5779,
+  "top1_node": "part-vi-overview",
+  "top1_score": 25.725
+ },
+ {
+  "id": "A088",
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "gold_node": "what-is-clostridium-difficile",
+  "satisfying_targets": [
+   "what-is-clostridium-difficile"
+  ],
+  "n_leaves": 230,
+  "bm25_rank_0based": 0,
+  "bm25_rank": 1,
+  "bm25_score": 40.2781,
+  "top1_node": "what-is-clostridium-difficile",
+  "top1_score": 40.2781
+ },
+ {
+  "id": "A089",
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "gold_node": "appendix-4-monitoring-hand-hygiene-by-direct-methods",
+  "satisfying_targets": [
+   "appendix-4-monitoring-hand-hygiene-by-direct-methods"
+  ],
+  "n_leaves": 230,
+  "bm25_rank_0based": 0,
+  "bm25_rank": 1,
+  "bm25_score": 51.5525,
+  "top1_node": "appendix-4-monitoring-hand-hygiene-by-direct-methods",
+  "top1_score": 51.5525
+ },
+ {
+  "id": "A090",
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "gold_node": "appendix-4-monitoring-hand-hygiene-by-direct-methods",
+  "satisfying_targets": [
+   "appendix-4-monitoring-hand-hygiene-by-direct-methods"
+  ],
+  "n_leaves": 230,
+  "bm25_rank_0based": 0,
+  "bm25_rank": 1,
+  "bm25_score": 67.1417,
+  "top1_node": "appendix-4-monitoring-hand-hygiene-by-direct-methods",
+  "top1_score": 67.1417
+ },
+ {
+  "id": "A091",
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "gold_node": "appendix-6-who-global-survey-of-patient-experiences-in-hand-hygiene-improvement",
+  "satisfying_targets": [
+   "appendix-6-who-global-survey-of-patient-experiences-in-hand-hygiene-improvement-overview"
+  ],
+  "n_leaves": 230,
+  "bm25_rank_0based": 0,
+  "bm25_rank": 1,
+  "bm25_score": 37.3826,
+  "top1_node": "appendix-6-who-global-survey-of-patient-experiences-in-hand-hygiene-improvement-overview",
+  "top1_score": 37.3826
+ },
+ {
+  "id": "A092",
+  "doc": "2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_Prevention_and_Control_Programmes_2026-09-11",
+  "gold_node": "4-3-guidelines-development-group",
+  "satisfying_targets": [
+   "4-3-guidelines-development-group"
+  ],
+  "n_leaves": 176,
+  "bm25_rank_0based": 0,
+  "bm25_rank": 1,
+  "bm25_score": 48.2191,
+  "top1_node": "4-3-guidelines-development-group",
+  "top1_score": 48.2191
+ },
+ {
+  "id": "A093",
+  "doc": "2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_Prevention_and_Control_Programmes_2026-09-11",
+  "gold_node": "rationale-for-the-good-practice-statement",
+  "satisfying_targets": [
+   "rationale-for-the-good-practice-statement"
+  ],
+  "n_leaves": 176,
+  "bm25_rank_0based": 3,
+  "bm25_rank": 4,
+  "bm25_score": 17.305,
+  "top1_node": "strengthening-implementation-of-the-ihr",
+  "top1_score": 36.7289
+ },
+ {
+  "id": "A094",
+  "doc": "5d883081_WHO_Bacterial_Priority_Pathogens_List_2024_2026-09-11",
+  "gold_node": "acknowledgements",
+  "satisfying_targets": [
+   "acknowledgements"
+  ],
+  "n_leaves": 86,
+  "bm25_rank_0based": 0,
+  "bm25_rank": 1,
+  "bm25_score": 21.7826,
+  "top1_node": "acknowledgements",
+  "top1_score": 21.7826
+ },
+ {
+  "id": "A095",
+  "doc": "5d883081_WHO_Bacterial_Priority_Pathogens_List_2024_2026-09-11",
+  "gold_node": "evaluation-and-management-of-potential-conflicts-of-interest",
+  "satisfying_targets": [
+   "evaluation-and-management-of-potential-conflicts-of-interest"
+  ],
+  "n_leaves": 86,
+  "bm25_rank_0based": 0,
+  "bm25_rank": 1,
+  "bm25_score": 74.38,
+  "top1_node": "evaluation-and-management-of-potential-conflicts-of-interest",
+  "top1_score": 74.38
+ },
+ {
+  "id": "A096",
+  "doc": "dda0c28e_Global_Antimicrobial_Resistance_and_Use_Surveillance_System_GLASS_Report_2022_2026-09-11",
+  "gold_node": "key-findings-and-public-health-implications",
+  "satisfying_targets": [
+   "key-findings-and-public-health-implications"
+  ],
+  "n_leaves": 96,
+  "bm25_rank_0based": 0,
+  "bm25_rank": 1,
+  "bm25_score": 27.7957,
+  "top1_node": "key-findings-and-public-health-implications",
+  "top1_score": 27.7957
+ },
+ {
+  "id": "A097",
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "gold_node": "7-transmission-of-pathogens-by-hands",
+  "satisfying_targets": [
+   "7-transmission-of-pathogens-by-hands-overview"
+  ],
+  "n_leaves": 230,
+  "bm25_rank_0based": 0,
+  "bm25_rank": 1,
+  "bm25_score": 46.2541,
+  "top1_node": "7-transmission-of-pathogens-by-hands-overview",
+  "top1_score": 46.2541
+ },
+ {
+  "id": "A098",
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "gold_node": "7-transmission-of-pathogens-by-hands",
+  "satisfying_targets": [
+   "7-transmission-of-pathogens-by-hands-overview"
+  ],
+  "n_leaves": 230,
+  "bm25_rank_0based": 0,
+  "bm25_rank": 1,
+  "bm25_score": 25.0431,
+  "top1_node": "7-transmission-of-pathogens-by-hands-overview",
+  "top1_score": 25.0431
+ },
+ {
+  "id": "A099",
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "gold_node": "7-transmission-of-pathogens-by-hands",
+  "satisfying_targets": [
+   "7-transmission-of-pathogens-by-hands-overview"
+  ],
+  "n_leaves": 230,
+  "bm25_rank_0based": 0,
+  "bm25_rank": 1,
+  "bm25_score": 36.1429,
+  "top1_node": "7-transmission-of-pathogens-by-hands-overview",
+  "top1_score": 36.1429
+ },
+ {
+  "id": "A100",
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "gold_node": "11-review-of-preparations-used-for-hand-hygiene",
+  "satisfying_targets": [
+   "11-review-of-preparations-used-for-hand-hygiene-overview"
+  ],
+  "n_leaves": 230,
+  "bm25_rank_0based": 0,
+  "bm25_rank": 1,
+  "bm25_score": 47.9552,
+  "top1_node": "11-review-of-preparations-used-for-hand-hygiene-overview",
+  "top1_score": 47.9552
+ }
+]

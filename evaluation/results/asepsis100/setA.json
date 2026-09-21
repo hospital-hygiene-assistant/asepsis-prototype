@@ -1,0 +1,3167 @@
+[
+ {
+  "id": "A001",
+  "doc": "e52f664f_MRSA_2014_hygiene_2026-09-01",
+  "question": "According to the WHO news release, what was the average MRSA resistance rate among bacteria isolated in health-care facilities in Europe?",
+  "gold_node": "antimicrobial-resistance-and-good-hand-hygiene",
+  "gold_is_leaf": true,
+  "satisfying_targets": [
+   "antimicrobial-resistance-and-good-hand-hygiene"
+  ],
+  "matched": [
+   "antimicrobial-resistance-and-good-hand-hygiene"
+  ],
+  "hit": true,
+  "how": "walk",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "The section directly addresses the average MRSA resistance rate in Europe according to WHO data."
+  ],
+  "n_retrieved": 2,
+  "retrieved": [
+   "good-hand-hygiene-by-health-workers-protects-patients-from-drug-resistant-infections-overview",
+   "antimicrobial-resistance-and-good-hand-hygiene"
+  ],
+  "secs": 21.2
+ },
+ {
+  "id": "A002",
+  "doc": "e52f664f_MRSA_2014_hygiene_2026-09-01",
+  "question": "According to the WHO news release, how many health facilities registered under that year's \"SAVE LIVES: Clean Your Hands\" campaign?",
+  "gold_node": "5-key-moments",
+  "gold_is_leaf": true,
+  "satisfying_targets": [
+   "5-key-moments"
+  ],
+  "matched": [
+   "5-key-moments"
+  ],
+  "hit": true,
+  "how": "walk",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "The section directly answers how many health facilities registered for this year's campaign, which is a key part of the query."
+  ],
+  "n_retrieved": 1,
+  "retrieved": [
+   "5-key-moments"
+  ],
+  "secs": 11.1
+ },
+ {
+  "id": "A003",
+  "doc": "2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_Prevention_and_Control_Programmes_2026-09-11",
+  "question": "How many elements or components does a \"multimodal strategy\" consist of at minimum, and what number of elements is most common?",
+  "gold_node": "glossary-of-terms",
+  "gold_is_leaf": true,
+  "satisfying_targets": [
+   "glossary-of-terms"
+  ],
+  "matched": [
+   "glossary-of-terms"
+  ],
+  "hit": true,
+  "how": "walk",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "This section directly addresses both parts of the query: the minimum number of elements and the most common number of elements for a \"multimodal strategy\"."
+  ],
+  "n_retrieved": 10,
+  "retrieved": [
+   "guidelines-on-core-components-of-infection-prevention-and-control-programmes-at-the-national-and-acute-health-care-facility-level-overview",
+   "glossary-of-terms",
+   "rationale-for-the-recommendation-4-overview",
+   "remarks-4",
+   "background-4",
+   "research-gaps-6",
+   "background-5",
+   "summary-of-the-evidence-6-overview",
+   "background-10",
+   "the-overall-aim-of-these-guidelines-is-to-improve-the-quality-and-safety-of-health-care-and-the-outcome-of-patients-accessing-health-services-as-well-as-the-safety-of-health-care-workers-uptake-of-the-guidelines-by-all-players-across-all-levels-of-the-health-system-is-therefore-essential-overview"
+  ],
+  "secs": 59.3
+ },
+ {
+  "id": "A004",
+  "doc": "2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_Prevention_and_Control_Programmes_2026-09-11",
+  "question": "According to the WHO guidelines, what percentage of patients in developing countries will acquire at least one health care-associated infection at any given time?",
+  "gold_node": "introduction",
+  "gold_is_leaf": true,
+  "satisfying_targets": [
+   "introduction"
+  ],
+  "matched": [
+   "introduction"
+  ],
+  "hit": true,
+  "how": "walk",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "The section directly addresses the percentage of patients in developing countries who will acquire at least one health care-associated infection (HAI), which is a key part of the query."
+  ],
+  "n_retrieved": 3,
+  "retrieved": [
+   "introduction",
+   "there-is-a-growing-body-of-evidence-on-the-global-burden-of-harm-caused-by-hai-as-well-as-the-strategies-necessary-for-its-reduction-4-in-2011-who-reported-that-3",
+   "background"
+  ],
+  "secs": 38.9
+ },
+ {
+  "id": "A005",
+  "doc": "2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_Prevention_and_Control_Programmes_2026-09-11",
+  "question": "According to estimates cited in the guidelines, approximately how many deaths per year were attributed to health care-associated infections in the United States of America?",
+  "gold_node": "there-is-a-growing-body-of-evidence-on-the-global-burden-of-harm-caused-by-hai-as-well-as-the-strategies-necessary-for-its-reduction-4-in-2011-who-reported-that-3",
+  "gold_is_leaf": true,
+  "satisfying_targets": [
+   "there-is-a-growing-body-of-evidence-on-the-global-burden-of-harm-caused-by-hai-as-well-as-the-strategies-necessary-for-its-reduction-4-in-2011-who-reported-that-3"
+  ],
+  "matched": [
+   "there-is-a-growing-body-of-evidence-on-the-global-burden-of-harm-caused-by-hai-as-well-as-the-strategies-necessary-for-its-reduction-4-in-2011-who-reported-that-3"
+  ],
+  "hit": true,
+  "how": "walk",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "The section provides specific data regarding deaths attributed to HAI in the United States of America."
+  ],
+  "n_retrieved": 2,
+  "retrieved": [
+   "there-is-a-growing-body-of-evidence-on-the-global-burden-of-harm-caused-by-hai-as-well-as-the-strategies-necessary-for-its-reduction-4-in-2011-who-reported-that-3",
+   "additional-factors-considered-when-formulating-the-recommendation-7-overview"
+  ],
+  "secs": 46.7
+ },
+ {
+  "id": "A006",
+  "doc": "2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_Prevention_and_Control_Programmes_2026-09-11",
+  "question": "According to a 2015 WHO/UNICEF global report cited in the guidelines, what percentage of health care facilities have no water source?",
+  "gold_node": "there-is-a-growing-body-of-evidence-on-the-global-burden-of-harm-caused-by-hai-as-well-as-the-strategies-necessary-for-its-reduction-4-in-2011-who-reported-that-3",
+  "gold_is_leaf": true,
+  "satisfying_targets": [
+   "there-is-a-growing-body-of-evidence-on-the-global-burden-of-harm-caused-by-hai-as-well-as-the-strategies-necessary-for-its-reduction-4-in-2011-who-reported-that-3"
+  ],
+  "matched": [
+   "there-is-a-growing-body-of-evidence-on-the-global-burden-of-harm-caused-by-hai-as-well-as-the-strategies-necessary-for-its-reduction-4-in-2011-who-reported-that-3"
+  ],
+  "hit": true,
+  "how": "walk",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "The section directly answers the query by citing a 2015 WHO/UNICEF global report and providing the specific percentage for health care facilities lacking a water source."
+  ],
+  "n_retrieved": 8,
+  "retrieved": [
+   "glossary-of-terms",
+   "guideline-implementation-table-8",
+   "health-care-associated-infections-hai-are-one-of-the-most-common-adverse-events-in-care-delivery-and-both-the-endemic-burden-and-the-occurrence-of-epidemics-are-a-major-public-health-problem-hais-have-a-significant-impact-on-morbidity-mortality-and-quality-of-life-and-present-an-economic-burden-at-the-societal-level-however-a-large-proportion-of-hai-are-preventable-and-there-is-a-growing-body-of-evidence-to-help-raise-awareness-of-the-global-burden-of-harm-caused-by-these-infections-3-4-including-strategies-to-reduce-their-spread-5",
+   "4-6-evidence-identification-and-retrieval-overview",
+   "there-is-a-growing-body-of-evidence-on-the-global-burden-of-harm-caused-by-hai-as-well-as-the-strategies-necessary-for-its-reduction-4-in-2011-who-reported-that-3",
+   "background-3",
+   "background-9",
+   "review-update-and-evaluation-of-the-recommendations"
+  ],
+  "secs": 95.7
+ },
+ {
+  "id": "A007",
+  "doc": "2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_Prevention_and_Control_Programmes_2026-09-11",
+  "question": "Considering increasing patient acuity and the multiple roles of the modern infection preventionist, what infection preventionist-to-bed ratio did the GDG suggest be considered, provided it is no less than one per 250 beds?",
+  "gold_node": "summary-of-the-evidence",
+  "gold_is_leaf": true,
+  "satisfying_targets": [
+   "summary-of-the-evidence"
+  ],
+  "matched": [
+   "summary-of-the-evidence"
+  ],
+  "hit": true,
+  "how": "walk",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "The section directly addresses the suggested ratio by the GDG in light of increasing acuity and multiple roles, providing a specific recommendation."
+  ],
+  "n_retrieved": 7,
+  "retrieved": [
+   "table-1-summary-of-ipc-core-components-and-key-remarks",
+   "core-component-1-infection-prevention-and-control-programmes-1a-health-care-facility-level",
+   "summary-of-the-evidence",
+   "rationale-for-the-recommendation-7",
+   "background-8",
+   "research-gaps-10",
+   "rationale-for-the-recommendation-8"
+  ],
+  "secs": 76.7
+ },
+ {
+  "id": "A008",
+  "doc": "2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_Prevention_and_Control_Programmes_2026-09-11",
+  "question": "How many studies did the Guidelines Development Group evaluate as evidence when formulating the recommendation on IPC education and training at the health care facility level?",
+  "gold_node": "rationale-for-recommendation",
+  "gold_is_leaf": true,
+  "satisfying_targets": [
+   "rationale-for-recommendation"
+  ],
+  "matched": [
+   "rationale-for-recommendation"
+  ],
+  "hit": true,
+  "how": "walk",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "The section directly addresses the number of studies evaluated regarding IPC education and training evidence."
+  ],
+  "n_retrieved": 8,
+  "retrieved": [
+   "guideline-implementation-table-3",
+   "evaluation-of-the-evidence-and-recommendations-development-by-the-gdg",
+   "summary-of-the-evidence",
+   "rationale-for-the-recommendation",
+   "summary-of-the-evidence-2-overview",
+   "rationale-for-recommendation",
+   "summary-of-the-evidence-3-overview",
+   "non-epoc-studies-2"
+  ],
+  "secs": 69.5
+ },
+ {
+  "id": "A009",
+  "doc": "2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_Prevention_and_Control_Programmes_2026-09-11",
+  "question": "What does the recommendation state should be performed to guide IPC interventions and detect outbreaks at the health care facility level?",
+  "gold_node": "recommendation-2",
+  "gold_is_leaf": true,
+  "satisfying_targets": [
+   "recommendation-2"
+  ],
+  "matched": [
+   "recommendation-2"
+  ],
+  "hit": true,
+  "how": "walk",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "The section directly addresses what should be performed to guide IPC interventions and detect outbreaks at the health care facility level by stating a specific recommendation."
+  ],
+  "n_retrieved": 11,
+  "retrieved": [
+   "guidelines-on-core-components-of-infection-prevention-and-control-programmes-at-the-national-and-acute-health-care-facility-level-overview",
+   "recommendations",
+   "guideline-implementation-overview",
+   "guideline-implementation-table-4",
+   "guideline-implementation-table-5",
+   "recommendation-2",
+   "rationale-for-the-recommendation-2",
+   "remarks-2-overview",
+   "conclusions-4",
+   "additional-implementation-considerations-6",
+   "remarks-3"
+  ],
+  "secs": 90.7
+ },
+ {
+  "id": "A010",
+  "doc": "2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_Prevention_and_Control_Programmes_2026-09-11",
+  "question": "When agreeing on the strength of the recommendation on national HAI surveillance, how many GDG members felt it should be \"conditional\" rather than \"strong\" (and how many abstained)?",
+  "gold_node": "remarks-3",
+  "gold_is_leaf": true,
+  "satisfying_targets": [
+   "remarks-3"
+  ],
+  "matched": [
+   "remarks-3"
+  ],
+  "hit": true,
+  "how": "rehydrated",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "The section directly addresses how many GDG members felt the recommendation should be 'conditional' and how many abstained regarding the strength of the recommendation."
+  ],
+  "n_retrieved": 6,
+  "retrieved": [
+   "evaluation-of-the-evidence-and-recommendations-development-by-the-gdg",
+   "rationale-for-recommendation",
+   "remarks-2-overview",
+   "remarks-3",
+   "background-3",
+   "rationale-for-the-recommendation-7"
+  ],
+  "secs": 57.6
+ },
+ {
+  "id": "A011",
+  "doc": "2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_Prevention_and_Control_Programmes_2026-09-11",
+  "question": "How many studies did the GDG evaluate as evidence when formulating the recommendation on multimodal strategies at the health care facility level?",
+  "gold_node": "rationale-for-the-recommendation-4",
+  "gold_is_leaf": false,
+  "satisfying_targets": [
+   "rationale-for-the-recommendation-4-overview"
+  ],
+  "matched": [
+   "rationale-for-the-recommendation-4-overview"
+  ],
+  "hit": true,
+  "how": "walk",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "The section directly states the number of studies evaluated by the GDG when formulating the recommendation on multimodal strategies at the health care facility level."
+  ],
+  "n_retrieved": 9,
+  "retrieved": [
+   "4-6-1-systematic-review-facility-level-overview",
+   "evaluation-of-the-evidence-and-recommendations-development-by-the-gdg",
+   "rationale-for-the-recommendation",
+   "summary-of-the-evidence-3-overview",
+   "remarks-2-overview",
+   "rationale-for-the-recommendation-4-overview",
+   "summary-of-the-evidence-5-overview",
+   "non-epoc-studies-5",
+   "rationale-for-the-recommendation-5"
+  ],
+  "secs": 100.8
+ },
+ {
+  "id": "A012",
+  "doc": "2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_Prevention_and_Control_Programmes_2026-09-11",
+  "question": "According to a cost-effectiveness study cited in the guidelines, what was the estimated cost per patient of a central line-associated bloodstream infection?",
+  "gold_node": "additional-factors-considered-when-formulating-the-recommendation-7",
+  "gold_is_leaf": false,
+  "satisfying_targets": [
+   "additional-factors-considered-when-formulating-the-recommendation-7-overview"
+  ],
+  "matched": [
+   "additional-factors-considered-when-formulating-the-recommendation-7-overview"
+  ],
+  "hit": true,
+  "how": "rehydrated",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "The section directly provides the estimated cost per patient for a central line-associated bloodstream infection based on a cost-effectiveness study."
+  ],
+  "n_retrieved": 6,
+  "retrieved": [
+   "introduction",
+   "summary-of-the-evidence-4-overview",
+   "non-epoc-studies-6",
+   "additional-factors-considered-when-formulating-the-recommendation-7-overview",
+   "summary-of-the-evidence-9",
+   "references"
+  ],
+  "secs": 109.1
+ },
+ {
+  "id": "A013",
+  "doc": "2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_Prevention_and_Control_Programmes_2026-09-11",
+  "question": "What is the strength of recommendation and quality of evidence for the recommendation on monitoring/audit of IPC practices at the health care facility level?",
+  "gold_node": "recommendation-6",
+  "gold_is_leaf": true,
+  "satisfying_targets": [
+   "recommendation-6"
+  ],
+  "matched": [
+   "recommendation-6"
+  ],
+  "hit": true,
+  "how": "walk",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "This section directly addresses both the strength of recommendation and the quality of evidence for monitoring/auditing IPC practices at the health care facility level."
+  ],
+  "n_retrieved": 11,
+  "retrieved": [
+   "guidelines-on-core-components-of-infection-prevention-and-control-programmes-at-the-national-and-acute-health-care-facility-level-overview",
+   "methods",
+   "guideline-implementation-table-5",
+   "guideline-implementation-table-6",
+   "rationale-for-the-recommendation",
+   "rationale-for-the-recommendation-4-overview",
+   "recommendation-6",
+   "rationale-for-the-recommendation-6",
+   "conclusions-8",
+   "rationale-for-recommendation-2",
+   "research-gaps-9"
+  ],
+  "secs": 82.2
+ },
+ {
+  "id": "A014",
+  "doc": "2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_Prevention_and_Control_Programmes_2026-09-11",
+  "question": "What did the panel recommend should be considered as a key performance indicator at the national level for national monitoring and evaluation of IPC?",
+  "gold_node": "recommendation-7",
+  "gold_is_leaf": true,
+  "satisfying_targets": [
+   "recommendation-7"
+  ],
+  "matched": [
+   "recommendation-7"
+  ],
+  "hit": true,
+  "how": "walk",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "The section directly addresses the panel's recommendation for a key performance indicator at the national level for IPC monitoring and evaluation."
+  ],
+  "n_retrieved": 12,
+  "retrieved": [
+   "guidelines-on-core-components-of-infection-prevention-and-control-programmes-at-the-national-and-acute-health-care-facility-level-overview",
+   "target-audience",
+   "guideline-implementation-table-3",
+   "guideline-implementation-table-6",
+   "rationale-for-the-recommendation",
+   "recommendation-3",
+   "conclusions-5",
+   "recommendation-7",
+   "rationale-for-recommendation-2",
+   "additional-factors-considered-when-formulating-the-recommendation-9",
+   "conclusions-9",
+   "additional-implementation-considerations-11"
+  ],
+  "secs": 81.4
+ },
+ {
+  "id": "A015",
+  "doc": "2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_Prevention_and_Control_Programmes_2026-09-11",
+  "question": "According to the WHO standard on facility design, what spacing between patient beds is recommended?",
+  "gold_node": "rationale-for-the-recommendation-7",
+  "gold_is_leaf": true,
+  "satisfying_targets": [
+   "rationale-for-the-recommendation-7"
+  ],
+  "matched": [
+   "rationale-for-the-recommendation-7"
+  ],
+  "hit": true,
+  "how": "rehydrated",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "The section directly addresses the recommended spacing between patients according to WHO standards, specifying a measurement."
+  ],
+  "n_retrieved": 8,
+  "retrieved": [
+   "contents",
+   "guideline-implementation-table-7",
+   "guideline-implementation-table-8",
+   "core-component-1-infection-prevention-and-control-programmes-1a-health-care-facility-level",
+   "recommendation-8",
+   "rationale-for-the-recommendation-7",
+   "background-9",
+   "rationale-for-the-recommendation-8"
+  ],
+  "secs": 68.4
+ },
+ {
+  "id": "A016",
+  "doc": "2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_Prevention_and_Control_Programmes_2026-09-11",
+  "question": "According to the WHO Guidelines on hand hygiene in health care, what is the minimum recommended sink-to-bed ratio in isolation rooms?",
+  "gold_node": "rationale-for-the-recommendation-8",
+  "gold_is_leaf": true,
+  "satisfying_targets": [
+   "rationale-for-the-recommendation-8"
+  ],
+  "matched": [
+   "rationale-for-the-recommendation-8"
+  ],
+  "hit": true,
+  "how": "walk",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "The section directly addresses the minimum sink-to-bed ratio in isolation rooms according to WHO guidelines."
+  ],
+  "n_retrieved": 5,
+  "retrieved": [
+   "guideline-implementation-table-8",
+   "core-component-1-infection-prevention-and-control-programmes-1a-health-care-facility-level",
+   "general-remarks",
+   "background-9",
+   "rationale-for-the-recommendation-8"
+  ],
+  "secs": 70.5
+ },
+ {
+  "id": "A017",
+  "doc": "2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_Prevention_and_Control_Programmes_2026-09-11",
+  "question": "How often does WHO plan to establish a review period to update these guidelines?",
+  "gold_node": "review-update-and-evaluation-of-the-recommendations",
+  "gold_is_leaf": true,
+  "satisfying_targets": [
+   "review-update-and-evaluation-of-the-recommendations"
+  ],
+  "matched": [
+   "review-update-and-evaluation-of-the-recommendations"
+  ],
+  "hit": true,
+  "how": "walk",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "The section directly addresses how often WHO plans to establish a review period for the guidelines."
+  ],
+  "n_retrieved": 3,
+  "retrieved": [
+   "contents",
+   "4-6-evidence-identification-and-retrieval-overview",
+   "review-update-and-evaluation-of-the-recommendations"
+  ],
+  "secs": 33.8
+ },
+ {
+  "id": "A018",
+  "doc": "5d883081_WHO_Bacterial_Priority_Pathogens_List_2024_2026-09-11",
+  "question": "According to the report, antibacterial resistance was associated with an estimated how many deaths globally in 2019?",
+  "gold_node": "executive-summary",
+  "gold_is_leaf": false,
+  "satisfying_targets": [
+   "executive-summary-overview"
+  ],
+  "matched": [
+   "executive-summary-overview"
+  ],
+  "hit": true,
+  "how": "walk",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "The section directly addresses the estimated number of deaths associated with antibacterial resistance in 2019."
+  ],
+  "n_retrieved": 9,
+  "retrieved": [
+   "executive-summary-overview",
+   "background",
+   "rationale-for-the-update",
+   "other-community-pathogens-of-high-priority",
+   "other-priority-pathogens",
+   "limitations",
+   "a2-1-2-incidence-overview",
+   "background-2",
+   "mortality"
+  ],
+  "secs": 60.1
+ },
+ {
+  "id": "A019",
+  "doc": "5d883081_WHO_Bacterial_Priority_Pathogens_List_2024_2026-09-11",
+  "question": "How many deaths in 2019 were estimated to be directly attributable to antibiotic-resistant bacteria, with how many additional associated deaths?",
+  "gold_node": "background",
+  "gold_is_leaf": true,
+  "satisfying_targets": [
+   "background"
+  ],
+  "matched": [
+   "background"
+  ],
+  "hit": true,
+  "how": "walk",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "The section directly addresses the number of deaths in 2019 attributable to antibiotic-resistant bacteria and the associated deaths."
+  ],
+  "n_retrieved": 9,
+  "retrieved": [
+   "executive-summary-overview",
+   "background",
+   "rationale-for-the-update",
+   "other-community-pathogens-of-high-priority",
+   "other-priority-pathogens",
+   "limitations",
+   "a2-1-1-mortality-overview",
+   "references-for-annexes-1-2",
+   "mortality"
+  ],
+  "secs": 47.1
+ },
+ {
+  "id": "A020",
+  "doc": "5d883081_WHO_Bacterial_Priority_Pathogens_List_2024_2026-09-11",
+  "question": "What decision-making method was used to develop the 2017 WHO Bacterial Priority Pathogens List (BPPL)?",
+  "gold_node": "methods",
+  "gold_is_leaf": false,
+  "satisfying_targets": [
+   "methods-overview"
+  ],
+  "matched": [
+   "methods-overview"
+  ],
+  "hit": true,
+  "how": "walk",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "The section directly states the decision-making method used for the 2017 WHO BPPL and explains what that method is."
+  ],
+  "n_retrieved": 17,
+  "retrieved": [
+   "contents",
+   "executive-summary-overview",
+   "background",
+   "methods-overview",
+   "table-2-prioritization-criteria-definitions-and-levels",
+   "table-2-prioritization-criteria-definitions-and-levels-continued",
+   "determination-of-criteria-weights-2023-global-paprika-survey-overview",
+   "fig-2-pathogens-prioritized-in-the-2024-bppl-update-as-compared-with-the-2017-bppl-who-bppl-2017who-bppl-2024",
+   "fig-3-pooled-criteria-weights-results-from-the-global-paprikaa-survey",
+   "the-pathogens-for-the-2024-update-were-selected-in-two-stages-overview",
+   "a2-1-4-10-year-trend-of-resistance-overview",
+   "a2-2-1-transmissibility-overview",
+   "table-a2-6-transmission-levels-of-resistant-pathogens",
+   "a2-2-2-preventability-overview",
+   "a2-2-3-treatability-overview",
+   "a2-2-4-pipeline-overview",
+   "table-a3-1-summary-results-of-bacterial-pathogens-assessments-using-multiple-criteria-decision-analysis-mcda"
+  ],
+  "secs": 147.0
+ },
+ {
+  "id": "A021",
+  "doc": "5d883081_WHO_Bacterial_Priority_Pathogens_List_2024_2026-09-11",
+  "question": "According to the report, how many experts were ultimately selected to form the WHO Bacterial Priority Pathogens List Advisory Group, out of how many applications received?",
+  "gold_node": "methods",
+  "gold_is_leaf": false,
+  "satisfying_targets": [
+   "methods-overview"
+  ],
+  "matched": [
+   "methods-overview"
+  ],
+  "hit": true,
+  "how": "rehydrated",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "This section directly answers both parts of the query by stating the number of applications received and the number of experts selected."
+  ],
+  "n_retrieved": 5,
+  "retrieved": [
+   "acknowledgements",
+   "methods-overview",
+   "determination-of-criteria-weights-2023-global-paprika-survey-overview",
+   "the-pathogens-for-the-2024-update-were-selected-in-two-stages-overview",
+   "the-pathogens-for-the-2024-update-were-selected-in-two-stages-figure-49"
+  ],
+  "secs": 61.6
+ },
+ {
+  "id": "A022",
+  "doc": "5d883081_WHO_Bacterial_Priority_Pathogens_List_2024_2026-09-11",
+  "question": "How many experts participated in the 2023 global PAPRIKA survey used to determine the weighting of the WHO BPPL 2024 prioritization criteria?",
+  "gold_node": "determination-of-criteria-weights-2023-global-paprika-survey",
+  "gold_is_leaf": false,
+  "satisfying_targets": [
+   "determination-of-criteria-weights-2023-global-paprika-survey-overview"
+  ],
+  "matched": [
+   "determination-of-criteria-weights-2023-global-paprika-survey-overview"
+  ],
+  "hit": true,
+  "how": "walk",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "The section directly answers the question by stating the number of experts who participated in the survey used to determine the criteria weights."
+  ],
+  "n_retrieved": 5,
+  "retrieved": [
+   "contents",
+   "acknowledgements",
+   "methods-overview",
+   "determination-of-criteria-weights-2023-global-paprika-survey-overview",
+   "the-pathogens-for-the-2024-update-were-selected-in-two-stages-overview"
+  ],
+  "secs": 80.7
+ },
+ {
+  "id": "A023",
+  "doc": "5d883081_WHO_Bacterial_Priority_Pathogens_List_2024_2026-09-11",
+  "question": "According to the independent assessment described in the report, how many disability-adjusted life years (DALYs) was rifampicin-resistant tuberculosis (RR-TB) responsible for globally in 2020?",
+  "gold_node": "independent-assessment-of-rr-tb",
+  "gold_is_leaf": true,
+  "satisfying_targets": [
+   "independent-assessment-of-rr-tb"
+  ],
+  "matched": [
+   "independent-assessment-of-rr-tb"
+  ],
+  "hit": true,
+  "how": "rehydrated",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "The section directly provides the figure for DALYs attributable to RR-TB globally in 2020 as requested by the query."
+  ],
+  "n_retrieved": 9,
+  "retrieved": [
+   "contents",
+   "abbreviations-table-1",
+   "rationale-for-the-update",
+   "independent-assessment-of-rr-tb",
+   "a2-1-3-non-fatal-health-burden-overview",
+   "table-a2-3-resistant-pathogens-by-yld-per-1-million-population",
+   "methods-2",
+   "non-fatal-health-burden",
+   "table-a4-2-rr-tb-prioritization-criteria-definitions-criteria-used-for-the-independent-assessment-of-rr-tb"
+  ],
+  "secs": 105.1
+ },
+ {
+  "id": "A024",
+  "doc": "5d883081_WHO_Bacterial_Priority_Pathogens_List_2024_2026-09-11",
+  "question": "How many bacterial pathogen-drug combinations were identified, assessed, and ranked in the WHO Bacterial Priority Pathogens List, 2024 results?",
+  "gold_node": "results-who-bacterial-priority-pathogen-list-2024",
+  "gold_is_leaf": false,
+  "satisfying_targets": [
+   "results-who-bacterial-priority-pathogen-list-2024-overview"
+  ],
+  "matched": [
+   "results-who-bacterial-priority-pathogen-list-2024-overview"
+  ],
+  "hit": true,
+  "how": "walk",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "The section directly states the number of bacterial pathogen-drug combinations assessed and ranked for the 2024 list."
+  ],
+  "n_retrieved": 8,
+  "retrieved": [
+   "contents",
+   "results-who-bacterial-priority-pathogen-list-2024-overview",
+   "results-who-bacterial-priority-pathogen-list-2024-figure-28",
+   "results-who-bacterial-priority-pathogen-list-2024-figure-29",
+   "results-who-bacterial-priority-pathogen-list-2024-figure-31",
+   "results-who-bacterial-priority-pathogen-list-2024-figure-43",
+   "the-pathogens-for-the-2024-update-were-selected-in-two-stages-overview",
+   "table-a3-1-summary-results-of-bacterial-pathogens-assessments-using-multiple-criteria-decision-analysis-mcda"
+  ],
+  "secs": 59.9
+ },
+ {
+  "id": "A025",
+  "doc": "5d883081_WHO_Bacterial_Priority_Pathogens_List_2024_2026-09-11",
+  "question": "According to the Global Burden of Disease study cited in the report, approximately what percentage of the fatal burden attributed to AMR in high-income countries is linked to Staphylococcus aureus and E. coli combined?",
+  "gold_node": "methicillin-resistant-staphylococcus-aureus-mrsa-remains-a-high-priority",
+  "gold_is_leaf": true,
+  "satisfying_targets": [
+   "methicillin-resistant-staphylococcus-aureus-mrsa-remains-a-high-priority"
+  ],
+  "matched": [
+   "methicillin-resistant-staphylococcus-aureus-mrsa-remains-a-high-priority"
+  ],
+  "hit": true,
+  "how": "rehydrated",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "The section directly addresses the percentage of fatal burden attributed to AMR in high-income countries linked to S. aureus and E. coli combined, as requested by the query."
+  ],
+  "n_retrieved": 4,
+  "retrieved": [
+   "executive-summary-overview",
+   "methicillin-resistant-staphylococcus-aureus-mrsa-remains-a-high-priority",
+   "limitations",
+   "references-for-annexes-1-2"
+  ],
+  "secs": 39.9
+ },
+ {
+  "id": "A026",
+  "doc": "5d883081_WHO_Bacterial_Priority_Pathogens_List_2024_2026-09-11",
+  "question": "According to the report, how much is spent each year on research and development for new TB drugs and vaccines?",
+  "gold_node": "addressing-bacterial-priority-pathogens-through-innovation-and-r-d-of-new-drugs",
+  "gold_is_leaf": true,
+  "satisfying_targets": [
+   "addressing-bacterial-priority-pathogens-through-innovation-and-r-d-of-new-drugs"
+  ],
+  "matched": [
+   "addressing-bacterial-priority-pathogens-through-innovation-and-r-d-of-new-drugs"
+  ],
+  "hit": true,
+  "how": "walk",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "The section directly addresses the spending on R&D for new TB drugs and vaccines by providing a specific figure."
+  ],
+  "n_retrieved": 3,
+  "retrieved": [
+   "addressing-bacterial-priority-pathogens-through-innovation-and-r-d-of-new-drugs",
+   "the-pipeline-for-new-medicines-and-diagnostics-overview",
+   "table-a4-2-rr-tb-prioritization-criteria-definitions-criteria-used-for-the-independent-assessment-of-rr-tb"
+  ],
+  "secs": 54.9
+ },
+ {
+  "id": "A027",
+  "doc": "5d883081_WHO_Bacterial_Priority_Pathogens_List_2024_2026-09-11",
+  "question": "Above what percentile of the MCDA ranking score were pathogens classified into the \"critical\" priority tier?",
+  "gold_node": "the-pathogens-for-the-2024-update-were-selected-in-two-stages",
+  "gold_is_leaf": false,
+  "satisfying_targets": [
+   "the-pathogens-for-the-2024-update-were-selected-in-two-stages-overview"
+  ],
+  "matched": [
+   "the-pathogens-for-the-2024-update-were-selected-in-two-stages-overview"
+  ],
+  "hit": true,
+  "how": "walk",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "The section directly states the percentile threshold used to classify pathogens into the \"critical\" priority tier."
+  ],
+  "n_retrieved": 6,
+  "retrieved": [
+   "contents",
+   "abbreviations-table-1",
+   "methods-overview",
+   "results-who-bacterial-priority-pathogen-list-2024-overview",
+   "the-pathogens-for-the-2024-update-were-selected-in-two-stages-overview",
+   "table-a3-1-summary-results-of-bacterial-pathogens-assessments-using-multiple-criteria-decision-analysis-mcda"
+  ],
+  "secs": 74.0
+ },
+ {
+  "id": "A028",
+  "doc": "5d883081_WHO_Bacterial_Priority_Pathogens_List_2024_2026-09-11",
+  "question": "How many systematic reviews were retrieved in the literature search used to assess the mortality criterion?",
+  "gold_node": "a2-1-1-mortality",
+  "gold_is_leaf": false,
+  "satisfying_targets": [
+   "a2-1-1-mortality-overview"
+  ],
+  "matched": [
+   "a2-1-1-mortality-overview"
+  ],
+  "hit": true,
+  "how": "rehydrated",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "The section directly answers how many systematic reviews were retrieved in the literature search used to assess mortality criteria by stating a specific number."
+  ],
+  "n_retrieved": 5,
+  "retrieved": [
+   "methods-overview",
+   "limitations",
+   "a2-1-1-mortality-overview",
+   "a2-2-1-transmissibility-overview",
+   "a2-2-3-treatability-overview"
+  ],
+  "secs": 46.8
+ },
+ {
+  "id": "A029",
+  "doc": "5d883081_WHO_Bacterial_Priority_Pathogens_List_2024_2026-09-11",
+  "question": "In the transmissibility criterion assessment, how many outbreak reports out of 5744 identified were ultimately included, and how many cases did they account for?",
+  "gold_node": "a2-2-1-transmissibility",
+  "gold_is_leaf": false,
+  "satisfying_targets": [
+   "a2-2-1-transmissibility-overview"
+  ],
+  "matched": [
+   "a2-2-1-transmissibility-overview"
+  ],
+  "hit": true,
+  "how": "walk",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "The section directly addresses the number of outbreak reports and associated cases for the first criterion domain (human-to-human outbreaks), which is part of the transmissibility assessment."
+  ],
+  "n_retrieved": 3,
+  "retrieved": [
+   "table-2-prioritization-criteria-definitions-and-levels",
+   "a2-2-1-transmissibility-overview",
+   "table-a2-5-summary-of-data-for-the-outbreak-capability-and-transmission-pathways-scores"
+  ],
+  "secs": 58.0
+ },
+ {
+  "id": "A030",
+  "doc": "dda0c28e_Global_Antimicrobial_Resistance_and_Use_Surveillance_System_GLASS_Report_2022_2026-09-11",
+  "question": "What is the ISBN of the electronic version of the Global Antimicrobial Resistance and Use Surveillance System (GLASS) Report 2022?",
+  "gold_node": "global-antimicrobial-resistance-and-use-surveillance-system-glass-report-2022",
+  "gold_is_leaf": false,
+  "satisfying_targets": [
+   "global-antimicrobial-resistance-and-use-surveillance-system-glass-report-2022-overview"
+  ],
+  "matched": [
+   "global-antimicrobial-resistance-and-use-surveillance-system-glass-report-2022-overview"
+  ],
+  "hit": true,
+  "how": "walk",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "The section directly provides the ISBN for the electronic version of the GLASS Report 2022."
+  ],
+  "n_retrieved": 4,
+  "retrieved": [
+   "global-antimicrobial-resistance-and-use-surveillance-system-glass-report-2022-overview",
+   "fig-3-5a-progress-in-reporting-ast-results-to-glass-amr-for-selected-antimicrobial-groups-in-bloodstream-bcis-by-bacterial-pathogens-under-surveillance-2016-2020-100500k5002500-carbapenems-e-coli",
+   "fig-3-7c-percentage-resistance-to-antimicrobials-under-surveillance-in-k-pneumoniae-in-all-ctas-reporting-10-k-pneumoniae-bloodstream-infections-with-ast-results-compared-to-ctas-where-the-reported-number-per-million-population-was-above-the-75th-percentile-in-2020",
+   "fig-4-1-status-of-implementation-of-national-amc-surveillance-systems-in-36-ctas-enrolled-in-glass-amc-as-of-december-2021"
+  ],
+  "secs": 27.8
+ },
+ {
+  "id": "A031",
+  "doc": "dda0c28e_Global_Antimicrobial_Resistance_and_Use_Surveillance_System_GLASS_Report_2022_2026-09-11",
+  "question": "In the GLASS report, what does the abbreviation \"DDD\" stand for?",
+  "gold_node": "1-2-what-s-new-in-the-2022-report",
+  "gold_is_leaf": true,
+  "satisfying_targets": [
+   "1-2-what-s-new-in-the-2022-report"
+  ],
+  "matched": [
+   "1-2-what-s-new-in-the-2022-report"
+  ],
+  "hit": true,
+  "how": "rehydrated",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "The section directly addresses the abbreviation 'DDD' by explaining what it stands for in the context of AMC data within the GLASS report."
+  ],
+  "n_retrieved": 6,
+  "retrieved": [
+   "list-of-acronyms",
+   "1-2-what-s-new-in-the-2022-report",
+   "4-progress-in-the-development-of-national-surveillance-systems-reporting-data-to-glass-amc-overview",
+   "4-3-global-amc-data-overview",
+   "annex-2-methodology-for-the-measurement-and-surveillance-of-amc-overview",
+   "table-a2-list-of-indicators-used-in-the-report-to-describe-amc-overview"
+  ],
+  "secs": 45.9
+ },
+ {
+  "id": "A032",
+  "doc": "dda0c28e_Global_Antimicrobial_Resistance_and_Use_Surveillance_System_GLASS_Report_2022_2026-09-11",
+  "question": "According to Murray et al., how many deaths were estimated to be directly attributable to bacterial antimicrobial resistance (AMR) in 2019?",
+  "gold_node": "1-1-basic-facts-on-antimicrobial-resistance-amr",
+  "gold_is_leaf": true,
+  "satisfying_targets": [
+   "1-1-basic-facts-on-antimicrobial-resistance-amr"
+  ],
+  "matched": [
+   "1-1-basic-facts-on-antimicrobial-resistance-amr"
+  ],
+  "hit": true,
+  "how": "walk",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "The section directly addresses the estimated deaths attributable to bacterial AMR in 2019 according to Murray et al."
+  ],
+  "n_retrieved": 6,
+  "retrieved": [
+   "1-1-basic-facts-on-antimicrobial-resistance-amr",
+   "fig-2-1-ctas-enrolled-in-glass-amr-and-or-glass-amc-2017-2019-2021-overview",
+   "table-2-1-list-of-glass-technical-modules-with-the-year-of-publication-of-related-protocols-and-the-number-of-ctas-imp",
+   "2-4-mortality-due-to-amr",
+   "5-the-way-forward",
+   "references"
+  ],
+  "secs": 73.4
+ },
+ {
+  "id": "A033",
+  "doc": "dda0c28e_Global_Antimicrobial_Resistance_and_Use_Surveillance_System_GLASS_Report_2022_2026-09-11",
+  "question": "How many countries, territories, and areas (CTAs) does the 2022 GLASS report consider in total, based on WHO legal status?",
+  "gold_node": "1-2-what-s-new-in-the-2022-report",
+  "gold_is_leaf": true,
+  "satisfying_targets": [
+   "1-2-what-s-new-in-the-2022-report"
+  ],
+  "matched": [
+   "1-2-what-s-new-in-the-2022-report"
+  ],
+  "hit": true,
+  "how": "rehydrated",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "The section directly answers the query by stating the total number of CTAs considered and specifying the basis for this count (WHO legal status)."
+  ],
+  "n_retrieved": 10,
+  "retrieved": [
+   "foreword-overview",
+   "list-of-acronyms",
+   "summary-overview",
+   "key-findings-and-public-health-implications",
+   "1-2-what-s-new-in-the-2022-report",
+   "2-1-glass-strategy-and-milestones-overview",
+   "fig-2-1-ctas-enrolled-in-glass-amr-and-or-glass-amc-2017-2019-2021-overview",
+   "table-2-1-list-of-glass-technical-modules-with-the-year-of-publication-of-related-protocols-and-the-number-of-ctas-imp",
+   "2-2-enhancing-quality-and-coverage-of-surveillance-to-estimate-the-magnitudeofamr",
+   "3-2-participation-and-coverage-overview"
+  ],
+  "secs": 95.9
+ },
+ {
+  "id": "A034",
+  "doc": "dda0c28e_Global_Antimicrobial_Resistance_and_Use_Surveillance_System_GLASS_Report_2022_2026-09-11",
+  "question": "In what year did the World Health Organization establish the Global Antimicrobial Resistance and Use Surveillance System (GLASS)?",
+  "gold_node": "2-1-glass-strategy-and-milestones",
+  "gold_is_leaf": false,
+  "satisfying_targets": [
+   "2-1-glass-strategy-and-milestones-overview"
+  ],
+  "matched": [
+   "2-1-glass-strategy-and-milestones-overview"
+  ],
+  "hit": true,
+  "how": "walk",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "The section directly answers the query by stating the year WHO established GLASS."
+  ],
+  "n_retrieved": 7,
+  "retrieved": [
+   "foreword-overview",
+   "list-of-acronyms",
+   "summary-overview",
+   "1-1-basic-facts-on-antimicrobial-resistance-amr",
+   "2-1-glass-strategy-and-milestones-overview",
+   "table-2-1-list-of-glass-technical-modules-with-the-year-of-publication-of-related-protocols-and-the-number-of-ctas-imp",
+   "references"
+  ],
+  "secs": 76.6
+ },
+ {
+  "id": "A035",
+  "doc": "dda0c28e_Global_Antimicrobial_Resistance_and_Use_Surveillance_System_GLASS_Report_2022_2026-09-11",
+  "question": "Through which network has WHO's GLASS protocol for assessing AMR-attributable mortality been implemented in selected countries in Africa and South-East Asia?",
+  "gold_node": "2-4-mortality-due-to-amr",
+  "gold_is_leaf": true,
+  "satisfying_targets": [
+   "2-4-mortality-due-to-amr"
+  ],
+  "matched": [
+   "2-4-mortality-due-to-amr"
+  ],
+  "hit": true,
+  "how": "walk",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "The section directly answers which network implemented WHO's GLASS protocol for assessing AMR-attributable mortality in Africa and South-East Asia."
+  ],
+  "n_retrieved": 6,
+  "retrieved": [
+   "collecting-and-compiling-data-for-this-report",
+   "1-1-basic-facts-on-antimicrobial-resistance-amr",
+   "fig-2-1-ctas-enrolled-in-glass-amr-and-or-glass-amc-2017-2019-2021-overview",
+   "table-2-1-list-of-glass-technical-modules-with-the-year-of-publication-of-related-protocols-and-the-number-of-ctas-imp",
+   "2-4-mortality-due-to-amr",
+   "table-4-1-coverage-of-the-surveillance-systems-data-sources-levels-of-stratification-by-health-care-sectors-and-leve-2"
+  ],
+  "secs": 45.3
+ },
+ {
+  "id": "A036",
+  "doc": "dda0c28e_Global_Antimicrobial_Resistance_and_Use_Surveillance_System_GLASS_Report_2022_2026-09-11",
+  "question": "As of 31 December 2021, how many of the 216 countries, territories, and areas (CTAs) were enrolled in GLASS-AMR?",
+  "gold_node": "3-2-participation-and-coverage",
+  "gold_is_leaf": false,
+  "satisfying_targets": [
+   "3-2-participation-and-coverage-overview"
+  ],
+  "matched": [
+   "3-2-participation-and-coverage-overview"
+  ],
+  "hit": true,
+  "how": "walk",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "The section directly answers the core question by stating the number of CTAs enrolled as of December 31, 2021."
+  ],
+  "n_retrieved": 8,
+  "retrieved": [
+   "foreword-overview",
+   "key-findings-and-public-health-implications",
+   "1-2-what-s-new-in-the-2022-report",
+   "1-3-key-findings-and-messages",
+   "2-1-glass-strategy-and-milestones-overview",
+   "fig-2-1-ctas-enrolled-in-glass-amr-and-or-glass-amc-2017-2019-2021-overview",
+   "2-2-enhancing-quality-and-coverage-of-surveillance-to-estimate-the-magnitudeofamr",
+   "3-2-participation-and-coverage-overview"
+  ],
+  "secs": 90.4
+ },
+ {
+  "id": "A037",
+  "doc": "dda0c28e_Global_Antimicrobial_Resistance_and_Use_Surveillance_System_GLASS_Report_2022_2026-09-11",
+  "question": "In the 2020 AMR data call, what percentage of total bacteriologically confirmed infections (BCIs) reported to GLASS-AMR were urinary tract infections?",
+  "gold_node": "3-3-global-amr-data",
+  "gold_is_leaf": false,
+  "satisfying_targets": [
+   "3-3-global-amr-data-overview"
+  ],
+  "matched": [
+   "3-3-global-amr-data-overview"
+  ],
+  "hit": true,
+  "how": "rehydrated",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "The section directly addresses the proportion of urinary tract infections (UTIs) relative to total bacteriologically confirmed infections (BCIs) in the 2020 AMR data call."
+  ],
+  "n_retrieved": 25,
+  "retrieved": [
+   "contents",
+   "foreword-overview",
+   "summary-overview",
+   "key-findings-and-public-health-implications",
+   "1-2-what-s-new-in-the-2022-report",
+   "1-3-key-findings-and-messages",
+   "3-progress-in-the-development-of-national-surveillance-systems-reporting-data-to-glass-amr-overview",
+   "fig-3-2-ctas-enrolled-in-glass-amr-that-reported-2016-2020-bacterial-identification-results-and-or-ast-results-for-bacteriologically-confirmed-infectious-syndromes-under-surveillance-in-2017-2021-data-calls",
+   "fig-3-3-progress-in-reporting-of-bcis-and-ast-test-results-to-glass-amr-for-infectious-syndromes-under-surveillance-2016-2020-overview",
+   "fig-3-4-bcis-with-ast-results-reported-to-glass-amr-per-one-million-population-for-selected-infectious-syndromes-unde",
+   "fig-3-4-bcis-with-ast-results-reported-to-glass-amr-per-one-million-population-for-selected-infectious-syndromes-unde-2",
+   "fig-3-5b-progress-in-reporting-ast-results-to-glass-amr-for-selected-antimicrobial-groups-in-bacteriologically-confir",
+   "fig-3-5d-progress-in-reporting-antimicrobial-susceptibility-test-results-to-glass-amr-for-selected-antimicrobial-groups-in-bacteriologically-confirmed-urinary-tract-bcis-by-bacterial-pathogens-under-surveillance-2016-2020-third-generation-cephalosporins-e-coli-0-100-0-2-5m-0-2500-0-25k-overview",
+   "fig-3-5d-progress-in-reporting-antimicrobial-susceptibility-test-results-to-glass-amr-for-selected-antimicrobial-grou",
+   "fig-3-5d-continued-progress-in-reporting-antimicrobial-susceptibility-test-results-to-glass-amr-for-selected-antimicrobial-groups-in-bacteriologically-confirmed-urinary-tract-bcis-by-bacterial-pathogens-under-surveillance-2016-2020-umber-0-20-40-60-0-500k-1m-1-5m-0-500-1000-1500-0-10k-20k-30k-overview",
+   "fig-3-6a-bloodstream-infections-with-third-generation-cephalosporins-e-coli-or-methicillin-resistance-s-aureus",
+   "note-most-ctas-reporting-higher-coverage-for-these-infection-antibacterial-combinations-per-million-population-in-2020",
+   "fig-3-6c-salmonella-spp-gastrointestinal-infections-with-fluoroquinolone-susceptibility-test-results-and-k-pneumoniae-urinary-tract-infections-with-sulfonamides-and-trimethoprim-ast-results-reported-to-glass-amr-per-one-million-population-2016-2018-2020-overview",
+   "fig-3-6c-salmonella-spp-gastrointestinal-infections-with-fluoroquinolone-susceptibility-test-results-and-k-pneumon",
+   "fig-3-6c-salmonella-spp-gastrointestinal-infections-with-fluoroquinolone-susceptibility-test-results-and-k-pneumon-2",
+   "3-3-global-amr-data-overview",
+   "table-3-1-numbers-of-bcis-bcis-with-ast-results-for-any-antibacterial-and-ctas-reporting-bcis-in-2020",
+   "fig-3-7j-percentage-resistance-to-antimicrobials-under-surveillance-in-e-coli-in-all-ctas-reporting-10-e-coli-urinary-tract-infections-with-ast-results-compared-to-ctas-where-the-reported-number-per-million-population-was-above-the-75th-percentile-in-2020",
+   "fig-3-7k-percentage-resistance-to-antimicrobials-under-surveillance-in-k-pneumoniae-in-all-ctas-reporting-10-k-pneumoniae-urinary-tract-infections-with-ast-results-compared-to-ctas-where-the-reported-number-per-million-population-was-above-the-75th-percentile-in-2020",
+   "fig-3-8e-percentage-resistance-to-selected-antimicrobials-in-ctas-reporting-10-urinary-tract-bcis-infections-with-ast-results-annually-2017-2020"
+  ],
+  "secs": 297.7
+ },
+ {
+  "id": "A038",
+  "doc": "dda0c28e_Global_Antimicrobial_Resistance_and_Use_Surveillance_System_GLASS_Report_2022_2026-09-11",
+  "question": "Between 2017 and 2020, how did the median percentage of methicillin resistance in Staphylococcus aureus (MRSA) change, according to the GLASS-AMR time series data?",
+  "gold_node": "3-3-2-time-series-of-resistance-to-selected-antibacterials-2017-2020",
+  "gold_is_leaf": true,
+  "satisfying_targets": [
+   "3-3-2-time-series-of-resistance-to-selected-antibacterials-2017-2020"
+  ],
+  "matched": [
+   "3-3-2-time-series-of-resistance-to-selected-antibacterials-2017-2020"
+  ],
+  "hit": true,
+  "how": "walk",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "The section directly addresses the change in median percentage resistance for methicillin resistance in Staphylococcus aureus (MRSA) between 2017 and 2020."
+  ],
+  "n_retrieved": 16,
+  "retrieved": [
+   "contents",
+   "list-of-acronyms",
+   "summary-overview",
+   "1-3-key-findings-and-messages",
+   "3-progress-in-the-development-of-national-surveillance-systems-reporting-data-to-glass-amr-overview",
+   "fig-3-2-ctas-enrolled-in-glass-amr-that-reported-2016-2020-bacterial-identification-results-and-or-ast-results-for-bacteriologically-confirmed-infectious-syndromes-under-surveillance-in-2017-2021-data-calls",
+   "fig-3-5a-continued-progress-in-reporting-ast-results-to-glass-amr-for-selected-antimicrobial-groups-in-bloodstream-bcis-by-bacterial-pathogens-under-surveillance-2016-2020-0-20-40-60-0-100k-200k-300k-0-100-200-300-0-1000-2000-3000",
+   "fig-3-5b-progress-in-reporting-ast-results-to-glass-amr-for-selected-antimicrobial-groups-in-bacteriologically-confirmed-gastrointestinal-bcis-by-bacterial-pathogens-under-surveillance-2016-2020-overview",
+   "fig-3-5b-progress-in-reporting-ast-results-to-glass-amr-for-selected-antimicrobial-groups-in-bacteriologically-confir",
+   "3-3-global-amr-data-overview",
+   "fig-3-7f-percentage-resistance-to-third-generation-cephalosporins-in-e-coli-and-percentage-methicillin-resistance-in-s-aureus-in-ctas-reporting-10-bloodstream-bcis-with-ast-results-compared-to-ctas-where-the-reported-numbers-per-million-population-were-above-the-75th-percentile-in-2020",
+   "3-3-2-time-series-of-resistance-to-selected-antibacterials-2017-2020",
+   "fig-3-8b-percentage-resistance-to-third-generation-cephalosporins-in-e-coli-and-percentage-methicillin-resistance-in-s-aureus-in-ctas-reporting-10-bloodstream-bcis-with-ast-results-annually-2017-2020",
+   "table-a1-bacterial-pathogen-and-antibiotic-combinations-under-glass-amr-surveillance-overview",
+   "table-a1-bacterial-pathogen-and-antibiotic-combinations-under-glass-amr-surveillance-table-13",
+   "table-a1-continued-bacterial-pathogen-and-antibiotic-combinations-under-glass-amr-surveillance"
+  ],
+  "secs": 176.9
+ },
+ {
+  "id": "A039",
+  "doc": "dda0c28e_Global_Antimicrobial_Resistance_and_Use_Surveillance_System_GLASS_Report_2022_2026-09-11",
+  "question": "What percentage of CTAs reporting to GLASS-AMC had fully established the nomination of a body to lead national AMC surveillance, as of the 2021 status report?",
+  "gold_node": "4-1-implementation-indicators",
+  "gold_is_leaf": false,
+  "satisfying_targets": [
+   "4-1-implementation-indicators-overview"
+  ],
+  "matched": [
+   "4-1-implementation-indicators-overview"
+  ],
+  "hit": true,
+  "how": "walk",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "The section directly addresses the percentage of CTAs reporting to GLASS-AMC that had fully established the nomination of a body to lead national AMC surveillance as of 2021."
+  ],
+  "n_retrieved": 12,
+  "retrieved": [
+   "summary-overview",
+   "key-findings-and-public-health-implications",
+   "1-2-what-s-new-in-the-2022-report",
+   "1-3-key-findings-and-messages",
+   "2-1-glass-strategy-and-milestones-overview",
+   "enrolment-status-by-end-of-2021",
+   "table-2-1-list-of-glass-technical-modules-with-the-year-of-publication-of-related-protocols-and-the-number-of-ctas-imp",
+   "3-progress-in-the-development-of-national-surveillance-systems-reporting-data-to-glass-amr-overview",
+   "fig-3-1-implementation-status-quality-assurance-and-standards-of-national-amr-surveillance-systems-at-the-time-of-the-2021-data-call-for-ctas-reporting-to-glass-amr",
+   "3-2-participation-and-coverage-overview",
+   "4-progress-in-the-development-of-national-surveillance-systems-reporting-data-to-glass-amc-overview",
+   "4-1-implementation-indicators-overview"
+  ],
+  "secs": 138.2
+ },
+ {
+  "id": "A040",
+  "doc": "dda0c28e_Global_Antimicrobial_Resistance_and_Use_Surveillance_System_GLASS_Report_2022_2026-09-11",
+  "question": "Of the 36 CTAs enrolled in GLASS-AMC by the end of 2021, how many reported antibacterial consumption data?",
+  "gold_node": "4-2-participation-and-coverage",
+  "gold_is_leaf": false,
+  "satisfying_targets": [
+   "4-2-participation-and-coverage-overview"
+  ],
+  "matched": [
+   "4-2-participation-and-coverage-overview"
+  ],
+  "hit": true,
+  "how": "walk",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "The section directly answers the core quantitative part of the query by stating how many CTAs reported antibacterial consumption data out of the total enrolled."
+  ],
+  "n_retrieved": 14,
+  "retrieved": [
+   "key-findings-and-public-health-implications",
+   "1-2-what-s-new-in-the-2022-report",
+   "1-3-key-findings-and-messages",
+   "2-1-glass-strategy-and-milestones-overview",
+   "fig-2-1-ctas-enrolled-in-glass-amr-and-or-glass-amc-2017-2019-2021-overview",
+   "enrolment-status-by-end-of-2021",
+   "table-2-1-list-of-glass-technical-modules-with-the-year-of-publication-of-related-protocols-and-the-number-of-ctas-imp",
+   "4-progress-in-the-development-of-national-surveillance-systems-reporting-data-to-glass-amc-overview",
+   "4-1-implementation-indicators-overview",
+   "4-2-participation-and-coverage-overview",
+   "table-4-1-coverage-of-the-surveillance-systems-data-sources-levels-of-stratification-by-health-care-sectors-and-leve",
+   "table-4-1-coverage-of-the-surveillance-systems-data-sources-levels-of-stratification-by-health-care-sectors-and-leve-2",
+   "4-3-global-amc-data-overview",
+   "fig-4-4-relative-consumption-of-antibacterials-atc-j01-a07aa-p01ab-by-route-of-administration-in-26-ctas-in-2020-overview"
+  ],
+  "secs": 170.4
+ },
+ {
+  "id": "A041",
+  "doc": "dda0c28e_Global_Antimicrobial_Resistance_and_Use_Surveillance_System_GLASS_Report_2022_2026-09-11",
+  "question": "What was the median value of overall antibacterial consumption (in DDD per 1000 inhabitants per day) among the 26 CTAs reporting to GLASS-AMC in 2020?",
+  "gold_node": "4-3-global-amc-data",
+  "gold_is_leaf": false,
+  "satisfying_targets": [
+   "4-3-global-amc-data-overview"
+  ],
+  "matched": [
+   "4-3-global-amc-data-overview"
+  ],
+  "hit": true,
+  "how": "walk",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "The section directly provides the median value for overall antibacterial consumption among 26 CTAs in 2020, matching all parameters of the query."
+  ],
+  "n_retrieved": 16,
+  "retrieved": [
+   "contents",
+   "foreword-overview",
+   "summary-overview",
+   "1-2-what-s-new-in-the-2022-report",
+   "1-3-key-findings-and-messages",
+   "3-progress-in-the-development-of-national-surveillance-systems-reporting-data-to-glass-amr-overview",
+   "4-progress-in-the-development-of-national-surveillance-systems-reporting-data-to-glass-amc-overview",
+   "4-3-global-amc-data-overview",
+   "fig-4-4-relative-consumption-of-antibacterials-atc-j01-a07aa-p01ab-by-route-of-administration-in-26-ctas-in-2020-overview",
+   "fig-4-4-relative-consumption-of-antibacterials-atc-j01-a07aa-p01ab-by-route-of-administration-in-26-ctas-in-2020-2",
+   "table-4-2-continued-antibacterial-substances-that-made-up-75-du75-of-oral-consumption-in-26-ctas-in-2020",
+   "fig-4-4-relative-consumption-of-antibacterials-atc-j01-a07aa-p01ab-by-route-of-administration-in-26-ctas-in-2020-3",
+   "note-substances-are-sorted-according-to-the-median-relative-consumption-calculated-in-all-ctas-with-substance-consumpt",
+   "annex-2-methodology-for-the-measurement-and-surveillance-of-amc-overview",
+   "table-a2-list-of-indicators-used-in-the-report-to-describe-amc-overview",
+   "table-a2-list-of-indicators-used-in-the-report-to-describe-amc-table-16"
+  ],
+  "secs": 177.8
+ },
+ {
+  "id": "A042",
+  "doc": "dda0c28e_Global_Antimicrobial_Resistance_and_Use_Surveillance_System_GLASS_Report_2022_2026-09-11",
+  "question": "Which parenteral antibacterial substance ranked as the most commonly consumed parenteral substance across the CTAs reporting to GLASS-AMC?",
+  "gold_node": "4-3-global-amc-data",
+  "gold_is_leaf": false,
+  "satisfying_targets": [
+   "4-3-global-amc-data-overview"
+  ],
+  "matched": [
+   "4-3-global-amc-data-overview"
+  ],
+  "hit": true,
+  "how": "walk",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "The section directly addresses the most commonly consumed parenteral antibacterial substance across CTAs reporting to GLASS-AMC by naming a specific drug and stating its ranking."
+  ],
+  "n_retrieved": 13,
+  "retrieved": [
+   "key-findings-and-public-health-implications",
+   "1-3-key-findings-and-messages",
+   "4-progress-in-the-development-of-national-surveillance-systems-reporting-data-to-glass-amc-overview",
+   "4-3-global-amc-data-overview",
+   "fig-4-4-relative-consumption-of-antibacterials-atc-j01-a07aa-p01ab-by-route-of-administration-in-26-ctas-in-2020-overview",
+   "fig-4-4-relative-consumption-of-antibacterials-atc-j01-a07aa-p01ab-by-route-of-administration-in-26-ctas-in-2020-2",
+   "table-4-2-continued-antibacterial-substances-that-made-up-75-du75-of-oral-consumption-in-26-ctas-in-2020",
+   "fig-4-4-relative-consumption-of-antibacterials-atc-j01-a07aa-p01ab-by-route-of-administration-in-26-ctas-in-2020-3",
+   "note-substances-are-sorted-according-to-the-median-relative-consumption-calculated-in-all-ctas-with-substance-consumpt",
+   "annex-2-methodology-for-the-measurement-and-surveillance-of-amc-overview",
+   "table-a2-list-of-indicators-used-in-the-report-to-describe-amc-overview",
+   "table-a2-list-of-indicators-used-in-the-report-to-describe-amc-table-15",
+   "table-a2-list-of-indicators-used-in-the-report-to-describe-amc-table-16"
+  ],
+  "secs": 126.1
+ },
+ {
+  "id": "A043",
+  "doc": "dda0c28e_Global_Antimicrobial_Resistance_and_Use_Surveillance_System_GLASS_Report_2022_2026-09-11",
+  "question": "According to the AWaRe classification described in the GLASS report, how is the \"Reserve\" group of antibiotics defined?",
+  "gold_node": "table-a2-list-of-indicators-used-in-the-report-to-describe-amc-table-16",
+  "gold_is_leaf": true,
+  "satisfying_targets": [
+   "table-a2-list-of-indicators-used-in-the-report-to-describe-amc-table-16"
+  ],
+  "matched": [
+   "table-a2-list-of-indicators-used-in-the-report-to-describe-amc-table-16"
+  ],
+  "hit": true,
+  "how": "walk",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "The section directly defines the 'Reserve' group within the AWaRe classification as requested by the query."
+  ],
+  "n_retrieved": 7,
+  "retrieved": [
+   "list-of-acronyms",
+   "1-3-key-findings-and-messages",
+   "4-3-global-amc-data-overview",
+   "table-4-2-continued-antibacterial-substances-that-made-up-75-du75-of-oral-consumption-in-26-ctas-in-2020",
+   "note-substances-are-sorted-according-to-the-median-relative-consumption-calculated-in-all-ctas-with-substance-consumpt",
+   "annex-2-methodology-for-the-measurement-and-surveillance-of-amc-overview",
+   "table-a2-list-of-indicators-used-in-the-report-to-describe-amc-table-16"
+  ],
+  "secs": 60.9
+ },
+ {
+  "id": "A044",
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "question": "According to the WHO Guidelines' definitions, what is \"plain soap\" defined as?",
+  "gold_node": "1-definition-of-terms",
+  "gold_is_leaf": true,
+  "satisfying_targets": [
+   "1-definition-of-terms"
+  ],
+  "matched": [
+   "1-definition-of-terms"
+  ],
+  "hit": true,
+  "how": "walk",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "The section directly defines \"Plain soap\" according to WHO Guidelines' definitions."
+  ],
+  "n_retrieved": 13,
+  "retrieved": [
+   "contents",
+   "1-definition-of-terms",
+   "4-historical-perspective-on-hand-hygiene-in-health-care",
+   "11-review-of-preparations-used-for-hand-hygiene-overview",
+   "studies-comparing-the-relative-efficacy-based-on-log10-reductions-achieved-of-plain-soap-or-antimicrobial-soaps-versu",
+   "studies-comparing-the-relative-efficacy-of-plain-soap-or-antimicrobial-soap-versus-alcohol-containing-products-in-reduc",
+   "1-indications-for-hand-hygiene",
+   "2-hand-hygiene-technique",
+   "3-recommendations-for-surgical-hand-preparation",
+   "guidelines-for-hand-hygiene-prepared-by-various-other-agencies-both-prior-to-and-after-the-publication-of-the-advanced-draft-of-these-guidelines-are-currently-available-an-analysis-of-recommendations-in-guidelines-produced-by-16-countries-was-published-in-2001-635-however-several-guidelines-included-in-the-analysis-were-not-formal-publications-agreed-upon-nationally-or-sub-nationally-and-the-level-of-details-provided-could-be-expanded-more-extensively-this-section-examines-the-scope-approaches-and-recommendations-of-some-national-and-sub-national-guidelines-overview",
+   "guidelines-including-specific-recommendations-regarding-hand-hygiene-techniques",
+   "hand-hygiene-and-infection-control",
+   "abbreviations-table-84"
+  ],
+  "secs": 156.2
+ },
+ {
+  "id": "A045",
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "question": "Per the WHO Guidelines' definition of \"point of care,\" what three elements come together at that location?",
+  "gold_node": "1-definition-of-terms",
+  "gold_is_leaf": true,
+  "satisfying_targets": [
+   "1-definition-of-terms"
+  ],
+  "matched": [
+   "1-definition-of-terms"
+  ],
+  "hit": true,
+  "how": "walk",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "The section directly defines 'Point of care' and lists the three elements that come together at that location."
+  ],
+  "n_retrieved": 8,
+  "retrieved": [
+   "contents",
+   "1-definition-of-terms",
+   "16-hand-hygiene-practices-among-health-care-workers-and-adherence-to-recommendations-overview",
+   "20-formulating-strategies-for-hand-hygiene-promotion-overview",
+   "21-the-who-multimodal-hand-hygiene-improvement-strategy-overview",
+   "table-i-21-1-basic-requirements-for-implementation",
+   "4-selection-and-handling-of-hand-hygiene-agents",
+   "guidelines-for-hand-hygiene-prepared-by-various-other-agencies-both-prior-to-and-after-the-publication-of-the-advanced-draft-of-these-guidelines-are-currently-available-an-analysis-of-recommendations-in-guidelines-produced-by-16-countries-was-published-in-2001-635-however-several-guidelines-included-in-the-analysis-were-not-formal-publications-agreed-upon-nationally-or-sub-nationally-and-the-level-of-details-provided-could-be-expanded-more-extensively-this-section-examines-the-scope-approaches-and-recommendations-of-some-national-and-sub-national-guidelines-overview"
+  ],
+  "secs": 118.2
+ },
+ {
+  "id": "A046",
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "question": "According to data cited from HELICS, approximately how many deaths per year in Europe are attributable to health care-associated infection (representing about 1% attributable mortality)?",
+  "gold_node": "3-the-burden-of-health-care-associated-infection",
+  "gold_is_leaf": false,
+  "satisfying_targets": [
+   "3-the-burden-of-health-care-associated-infection-overview"
+  ],
+  "matched": [
+   "3-the-burden-of-health-care-associated-infection-overview"
+  ],
+  "hit": true,
+  "how": "walk",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "The section directly addresses the attributable mortality due to HCAI in Europe using data from HELICS, providing a specific estimate for 1% attributable mortality."
+  ],
+  "n_retrieved": 7,
+  "retrieved": [
+   "contents",
+   "3-the-burden-of-health-care-associated-infection-overview",
+   "pilot-sites-for-the-testing-of-the-who-guidelines-on-hand-hygiene-in-health-care-and-its-strategy-and-tools",
+   "3-assessing-the-economic-impact-of-hand-hygiene-promotion-overview",
+   "5-programmes-and-models-of-hand-hygiene-promotion-including-patient-and-health-care-worker-empowerment",
+   "appendix-6-who-global-survey-of-patient-experiences-in-hand-hygiene-improvement-overview",
+   "abbreviations-table-84"
+  ],
+  "secs": 99.3
+ },
+ {
+  "id": "A047",
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "question": "What surgical site infection (SSI) rate was reported in a paediatric hospital in Nigeria, according to the WHO Guidelines' review of the HCAI burden in developing countries?",
+  "gold_node": "3-the-burden-of-health-care-associated-infection",
+  "gold_is_leaf": false,
+  "satisfying_targets": [
+   "3-the-burden-of-health-care-associated-infection-overview"
+  ],
+  "matched": [
+   "3-the-burden-of-health-care-associated-infection-overview"
+  ],
+  "hit": true,
+  "how": "walk",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "The section directly addresses SSI rates in developing countries and provides a specific example matching the query's criteria: a paediatric hospital in Nigeria."
+  ],
+  "n_retrieved": 7,
+  "retrieved": [
+   "contents",
+   "3-the-burden-of-health-care-associated-infection-overview",
+   "device-associated-infection-rates-in-icus-in-developing-countries-compared-with-nnis-rates",
+   "21-the-who-multimodal-hand-hygiene-improvement-strategy-overview",
+   "22-impact-of-improved-hand-hygiene-overview",
+   "3-assessing-the-economic-impact-of-hand-hygiene-promotion-overview",
+   "abbreviations-table-84"
+  ],
+  "secs": 112.7
+ },
+ {
+  "id": "A048",
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "question": "After Semmelweis introduced handwashing with a chlorinated lime solution in 1847, to what percentage did the maternal mortality rate fall in the most affected clinic?",
+  "gold_node": "4-historical-perspective-on-hand-hygiene-in-health-care",
+  "gold_is_leaf": true,
+  "satisfying_targets": [
+   "4-historical-perspective-on-hand-hygiene-in-health-care"
+  ],
+  "matched": [
+   "4-historical-perspective-on-hand-hygiene-in-health-care"
+  ],
+  "hit": true,
+  "how": "walk",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "The section directly addresses the historical context of Semmelweis's work and provides the specific percentage drop in maternal mortality rate after his intervention."
+  ],
+  "n_retrieved": 2,
+  "retrieved": [
+   "4-historical-perspective-on-hand-hygiene-in-health-care",
+   "9-relationship-between-hand-hygiene-and-the-acquisition-of-health-care-associated-pathogens"
+  ],
+  "secs": 169.7
+ },
+ {
+  "id": "A049",
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "question": "According to the WHO Guidelines, which bacterial species is described as the dominant species of the resident skin flora on hands?",
+  "gold_node": "5-normal-bacterial-flora-on-hands",
+  "gold_is_leaf": true,
+  "satisfying_targets": [
+   "5-normal-bacterial-flora-on-hands"
+  ],
+  "matched": [
+   "5-normal-bacterial-flora-on-hands"
+  ],
+  "hit": true,
+  "how": "walk",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "The section directly addresses the dominant species of resident flora on hands according to historical findings cited in the document."
+  ],
+  "n_retrieved": 3,
+  "retrieved": [
+   "5-normal-bacterial-flora-on-hands",
+   "10-methods-to-evaluate-the-antimicrobial-efficacy-of-handrub-and-handwash-agents-and-formulations-for-surgical-hand-preparation-overview",
+   "11-review-of-preparations-used-for-hand-hygiene-overview"
+  ],
+  "secs": 79.7
+ },
+ {
+  "id": "A050",
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "question": "According to the WHO Guidelines, what is the approximate thickness range of the epidermis?",
+  "gold_node": "6-physiology-of-normal-skin",
+  "gold_is_leaf": false,
+  "satisfying_targets": [
+   "6-physiology-of-normal-skin-overview"
+  ],
+  "matched": [
+   "6-physiology-of-normal-skin-overview"
+  ],
+  "hit": true,
+  "how": "walk",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "The document provides a specific thickness range for the epidermis in the first sentence, directly answering the core of the query."
+  ],
+  "n_retrieved": 2,
+  "retrieved": [
+   "6-physiology-of-normal-skin-overview",
+   "6-physiology-of-normal-skin-figure-2"
+  ],
+  "secs": 73.4
+ },
+ {
+  "id": "A051",
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "question": "In the mathematical model of MRSA transmission by Sebille and colleagues, to what percentage would MRSA colonization prevalence decrease if hand hygiene compliance increased to 40%, from a baseline prevalence of 30% with no hand hygiene?",
+  "gold_node": "8-models-of-hand-transmission",
+  "gold_is_leaf": true,
+  "satisfying_targets": [
+   "8-models-of-hand-transmission"
+  ],
+  "matched": [
+   "8-models-of-hand-transmission"
+  ],
+  "hit": true,
+  "how": "walk",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "This section directly addresses the specific scenario mentioned in the query regarding Sebille and colleagues' model, providing the exact percentage decrease values requested."
+  ],
+  "n_retrieved": 2,
+  "retrieved": [
+   "8-models-of-hand-transmission",
+   "22-impact-of-improved-hand-hygiene-overview"
+  ],
+  "secs": 105.3
+ },
+ {
+  "id": "A052",
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "question": "According to a study cited in the WHO Guidelines, what percentage of ICU infections could be avoided if the nurse-to-patient ratio was maintained above 2.2?",
+  "gold_node": "9-relationship-between-hand-hygiene-and-the-acquisition-of-health-care-associated-pathogens",
+  "gold_is_leaf": true,
+  "satisfying_targets": [
+   "9-relationship-between-hand-hygiene-and-the-acquisition-of-health-care-associated-pathogens"
+  ],
+  "matched": [
+   "9-relationship-between-hand-hygiene-and-the-acquisition-of-health-care-associated-pathogens"
+  ],
+  "hit": true,
+  "how": "rehydrated",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "The section directly addresses the percentage of ICU infections that could be avoided if the nurse-to-patient ratio was maintained above 2.2, citing a specific study."
+  ],
+  "n_retrieved": 4,
+  "retrieved": [
+   "8-models-of-hand-transmission",
+   "9-relationship-between-hand-hygiene-and-the-acquisition-of-health-care-associated-pathogens",
+   "16-hand-hygiene-practices-among-health-care-workers-and-adherence-to-recommendations-overview",
+   "23-practical-issues-and-potential-barriers-to-optimal-hand-hygiene-practices-overview"
+  ],
+  "secs": 125.8
+ },
+ {
+  "id": "A053",
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "question": "Under the FDA's Tentative Final Monograph efficacy criteria (ASTM E-1174) for handwash formulations, what log10 reduction of the indicator organism is required on each hand within 5 minutes after the first use?",
+  "gold_node": "10-methods-to-evaluate-the-antimicrobial-efficacy-of-handrub-and-handwash-agents-and-formulations-for-surgical-hand-preparation",
+  "gold_is_leaf": false,
+  "satisfying_targets": [
+   "10-methods-to-evaluate-the-antimicrobial-efficacy-of-handrub-and-handwash-agents-and-formulations-for-surgical-hand-preparation-overview"
+  ],
+  "matched": [
+   "10-methods-to-evaluate-the-antimicrobial-efficacy-of-handrub-and-handwash-agents-and-formulations-for-surgical-hand-preparation-overview"
+  ],
+  "hit": true,
+  "how": "walk",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "The section directly addresses the required log10 reduction criteria for handwash formulations under the FDA's Tentative Final Monograph (TFM) regarding the indicator organism and time frame."
+  ],
+  "n_retrieved": 8,
+  "retrieved": [
+   "10-methods-to-evaluate-the-antimicrobial-efficacy-of-handrub-and-handwash-agents-and-formulations-for-surgical-hand-preparation-overview",
+   "basic-experimental-design-of-current-methods-to-test-the-efficacy-of-hand-hygiene-and-surgical-hand-preparation-formula",
+   "11-review-of-preparations-used-for-hand-hygiene-overview",
+   "studies-comparing-the-relative-efficacy-based-on-log10-reductions-achieved-of-plain-soap-or-antimicrobial-soaps-versu",
+   "hygienic-handrub-efficacy-of-various-agents-in-reducing-the-release-of-test-bacteria-from-artificially-contaminated-han",
+   "efficacy-of-surgical-handrub-solutions-in-reducing-the-release-of-resident-skin-flora-from-clean-hands",
+   "13-surgical-hand-preparation-state-of-the-art-overview",
+   "abbreviations-table-84"
+  ],
+  "secs": 166.3
+ },
+ {
+  "id": "A054",
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "question": "What minimum free chlorine residual level in tap water does the WHO Guidelines cite as important, based on a Japanese study?",
+  "gold_node": "11-review-of-preparations-used-for-hand-hygiene",
+  "gold_is_leaf": false,
+  "satisfying_targets": [
+   "11-review-of-preparations-used-for-hand-hygiene-overview"
+  ],
+  "matched": [
+   "11-review-of-preparations-used-for-hand-hygiene-overview"
+  ],
+  "hit": true,
+  "how": "rehydrated",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "The section directly addresses the minimum free chlorine residual level cited by a Japanese study in relation to tap water quality."
+  ],
+  "n_retrieved": 2,
+  "retrieved": [
+   "11-review-of-preparations-used-for-hand-hygiene-overview",
+   "23-practical-issues-and-potential-barriers-to-optimal-hand-hygiene-practices-overview"
+  ],
+  "secs": 101.1
+ },
+ {
+  "id": "A055",
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "question": "According to the WHO Guidelines, 70% alcohol by weight is equivalent to what percentage by volume when prepared at 15°C?",
+  "gold_node": "11-review-of-preparations-used-for-hand-hygiene",
+  "gold_is_leaf": false,
+  "satisfying_targets": [
+   "11-review-of-preparations-used-for-hand-hygiene-overview"
+  ],
+  "matched": [
+   "11-review-of-preparations-used-for-hand-hygiene-overview"
+  ],
+  "hit": true,
+  "how": "rehydrated",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "The section directly addresses the conversion between alcohol concentration by weight and percentage by volume at a specific temperature (15°C), which is exactly what the query asks for."
+  ],
+  "n_retrieved": 5,
+  "retrieved": [
+   "contents",
+   "10-methods-to-evaluate-the-antimicrobial-efficacy-of-handrub-and-handwash-agents-and-formulations-for-surgical-hand-preparation-overview",
+   "11-review-of-preparations-used-for-hand-hygiene-overview",
+   "12-who-recommended-handrub-formulations",
+   "13-surgical-hand-preparation-state-of-the-art-overview"
+  ],
+  "secs": 134.0
+ },
+ {
+  "id": "A056",
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "question": "In what year did the FDA warn that hexachlorophene should no longer be used routinely for bathing infants, due to reports of neurotoxicity?",
+  "gold_node": "11-review-of-preparations-used-for-hand-hygiene",
+  "gold_is_leaf": false,
+  "satisfying_targets": [
+   "11-review-of-preparations-used-for-hand-hygiene-overview"
+  ],
+  "matched": [
+   "11-review-of-preparations-used-for-hand-hygiene-overview"
+  ],
+  "hit": true,
+  "how": "rehydrated",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "The section directly addresses the FDA warning regarding hexachlorophene for bathing infants and provides the specific year."
+  ],
+  "n_retrieved": 2,
+  "retrieved": [
+   "11-review-of-preparations-used-for-hand-hygiene-overview",
+   "13-surgical-hand-preparation-state-of-the-art-overview"
+  ],
+  "secs": 104.7
+ },
+ {
+  "id": "A057",
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "question": "By how many log10 does 0.1% triclosan reduce bacterial counts on hands after a 1-minute hygienic handwash, according to the WHO Guidelines?",
+  "gold_node": "11-review-of-preparations-used-for-hand-hygiene",
+  "gold_is_leaf": false,
+  "satisfying_targets": [
+   "11-review-of-preparations-used-for-hand-hygiene-overview"
+  ],
+  "matched": [
+   "11-review-of-preparations-used-for-hand-hygiene-overview"
+  ],
+  "hit": true,
+  "how": "walk",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "The section discusses triclosan's efficacy and provides a specific log reduction value for handwashing with 0.1% triclosan after 1 minute."
+  ],
+  "n_retrieved": 3,
+  "retrieved": [
+   "10-methods-to-evaluate-the-antimicrobial-efficacy-of-handrub-and-handwash-agents-and-formulations-for-surgical-hand-preparation-overview",
+   "11-review-of-preparations-used-for-hand-hygiene-overview",
+   "13-surgical-hand-preparation-state-of-the-art-overview"
+  ],
+  "secs": 199.2
+ },
+ {
+  "id": "A058",
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "question": "According to a study by Ehrenkranz and colleagues cited in the WHO Guidelines, transfer of Gram-negative bacilli to catheter material occurred in what percentage of experiments following handwashing with plain soap and water, compared with only 17% after antiseptic handrub with an alcohol-based hand rinse?",
+  "gold_node": "11-review-of-preparations-used-for-hand-hygiene",
+  "gold_is_leaf": false,
+  "satisfying_targets": [
+   "11-review-of-preparations-used-for-hand-hygiene-overview"
+  ],
+  "matched": [
+   "11-review-of-preparations-used-for-hand-hygiene-overview"
+  ],
+  "hit": true,
+  "how": "rehydrated",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "This section directly addresses the comparison between plain soap and antiseptic handrub regarding the transfer of Gram-negative bacilli to catheter material, citing Ehrenkranz and colleagues' finding"
+  ],
+  "n_retrieved": 3,
+  "retrieved": [
+   "7-transmission-of-pathogens-by-hands-overview",
+   "8-models-of-hand-transmission",
+   "11-review-of-preparations-used-for-hand-hygiene-overview"
+  ],
+  "secs": 86.7
+ },
+ {
+  "id": "A059",
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "question": "What is the final ethanol concentration (v/v) specified for WHO-recommended handrub Formulation I?",
+  "gold_node": "12-who-recommended-handrub-formulations",
+  "gold_is_leaf": true,
+  "satisfying_targets": [
+   "12-who-recommended-handrub-formulations"
+  ],
+  "matched": [
+   "12-who-recommended-handrub-formulations"
+  ],
+  "hit": true,
+  "how": "walk",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "The section explicitly states the final ethanol concentration for Formulation I, which directly answers the query."
+  ],
+  "n_retrieved": 3,
+  "retrieved": [
+   "10-methods-to-evaluate-the-antimicrobial-efficacy-of-handrub-and-handwash-agents-and-formulations-for-surgical-hand-preparation-overview",
+   "11-review-of-preparations-used-for-hand-hygiene-overview",
+   "12-who-recommended-handrub-formulations"
+  ],
+  "secs": 121.9
+ },
+ {
+  "id": "A060",
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "question": "After mixing, how long should locally-produced WHO-recommended handrub bottles be kept in quarantine before use?",
+  "gold_node": "12-who-recommended-handrub-formulations",
+  "gold_is_leaf": true,
+  "satisfying_targets": [
+   "12-who-recommended-handrub-formulations"
+  ],
+  "matched": [
+   "12-who-recommended-handrub-formulations"
+  ],
+  "hit": true,
+  "how": "walk",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "The section provides a specific instruction regarding quarantine time after mixing locally produced handrubs, which directly addresses the 'how long should... be kept in quarantine' part of the query."
+  ],
+  "n_retrieved": 3,
+  "retrieved": [
+   "12-who-recommended-handrub-formulations",
+   "21-the-who-multimodal-hand-hygiene-improvement-strategy-overview",
+   "summary-of-risks-and-mitigation-measures-concerning-the-use-of-alcohol-based-hand-hygiene-preparations"
+  ],
+  "secs": 195.2
+ },
+ {
+  "id": "A061",
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "question": "In the surgical hand preparation regimen suggested in 1894, how long was the first step of washing hands with hot water, medicated soap, and a brush supposed to last?",
+  "gold_node": "13-surgical-hand-preparation-state-of-the-art",
+  "gold_is_leaf": false,
+  "satisfying_targets": [
+   "13-surgical-hand-preparation-state-of-the-art-overview"
+  ],
+  "matched": [
+   "13-surgical-hand-preparation-state-of-the-art-overview"
+  ],
+  "hit": true,
+  "how": "rehydrated",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "The section directly addresses the suggested regimen in 1894 and specifies the duration for the first step involving hot water, medicated soap, and a brush."
+  ],
+  "n_retrieved": 6,
+  "retrieved": [
+   "contents",
+   "1-definition-of-terms",
+   "11-review-of-preparations-used-for-hand-hygiene-overview",
+   "13-surgical-hand-preparation-state-of-the-art-overview",
+   "3-recommendations-for-surgical-hand-preparation",
+   "guidelines-including-specific-recommendations-regarding-hand-hygiene-techniques"
+  ],
+  "secs": 150.9
+ },
+ {
+  "id": "A062",
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "question": "Approximately how many litres of warm water does one traditional surgical hand preparation episode use, according to the WHO Guidelines?",
+  "gold_node": "13-surgical-hand-preparation-state-of-the-art",
+  "gold_is_leaf": false,
+  "satisfying_targets": [
+   "13-surgical-hand-preparation-state-of-the-art-overview"
+  ],
+  "matched": [
+   "13-surgical-hand-preparation-state-of-the-art-overview"
+  ],
+  "hit": true,
+  "how": "rehydrated",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "The section provides a specific quantitative estimate for the amount of warm water used during one traditional surgical hand preparation episode."
+  ],
+  "n_retrieved": 9,
+  "retrieved": [
+   "contents",
+   "10-methods-to-evaluate-the-antimicrobial-efficacy-of-handrub-and-handwash-agents-and-formulations-for-surgical-hand-preparation-overview",
+   "12-who-recommended-handrub-formulations",
+   "13-surgical-hand-preparation-state-of-the-art-overview",
+   "13-surgical-hand-preparation-state-of-the-art-table-16",
+   "unsolved-issues-for-research-and-field-testing",
+   "2-hand-hygiene-technique",
+   "3-recommendations-for-surgical-hand-preparation",
+   "guidelines-including-specific-recommendations-regarding-hand-hygiene-techniques"
+  ],
+  "secs": 99.3
+ },
+ {
+  "id": "A063",
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "question": "According to a study cited in the WHO Guidelines, how many seconds of alcohol-based rub were shown to be equivalent to a 3-minute surgical hand rub with a product containing iso- and n-propanol plus mecetronium etilsulfate?",
+  "gold_node": "13-surgical-hand-preparation-state-of-the-art",
+  "gold_is_leaf": false,
+  "satisfying_targets": [
+   "13-surgical-hand-preparation-state-of-the-art-overview"
+  ],
+  "matched": [
+   "13-surgical-hand-preparation-state-of-the-art-overview"
+  ],
+  "hit": true,
+  "how": "rehydrated",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "The section directly addresses the equivalence time for an alcohol-based rub compared to a specific 3-minute scrub using iso- and n-propanol and mecetronium etilsulfate."
+  ],
+  "n_retrieved": 3,
+  "retrieved": [
+   "10-methods-to-evaluate-the-antimicrobial-efficacy-of-handrub-and-handwash-agents-and-formulations-for-surgical-hand-preparation-overview",
+   "11-review-of-preparations-used-for-hand-hygiene-overview",
+   "13-surgical-hand-preparation-state-of-the-art-overview"
+  ],
+  "secs": 169.2
+ },
+ {
+  "id": "A064",
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "question": "According to the WHO Guidelines, irritant contact dermatitis prevalence surveys among nurses range from what percentage to what percentage?",
+  "gold_node": "14-skin-reactions-related-to-hand-hygiene",
+  "gold_is_leaf": true,
+  "satisfying_targets": [
+   "14-skin-reactions-related-to-hand-hygiene"
+  ],
+  "matched": [
+   "14-skin-reactions-related-to-hand-hygiene"
+  ],
+  "hit": true,
+  "how": "walk",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "The section directly addresses the prevalence survey range for irritant contact dermatitis among nurses, which is the core of the query."
+  ],
+  "n_retrieved": 2,
+  "retrieved": [
+   "14-skin-reactions-related-to-hand-hygiene",
+   "21-the-who-multimodal-hand-hygiene-improvement-strategy-overview"
+  ],
+  "secs": 86.1
+ },
+ {
+  "id": "A065",
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "question": "What overall average hand hygiene adherence rate among health-care workers is cited in the WHO Guidelines, based on mean baseline rates ranging from 5% to 89% across studies?",
+  "gold_node": "16-hand-hygiene-practices-among-health-care-workers-and-adherence-to-recommendations",
+  "gold_is_leaf": false,
+  "satisfying_targets": [
+   "16-hand-hygiene-practices-among-health-care-workers-and-adherence-to-recommendations-overview"
+  ],
+  "matched": [
+   "16-hand-hygiene-practices-among-health-care-workers-and-adherence-to-recommendations-overview"
+  ],
+  "hit": true,
+  "how": "rehydrated",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "The section directly addresses the overall average hand hygiene adherence rate and mentions the specified range for mean baseline rates."
+  ],
+  "n_retrieved": 8,
+  "retrieved": [
+   "3-the-burden-of-health-care-associated-infection-overview",
+   "16-hand-hygiene-practices-among-health-care-workers-and-adherence-to-recommendations-overview",
+   "hand-hygiene-adherence-by-health-care-workers-1981-june-2008",
+   "hand-hygiene-adherence-by-health-care-workers-1981-june-2008-cont-2",
+   "hand-hygiene-adherence-by-health-care-workers-1981-june-2008-cont-3",
+   "1-hand-hygiene-as-a-performance-indicator-overview",
+   "2-hand-hygiene-as-a-quality-indicator-for-patient-safety-overview",
+   "examples-of-quality-indicators-which-may-be-used-in-relation-to-hand-hygiene-in-health-care-settings-not-including-pre"
+  ],
+  "secs": 96.6
+ },
+ {
+  "id": "A066",
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "question": "According to behavioural theory cited in the WHO Guidelines, hand cleansing patterns are most likely to be firmly established during what period of a person's life?",
+  "gold_node": "17-religious-and-cultural-aspects-of-hand-hygiene",
+  "gold_is_leaf": false,
+  "satisfying_targets": [
+   "17-religious-and-cultural-aspects-of-hand-hygiene-overview"
+  ],
+  "matched": [
+   "17-religious-and-cultural-aspects-of-hand-hygiene-overview"
+  ],
+  "hit": true,
+  "how": "rehydrated",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "The section directly addresses when hand cleansing patterns are most likely to be established according to behavioral theories cited in the document."
+  ],
+  "n_retrieved": 5,
+  "retrieved": [
+   "2-guidelines-preparation-process-overview",
+   "17-religious-and-cultural-aspects-of-hand-hygiene-overview",
+   "18-behavioural-considerations",
+   "19-organizing-an-educational-programme-to-promote-hand-hygiene-overview",
+   "1-hand-hygiene-as-a-performance-indicator-overview"
+  ],
+  "secs": 110.4
+ },
+ {
+  "id": "A067",
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "question": "According to the WHO Guidelines, what three fields of study within the behavioural sciences did Seto identify as having relevance to the field of infection control?",
+  "gold_node": "18-behavioural-considerations",
+  "gold_is_leaf": true,
+  "satisfying_targets": [
+   "18-behavioural-considerations"
+  ],
+  "matched": [
+   "18-behavioural-considerations"
+  ],
+  "hit": true,
+  "how": "walk",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "This section directly answers the query by stating the three fields of study identified by Seto as relevant to infection control."
+  ],
+  "n_retrieved": 6,
+  "retrieved": [
+   "contents",
+   "2-guidelines-preparation-process-overview",
+   "17-religious-and-cultural-aspects-of-hand-hygiene-overview",
+   "18-behavioural-considerations",
+   "21-the-who-multimodal-hand-hygiene-improvement-strategy-overview",
+   "appendix-6-who-global-survey-of-patient-experiences-in-hand-hygiene-improvement-overview"
+  ],
+  "secs": 117.1
+ },
+ {
+  "id": "A068",
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "question": "By 2006-2008, \"My five moments for hand hygiene\" had been adopted in how many hospitals worldwide, according to the WHO Guidelines?",
+  "gold_node": "21-the-who-multimodal-hand-hygiene-improvement-strategy",
+  "gold_is_leaf": false,
+  "satisfying_targets": [
+   "21-the-who-multimodal-hand-hygiene-improvement-strategy-overview"
+  ],
+  "matched": [
+   "21-the-who-multimodal-hand-hygiene-improvement-strategy-overview"
+  ],
+  "hit": true,
+  "how": "walk",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "The section directly addresses the adoption rate of \"My five moments for hand hygiene\" in specific years and locations as requested by the query."
+  ],
+  "n_retrieved": 5,
+  "retrieved": [
+   "2-guidelines-preparation-process-overview",
+   "17-religious-and-cultural-aspects-of-hand-hygiene-overview",
+   "21-the-who-multimodal-hand-hygiene-improvement-strategy-overview",
+   "guidelines-for-hand-hygiene-prepared-by-various-other-agencies-both-prior-to-and-after-the-publication-of-the-advanced-draft-of-these-guidelines-are-currently-available-an-analysis-of-recommendations-in-guidelines-produced-by-16-countries-was-published-in-2001-635-however-several-guidelines-included-in-the-analysis-were-not-formal-publications-agreed-upon-nationally-or-sub-nationally-and-the-level-of-details-provided-could-be-expanded-more-extensively-this-section-examines-the-scope-approaches-and-recommendations-of-some-national-and-sub-national-guidelines-overview",
+   "appendix-6-who-global-survey-of-patient-experiences-in-hand-hygiene-improvement-overview"
+  ],
+  "secs": 289.1
+ },
+ {
+  "id": "A069",
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "question": "At the Mali pilot site (Hôpital du Point G), what was the baseline hand hygiene compliance rate among 1932 observed opportunities?",
+  "gold_node": "21-the-who-multimodal-hand-hygiene-improvement-strategy",
+  "gold_is_leaf": false,
+  "satisfying_targets": [
+   "21-the-who-multimodal-hand-hygiene-improvement-strategy-overview"
+  ],
+  "matched": [
+   "21-the-who-multimodal-hand-hygiene-improvement-strategy-overview"
+  ],
+  "hit": true,
+  "how": "rehydrated",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "This section provides the exact baseline hand hygiene compliance rate for the Mali pilot site (Hôpital du Point G) among 1932 observed opportunities."
+  ],
+  "n_retrieved": 5,
+  "retrieved": [
+   "16-hand-hygiene-practices-among-health-care-workers-and-adherence-to-recommendations-overview",
+   "21-the-who-multimodal-hand-hygiene-improvement-strategy-overview",
+   "pilot-sites-for-the-testing-of-the-who-guidelines-on-hand-hygiene-in-health-care-and-its-strategy-and-tools",
+   "examples-of-quality-indicators-which-may-be-used-in-relation-to-hand-hygiene-in-health-care-settings-not-including-pre",
+   "appendix-4-monitoring-hand-hygiene-by-direct-methods"
+  ],
+  "secs": 109.3
+ },
+ {
+  "id": "A070",
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "question": "At the Costa Rica pilot site (Hospital Nacional de Niños), overall hand hygiene compliance increased from what baseline percentage to what follow-up percentage after 5 months of implementation?",
+  "gold_node": "21-the-who-multimodal-hand-hygiene-improvement-strategy",
+  "gold_is_leaf": false,
+  "satisfying_targets": [
+   "21-the-who-multimodal-hand-hygiene-improvement-strategy-overview"
+  ],
+  "matched": [
+   "21-the-who-multimodal-hand-hygiene-improvement-strategy-overview"
+  ],
+  "hit": true,
+  "how": "walk",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "This section provides the exact baseline and follow-up compliance percentages for the Costa Rica pilot site."
+  ],
+  "n_retrieved": 8,
+  "retrieved": [
+   "12-who-recommended-handrub-formulations",
+   "21-the-who-multimodal-hand-hygiene-improvement-strategy-overview",
+   "pilot-sites-for-the-testing-of-the-who-guidelines-on-hand-hygiene-in-health-care-and-its-strategy-and-tools",
+   "lessons-learnt-from-testing-in-pilot-sites",
+   "22-impact-of-improved-hand-hygiene-overview",
+   "examples-of-quality-indicators-which-may-be-used-in-relation-to-hand-hygiene-in-health-care-settings-not-including-pre",
+   "appendix-4-monitoring-hand-hygiene-by-direct-methods",
+   "abbreviations-table-84"
+  ],
+  "secs": 161.3
+ },
+ {
+  "id": "A071",
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "question": "What was the baseline hand hygiene compliance rate in the test wards of the Hong Kong SAR pilot hospitals (April-October 2006)?",
+  "gold_node": "21-the-who-multimodal-hand-hygiene-improvement-strategy",
+  "gold_is_leaf": false,
+  "satisfying_targets": [
+   "21-the-who-multimodal-hand-hygiene-improvement-strategy-overview"
+  ],
+  "matched": [
+   "21-the-who-multimodal-hand-hygiene-improvement-strategy-overview"
+  ],
+  "hit": true,
+  "how": "rehydrated",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "The section contains specific data regarding baseline hand hygiene compliance rates in Hong Kong SAR pilot hospitals for the specified time frame."
+  ],
+  "n_retrieved": 5,
+  "retrieved": [
+   "2-guidelines-preparation-process-overview",
+   "12-who-recommended-handrub-formulations",
+   "21-the-who-multimodal-hand-hygiene-improvement-strategy-overview",
+   "pilot-sites-for-the-testing-of-the-who-guidelines-on-hand-hygiene-in-health-care-and-its-strategy-and-tools-cont",
+   "examples-of-quality-indicators-which-may-be-used-in-relation-to-hand-hygiene-in-health-care-settings-not-including-pre"
+  ],
+  "secs": 127.6
+ },
+ {
+  "id": "A072",
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "question": "In the Geneva University Hospitals study reported by Pittet and colleagues (2000), hand hygiene adherence improved progressively from what percentage in 1994 to what percentage in 1997?",
+  "gold_node": "22-impact-of-improved-hand-hygiene",
+  "gold_is_leaf": false,
+  "satisfying_targets": [
+   "22-impact-of-improved-hand-hygiene-overview"
+  ],
+  "matched": [
+   "22-impact-of-improved-hand-hygiene-overview"
+  ],
+  "hit": true,
+  "how": "walk",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "This section directly addresses the specific data points requested in the query regarding Pittet and colleagues' study from 2000, providing the starting and ending adherence percentages."
+  ],
+  "n_retrieved": 1,
+  "retrieved": [
+   "22-impact-of-improved-hand-hygiene-overview"
+  ],
+  "secs": 145.4
+ },
+ {
+  "id": "A073",
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "question": "Which US regulatory body is cited in the WHO Guidelines as mandating that gloves be worn during patient-care activities involving exposure to blood or body fluids?",
+  "gold_node": "23-practical-issues-and-potential-barriers-to-optimal-hand-hygiene-practices",
+  "gold_is_leaf": false,
+  "satisfying_targets": [
+   "23-practical-issues-and-potential-barriers-to-optimal-hand-hygiene-practices-overview"
+  ],
+  "matched": [
+   "23-practical-issues-and-potential-barriers-to-optimal-hand-hygiene-practices-overview"
+  ],
+  "hit": true,
+  "how": "rehydrated",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "The section directly names a US regulatory body and states its mandate regarding glove use during blood or body fluid exposure."
+  ],
+  "n_retrieved": 11,
+  "retrieved": [
+   "my-five-moments-for-hand-hygiene-explanations-and-link-to-evidence-based-recommendations-cont",
+   "23-practical-issues-and-potential-barriers-to-optimal-hand-hygiene-practices-overview",
+   "table-i-23-2",
+   "ranking-system-for-evidence-overview",
+   "1-indications-for-hand-hygiene",
+   "6-use-of-gloves",
+   "part-vi-overview",
+   "guidelines-for-hand-hygiene-prepared-by-various-other-agencies-both-prior-to-and-after-the-publication-of-the-advanced-draft-of-these-guidelines-are-currently-available-an-analysis-of-recommendations-in-guidelines-produced-by-16-countries-was-published-in-2001-635-however-several-guidelines-included-in-the-analysis-were-not-formal-publications-agreed-upon-nationally-or-sub-nationally-and-the-level-of-details-provided-could-be-expanded-more-extensively-this-section-examines-the-scope-approaches-and-recommendations-of-some-national-and-sub-national-guidelines-overview",
+   "guidelines-mentioning-indications-for-hand-hygiene-before-after-and-between-activities",
+   "routine-method-for-health-care-workers-dealing-with-all-patients-at-all-times-with-the-exception-of",
+   "special-measures-for-health-care-workers-in-the-presence-of-clostridium-difficile-diarrhoea"
+  ],
+  "secs": 127.1
+ },
+ {
+  "id": "A074",
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "question": "In the study by Hoffman and colleagues cited in the WHO Guidelines, what percentage of nurses harboured Gram-negative bacilli on the skin under their rings?",
+  "gold_node": "23-practical-issues-and-potential-barriers-to-optimal-hand-hygiene-practices",
+  "gold_is_leaf": false,
+  "satisfying_targets": [
+   "23-practical-issues-and-potential-barriers-to-optimal-hand-hygiene-practices-overview"
+  ],
+  "matched": [
+   "23-practical-issues-and-potential-barriers-to-optimal-hand-hygiene-practices-overview"
+  ],
+  "hit": true,
+  "how": "rehydrated",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "This section directly addresses the study by Hoffman and colleagues mentioned in the query and provides the specific percentage requested regarding nurses harboring Gram-negative bacilli under their r"
+  ],
+  "n_retrieved": 2,
+  "retrieved": [
+   "11-review-of-preparations-used-for-hand-hygiene-overview",
+   "23-practical-issues-and-potential-barriers-to-optimal-hand-hygiene-practices-overview"
+  ],
+  "secs": 98.7
+ },
+ {
+  "id": "A075",
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "question": "According to the WHO Guidelines' consensus recommendations, how short should natural fingernails be kept?",
+  "gold_node": "23-practical-issues-and-potential-barriers-to-optimal-hand-hygiene-practices",
+  "gold_is_leaf": false,
+  "satisfying_targets": [
+   "23-practical-issues-and-potential-barriers-to-optimal-hand-hygiene-practices-overview"
+  ],
+  "matched": [
+   "23-practical-issues-and-potential-barriers-to-optimal-hand-hygiene-practices-overview"
+  ],
+  "hit": true,
+  "how": "rehydrated",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "The section provides a consensus recommendation regarding the length natural fingernails should be kept for HCWs."
+  ],
+  "n_retrieved": 3,
+  "retrieved": [
+   "23-practical-issues-and-potential-barriers-to-optimal-hand-hygiene-practices-overview",
+   "3-recommendations-for-surgical-hand-preparation",
+   "7-other-aspects-of-hand-hygiene"
+  ],
+  "secs": 96.2
+ },
+ {
+  "id": "A076",
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "question": "A German study cited in the WHO Guidelines found that handrub usage represented an estimated total of how many hospital-years, during which only seven non-severe fire incidents were reported?",
+  "gold_node": "23-practical-issues-and-potential-barriers-to-optimal-hand-hygiene-practices",
+  "gold_is_leaf": false,
+  "satisfying_targets": [
+   "23-practical-issues-and-potential-barriers-to-optimal-hand-hygiene-practices-overview"
+  ],
+  "matched": [
+   "23-practical-issues-and-potential-barriers-to-optimal-hand-hygiene-practices-overview"
+  ],
+  "hit": true,
+  "how": "rehydrated",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "This section directly addresses the German study cited in relation to handrub usage and fire incidents, providing specific figures for both hospital-years and non-severe fire incidents."
+  ],
+  "n_retrieved": 2,
+  "retrieved": [
+   "23-practical-issues-and-potential-barriers-to-optimal-hand-hygiene-practices-overview",
+   "3-assessing-the-economic-impact-of-hand-hygiene-promotion-overview"
+  ],
+  "secs": 106.5
+ },
+ {
+  "id": "A077",
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "question": "In the WHO Guidelines' modified CDC/HICPAC ranking system for evidence, what does Category IA signify?",
+  "gold_node": "ranking-system-for-evidence",
+  "gold_is_leaf": false,
+  "satisfying_targets": [
+   "ranking-system-for-evidence-overview"
+  ],
+  "matched": [
+   "ranking-system-for-evidence-overview"
+  ],
+  "hit": true,
+  "how": "walk",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "The section directly defines Category IA within the WHO Guidelines' modified CDC/HICPAC ranking system for evidence."
+  ],
+  "n_retrieved": 7,
+  "retrieved": [
+   "2-guidelines-preparation-process-overview",
+   "modified-cdc-hicpac-ranking-system-for-evidence",
+   "4-historical-perspective-on-hand-hygiene-in-health-care",
+   "my-five-moments-for-hand-hygiene-explanations-and-link-to-evidence-based-recommendations-cont",
+   "ranking-system-for-evidence-overview",
+   "guidelines-for-hand-hygiene-prepared-by-various-other-agencies-both-prior-to-and-after-the-publication-of-the-advanced-draft-of-these-guidelines-are-currently-available-an-analysis-of-recommendations-in-guidelines-produced-by-16-countries-was-published-in-2001-635-however-several-guidelines-included-in-the-analysis-were-not-formal-publications-agreed-upon-nationally-or-sub-nationally-and-the-level-of-details-provided-could-be-expanded-more-extensively-this-section-examines-the-scope-approaches-and-recommendations-of-some-national-and-sub-national-guidelines-overview",
+   "table-vi-1grading-of-evidence-used-in-different-guideline-documents"
+  ],
+  "secs": 103.4
+ },
+ {
+  "id": "A078",
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "question": "According to the WHO Guidelines' consensus recommendations, surgical hand antisepsis using an antimicrobial soap typically requires scrubbing hands and forearms for how long, as recommended by the manufacturer?",
+  "gold_node": "3-recommendations-for-surgical-hand-preparation",
+  "gold_is_leaf": true,
+  "satisfying_targets": [
+   "3-recommendations-for-surgical-hand-preparation"
+  ],
+  "matched": [
+   "3-recommendations-for-surgical-hand-preparation"
+  ],
+  "hit": true,
+  "how": "walk",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "The section directly addresses the required scrubbing time for surgical hand antisepsis using an antimicrobial soap, as requested by the query."
+  ],
+  "n_retrieved": 8,
+  "retrieved": [
+   "contents",
+   "1-definition-of-terms",
+   "10-methods-to-evaluate-the-antimicrobial-efficacy-of-handrub-and-handwash-agents-and-formulations-for-surgical-hand-preparation-overview",
+   "13-surgical-hand-preparation-state-of-the-art-overview",
+   "3-recommendations-for-surgical-hand-preparation",
+   "figure-ii-2-how-to-handwash-overview",
+   "guidelines-for-hand-hygiene-prepared-by-various-other-agencies-both-prior-to-and-after-the-publication-of-the-advanced-draft-of-these-guidelines-are-currently-available-an-analysis-of-recommendations-in-guidelines-produced-by-16-countries-was-published-in-2001-635-however-several-guidelines-included-in-the-analysis-were-not-formal-publications-agreed-upon-nationally-or-sub-nationally-and-the-level-of-details-provided-could-be-expanded-more-extensively-this-section-examines-the-scope-approaches-and-recommendations-of-some-national-and-sub-national-guidelines-overview",
+   "guidelines-including-specific-recommendations-regarding-hand-hygiene-techniques"
+  ],
+  "secs": 141.5
+ },
+ {
+  "id": "A079",
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "question": "According to the WHO Guidelines, surgical hand antisepsis using an alcohol-based handrub required how many minutes, following the reference method outlined in EN 12791?",
+  "gold_node": "13-surgical-hand-preparation-state-of-the-art",
+  "gold_is_leaf": false,
+  "satisfying_targets": [
+   "13-surgical-hand-preparation-state-of-the-art-overview"
+  ],
+  "matched": [
+   "13-surgical-hand-preparation-state-of-the-art-overview"
+  ],
+  "hit": true,
+  "how": "rehydrated",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "The section directly addresses the required time for surgical hand antisepsis using an alcohol-based handrub following EN 12791."
+  ],
+  "n_retrieved": 9,
+  "retrieved": [
+   "contents",
+   "10-methods-to-evaluate-the-antimicrobial-efficacy-of-handrub-and-handwash-agents-and-formulations-for-surgical-hand-preparation-overview",
+   "basic-experimental-design-of-current-methods-to-test-the-efficacy-of-hand-hygiene-and-surgical-hand-preparation-formula",
+   "12-who-recommended-handrub-formulations",
+   "13-surgical-hand-preparation-state-of-the-art-overview",
+   "3-recommendations-for-surgical-hand-preparation",
+   "figure-ii-1-how-to-handrub-overview",
+   "1-hand-hygiene-as-a-performance-indicator-overview",
+   "guidelines-including-specific-recommendations-regarding-hand-hygiene-techniques"
+  ],
+  "secs": 124.4
+ },
+ {
+  "id": "A080",
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "question": "According to the WHO Guidelines, approximately how many hours of direct observation are required to obtain 500 hand hygiene opportunities, assuming a typical density of 10 opportunities per hour?",
+  "gold_node": "1-hand-hygiene-as-a-performance-indicator",
+  "gold_is_leaf": false,
+  "satisfying_targets": [
+   "1-hand-hygiene-as-a-performance-indicator-overview"
+  ],
+  "matched": [
+   "1-hand-hygiene-as-a-performance-indicator-overview"
+  ],
+  "hit": true,
+  "how": "walk",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "The section provides a direct calculation example using the exact parameters mentioned in the query: 10 opportunities per hour and obtaining 500 opportunities."
+  ],
+  "n_retrieved": 5,
+  "retrieved": [
+   "16-hand-hygiene-practices-among-health-care-workers-and-adherence-to-recommendations-overview",
+   "frequency-of-hand-hygiene-actions-among-health-care-workers",
+   "1-hand-hygiene-as-a-performance-indicator-overview",
+   "3-assessing-the-economic-impact-of-hand-hygiene-promotion-overview",
+   "appendix-4-monitoring-hand-hygiene-by-direct-methods"
+  ],
+  "secs": 149.4
+ },
+ {
+  "id": "A081",
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "question": "According to Boyce's estimate cited in the WHO Guidelines, what was the annual hand hygiene product budget at a 450-bed community teaching hospital in the USA?",
+  "gold_node": "3-assessing-the-economic-impact-of-hand-hygiene-promotion",
+  "gold_is_leaf": false,
+  "satisfying_targets": [
+   "3-assessing-the-economic-impact-of-hand-hygiene-promotion-overview"
+  ],
+  "matched": [
+   "3-assessing-the-economic-impact-of-hand-hygiene-promotion-overview"
+  ],
+  "hit": true,
+  "how": "walk",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "This section directly provides the specific budget estimate cited by Boyce for a 450-bed community teaching hospital in the USA regarding hand hygiene products."
+  ],
+  "n_retrieved": 5,
+  "retrieved": [
+   "21-the-who-multimodal-hand-hygiene-improvement-strategy-overview",
+   "pilot-sites-for-the-testing-of-the-who-guidelines-on-hand-hygiene-in-health-care-and-its-strategy-and-tools",
+   "examples-of-quality-indicators-which-may-be-used-in-relation-to-hand-hygiene-in-health-care-settings-not-including-pre",
+   "3-assessing-the-economic-impact-of-hand-hygiene-promotion-overview",
+   "appendix-5-example-of-a-spreadsheet-to-estimate-costs-table-75"
+  ],
+  "secs": 158.8
+ },
+ {
+  "id": "A082",
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "question": "According to the WHO Guidelines' case study on the England and Wales national hand hygiene programme, approximately how much would it initially cost a 500-bed hospital to put alcohol-based handrub at each bedside?",
+  "gold_node": "3-assessing-the-economic-impact-of-hand-hygiene-promotion",
+  "gold_is_leaf": false,
+  "satisfying_targets": [
+   "3-assessing-the-economic-impact-of-hand-hygiene-promotion-overview"
+  ],
+  "matched": [
+   "3-assessing-the-economic-impact-of-hand-hygiene-promotion-overview"
+  ],
+  "hit": true,
+  "how": "rehydrated",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "The section directly addresses the cost for a 500-bed hospital to implement alcohol-based handrub at each bedside in England and Wales."
+  ],
+  "n_retrieved": 9,
+  "retrieved": [
+   "12-who-recommended-handrub-formulations",
+   "21-the-who-multimodal-hand-hygiene-improvement-strategy-overview",
+   "3-assessing-the-economic-impact-of-hand-hygiene-promotion-overview",
+   "4-public-campaigning-who-and-the-mass-media",
+   "5-benefits-and-barriers-in-national-programmes",
+   "8-nationally-driven-hand-hygiene-improvement-in-health-care",
+   "the-public-information-component-of-two-national-campaigns-focusing-on-the-prevention-of-health-care-associated-infecti",
+   "appendix-5-example-of-a-spreadsheet-to-estimate-costs-overview",
+   "appendix-5-example-of-a-spreadsheet-to-estimate-costs-table-75"
+  ],
+  "secs": 149.3
+ },
+ {
+  "id": "A083",
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "question": "The \"cleanyourhands\" campaign in England and Wales received additional leverage from a parallel national target to reduce what by 50%?",
+  "gold_node": "4-public-campaigning-who-and-the-mass-media",
+  "gold_is_leaf": true,
+  "satisfying_targets": [
+   "4-public-campaigning-who-and-the-mass-media"
+  ],
+  "matched": [
+   "4-public-campaigning-who-and-the-mass-media"
+  ],
+  "hit": true,
+  "how": "walk",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "The section directly addresses the 'cleanyourhands' campaign in England and Wales and specifies the parallel national target used for leverage."
+  ],
+  "n_retrieved": 7,
+  "retrieved": [
+   "3-assessing-the-economic-impact-of-hand-hygiene-promotion-overview",
+   "4-public-campaigning-who-and-the-mass-media",
+   "5-benefits-and-barriers-in-national-programmes",
+   "8-nationally-driven-hand-hygiene-improvement-in-health-care",
+   "the-public-information-component-of-two-national-campaigns-focusing-on-the-prevention-of-health-care-associated-infecti",
+   "4-hand-hygiene-compliance-and-empowerment",
+   "appendix-5-example-of-a-spreadsheet-to-estimate-costs-overview"
+  ],
+  "secs": 94.0
+ },
+ {
+  "id": "A084",
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "question": "In what year was the \"cleanyourhands\" campaign launched in England and Wales, according to the WHO Guidelines?",
+  "gold_node": "8-nationally-driven-hand-hygiene-improvement-in-health-care",
+  "gold_is_leaf": true,
+  "satisfying_targets": [
+   "8-nationally-driven-hand-hygiene-improvement-in-health-care"
+  ],
+  "matched": [
+   "8-nationally-driven-hand-hygiene-improvement-in-health-care"
+  ],
+  "hit": true,
+  "how": "walk",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "The section directly answers the query by stating the launch year of the \"cleanyourhands\" campaign in England and Wales according to WHO documentation."
+  ],
+  "n_retrieved": 10,
+  "retrieved": [
+   "3-assessing-the-economic-impact-of-hand-hygiene-promotion-overview",
+   "4-public-campaigning-who-and-the-mass-media",
+   "5-benefits-and-barriers-in-national-programmes",
+   "8-nationally-driven-hand-hygiene-improvement-in-health-care",
+   "the-public-information-component-of-two-national-campaigns-focusing-on-the-prevention-of-health-care-associated-infecti",
+   "4-hand-hygiene-compliance-and-empowerment",
+   "part-vi-overview",
+   "guidelines-for-hand-hygiene-prepared-by-various-other-agencies-both-prior-to-and-after-the-publication-of-the-advanced-draft-of-these-guidelines-are-currently-available-an-analysis-of-recommendations-in-guidelines-produced-by-16-countries-was-published-in-2001-635-however-several-guidelines-included-in-the-analysis-were-not-formal-publications-agreed-upon-nationally-or-sub-nationally-and-the-level-of-details-provided-could-be-expanded-more-extensively-this-section-examines-the-scope-approaches-and-recommendations-of-some-national-and-sub-national-guidelines-overview",
+   "appendix-5-example-of-a-spreadsheet-to-estimate-costs-overview",
+   "appendix-6-who-global-survey-of-patient-experiences-in-hand-hygiene-improvement-table-82"
+  ],
+  "secs": 121.4
+ },
+ {
+  "id": "A085",
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "question": "According to the WHO Guidelines, how many components have been reported as fundamental to the process of patient empowerment?",
+  "gold_node": "2-patient-empowerment-and-health-care",
+  "gold_is_leaf": true,
+  "satisfying_targets": [
+   "2-patient-empowerment-and-health-care"
+  ],
+  "matched": [
+   "2-patient-empowerment-and-health-care"
+  ],
+  "hit": true,
+  "how": "walk",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "The section directly answers the query by stating the number and listing the components reported as fundamental to patient empowerment according to WHO."
+  ],
+  "n_retrieved": 9,
+  "retrieved": [
+   "introduction",
+   "4-historical-perspective-on-hand-hygiene-in-health-care",
+   "17-religious-and-cultural-aspects-of-hand-hygiene-overview",
+   "19-organizing-an-educational-programme-to-promote-hand-hygiene-overview",
+   "1-overview-and-terminology",
+   "2-patient-empowerment-and-health-care",
+   "3-components-of-the-empowerment-process",
+   "4-hand-hygiene-compliance-and-empowerment",
+   "5-programmes-and-models-of-hand-hygiene-promotion-including-patient-and-health-care-worker-empowerment"
+  ],
+  "secs": 93.0
+ },
+ {
+  "id": "A086",
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "question": "In the WHO global survey of patient experiences, how many completed surveys were received in total?",
+  "gold_node": "6-who-global-survey-of-patient-experiences",
+  "gold_is_leaf": true,
+  "satisfying_targets": [
+   "6-who-global-survey-of-patient-experiences"
+  ],
+  "matched": [
+   "6-who-global-survey-of-patient-experiences"
+  ],
+  "hit": true,
+  "how": "rehydrated",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "The section directly addresses the total number of completed surveys received in the WHO global survey."
+  ],
+  "n_retrieved": 5,
+  "retrieved": [
+   "21-the-who-multimodal-hand-hygiene-improvement-strategy-overview",
+   "6-who-global-survey-of-patient-experiences",
+   "appendix-6-who-global-survey-of-patient-experiences-in-hand-hygiene-improvement-overview",
+   "appendix-6-who-global-survey-of-patient-experiences-in-hand-hygiene-improvement-table-77",
+   "patient-experiences-of-patient-participation-by-who-region"
+  ],
+  "secs": 105.4
+ },
+ {
+  "id": "A087",
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "question": "How many national and sub-national hand hygiene guidelines were obtained for comparison in the WHO Guidelines?",
+  "gold_node": "guidelines-for-hand-hygiene-prepared-by-various-other-agencies-both-prior-to-and-after-the-publication-of-the-advanced-draft-of-these-guidelines-are-currently-available-an-analysis-of-recommendations-in-guidelines-produced-by-16-countries-was-published-in-2001-635-however-several-guidelines-included-in-the-analysis-were-not-formal-publications-agreed-upon-nationally-or-sub-nationally-and-the-level-of-details-provided-could-be-expanded-more-extensively-this-section-examines-the-scope-approaches-and-recommendations-of-some-national-and-sub-national-guidelines",
+  "gold_is_leaf": false,
+  "satisfying_targets": [
+   "guidelines-for-hand-hygiene-prepared-by-various-other-agencies-both-prior-to-and-after-the-publication-of-the-advanced-draft-of-these-guidelines-are-currently-available-an-analysis-of-recommendations-in-guidelines-produced-by-16-countries-was-published-in-2001-635-however-several-guidelines-included-in-the-analysis-were-not-formal-publications-agreed-upon-nationally-or-sub-nationally-and-the-level-of-details-provided-could-be-expanded-more-extensively-this-section-examines-the-scope-approaches-and-recommendations-of-some-national-and-sub-national-guidelines-overview"
+  ],
+  "matched": [
+   "guidelines-for-hand-hygiene-prepared-by-various-other-agencies-both-prior-to-and-after-the-publication-of-the-advanced-draft-of-these-guidelines-are-currently-available-an-analysis-of-recommendations-in-guidelines-produced-by-16-countries-was-published-in-2001-635-however-several-guidelines-included-in-the-analysis-were-not-formal-publications-agreed-upon-nationally-or-sub-nationally-and-the-level-of-details-provided-could-be-expanded-more-extensively-this-section-examines-the-scope-approaches-and-recommendations-of-some-national-and-sub-national-guidelines-overview"
+  ],
+  "hit": true,
+  "how": "walk",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "The section directly addresses the number of national and sub-national guidelines obtained for comparison, stating a total count and breaking down the numbers by type."
+  ],
+  "n_retrieved": 10,
+  "retrieved": [
+   "contents",
+   "introduction",
+   "2-guidelines-preparation-process-overview",
+   "1-introduction",
+   "2-objectives",
+   "table-iv-9-1-framework-for-action",
+   "part-vi-overview",
+   "guidelines-for-hand-hygiene-prepared-by-various-other-agencies-both-prior-to-and-after-the-publication-of-the-advanced-draft-of-these-guidelines-are-currently-available-an-analysis-of-recommendations-in-guidelines-produced-by-16-countries-was-published-in-2001-635-however-several-guidelines-included-in-the-analysis-were-not-formal-publications-agreed-upon-nationally-or-sub-nationally-and-the-level-of-details-provided-could-be-expanded-more-extensively-this-section-examines-the-scope-approaches-and-recommendations-of-some-national-and-sub-national-guidelines-overview",
+   "guidelines-mentioning-indications-for-hand-hygiene-before-after-and-between-activities",
+   "aknowledgements-overview"
+  ],
+  "secs": 98.7
+ },
+ {
+  "id": "A088",
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "question": "According to the WHO Guidelines, C. difficile spores are described as what kind of form of the bacterium that can survive for a long time on surfaces?",
+  "gold_node": "what-is-clostridium-difficile",
+  "gold_is_leaf": true,
+  "satisfying_targets": [
+   "what-is-clostridium-difficile"
+  ],
+  "matched": [
+   "what-is-clostridium-difficile"
+  ],
+  "hit": true,
+  "how": "walk",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "The section directly addresses how C. difficile spores are described and their ability to survive on surfaces, which is the core of the query."
+  ],
+  "n_retrieved": 13,
+  "retrieved": [
+   "7-transmission-of-pathogens-by-hands-overview",
+   "figure-i-7-3-organism-survival-on-hcws-hands",
+   "11-review-of-preparations-used-for-hand-hygiene-overview",
+   "specific-challenges-posed-by-patients-with-diarrhoeal-illnesses",
+   "what-is-clostridium-difficile",
+   "can-appropriate-infection-control-practices-help-prevent-and-control-clostridium-difficile",
+   "what-is-the-concern-about-health-care-workers-using-alcohol-based-handrubs-at-the-point-of-care-when-patients-have-clostridium-difficile",
+   "special-measures-for-health-care-workers-in-the-presence-of-clostridium-difficile-diarrhoea",
+   "should-we-remove-alcohol-based-handrubs-from-areas-where-there-is-clostridium-difficile-infection",
+   "how-often-will-the-spores-be-present-when-patients-have-clostridium-difficile-infection",
+   "what-other-key-measures-should-be-taken-to-prevent-and-control-clostridium-difficile",
+   "summary",
+   "patient-narrative-risk-communication"
+  ],
+  "secs": 167.2
+ },
+ {
+  "id": "A089",
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "question": "According to the WHO Guidelines, approximately how many data points should be obtained before analysing the variation in a hand hygiene improvement process using a run chart?",
+  "gold_node": "appendix-4-monitoring-hand-hygiene-by-direct-methods",
+  "gold_is_leaf": true,
+  "satisfying_targets": [
+   "appendix-4-monitoring-hand-hygiene-by-direct-methods"
+  ],
+  "matched": [
+   "appendix-4-monitoring-hand-hygiene-by-direct-methods"
+  ],
+  "hit": true,
+  "how": "walk",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "The section provides specific guidance on the number of data points needed before analyzing process variation, which directly addresses the core of the query regarding run charts."
+  ],
+  "n_retrieved": 3,
+  "retrieved": [
+   "1-hand-hygiene-as-a-performance-indicator-overview",
+   "2-hand-hygiene-as-a-quality-indicator-for-patient-safety-overview",
+   "appendix-4-monitoring-hand-hygiene-by-direct-methods"
+  ],
+  "secs": 74.7
+ },
+ {
+  "id": "A090",
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "question": "According to the WHO Guidelines, run charts perform at roughly what confidence interval level, compared with the more robust control charts which function at a level equivalent to a 99% confidence interval?",
+  "gold_node": "appendix-4-monitoring-hand-hygiene-by-direct-methods",
+  "gold_is_leaf": true,
+  "satisfying_targets": [
+   "appendix-4-monitoring-hand-hygiene-by-direct-methods"
+  ],
+  "matched": [
+   "appendix-4-monitoring-hand-hygiene-by-direct-methods"
+  ],
+  "hit": true,
+  "how": "walk",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "This section directly compares the confidence levels for run charts and more robust control charts as requested by the query."
+  ],
+  "n_retrieved": 3,
+  "retrieved": [
+   "12-who-recommended-handrub-formulations",
+   "1-hand-hygiene-as-a-performance-indicator-overview",
+   "appendix-4-monitoring-hand-hygiene-by-direct-methods"
+  ],
+  "secs": 96.5
+ },
+ {
+  "id": "A091",
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "question": "According to the WHO global survey of patient experiences described in the Guidelines, how many questionnaires were collected in total during the 2007-2008 study period?",
+  "gold_node": "appendix-6-who-global-survey-of-patient-experiences-in-hand-hygiene-improvement",
+  "gold_is_leaf": false,
+  "satisfying_targets": [
+   "appendix-6-who-global-survey-of-patient-experiences-in-hand-hygiene-improvement-overview"
+  ],
+  "matched": [
+   "appendix-6-who-global-survey-of-patient-experiences-in-hand-hygiene-improvement-overview"
+  ],
+  "hit": true,
+  "how": "walk",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "The section directly answers the question about the total number of questionnaires collected during the 2007-2008 study period."
+  ],
+  "n_retrieved": 7,
+  "retrieved": [
+   "2-guidelines-preparation-process-overview",
+   "4-historical-perspective-on-hand-hygiene-in-health-care",
+   "21-the-who-multimodal-hand-hygiene-improvement-strategy-overview",
+   "1-hand-hygiene-as-a-performance-indicator-overview",
+   "6-who-global-survey-of-patient-experiences",
+   "appendix-6-who-global-survey-of-patient-experiences-in-hand-hygiene-improvement-overview",
+   "appendix-6-who-global-survey-of-patient-experiences-in-hand-hygiene-improvement-table-77"
+  ],
+  "secs": 134.6
+ },
+ {
+  "id": "A092",
+  "doc": "2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_Prevention_and_Control_Programmes_2026-09-11",
+  "question": "How many external experts, country delegates and stakeholders did the WHO Guideline Steering Group identify to constitute the Guidelines Development Group for these guidelines?",
+  "gold_node": "4-3-guidelines-development-group",
+  "gold_is_leaf": true,
+  "satisfying_targets": [
+   "4-3-guidelines-development-group"
+  ],
+  "matched": [
+   "4-3-guidelines-development-group"
+  ],
+  "hit": true,
+  "how": "walk",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "This section directly answers the query by stating the number and composition of the group identified by the WHO Guideline Steering Group."
+  ],
+  "n_retrieved": 5,
+  "retrieved": [
+   "methods",
+   "4-2-who-guideline-steering-group",
+   "4-3-guidelines-development-group",
+   "guideline-dissemination",
+   "annex-i-guidelines-development-group"
+  ],
+  "secs": 40.4
+ },
+ {
+  "id": "A093",
+  "doc": "2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_Prevention_and_Control_Programmes_2026-09-11",
+  "question": "In the current monitoring and assessment tool for International Health Regulations core capacity, infection prevention and control is specifically featured as one of how many indicators?",
+  "gold_node": "rationale-for-the-good-practice-statement",
+  "gold_is_leaf": true,
+  "satisfying_targets": [
+   "rationale-for-the-good-practice-statement"
+  ],
+  "matched": [
+   "rationale-for-the-good-practice-statement"
+  ],
+  "hit": true,
+  "how": "rehydrated",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "The section directly addresses the indicator count for IPC in the IHR core capacity tool, stating it is one of 20 indicators."
+  ],
+  "n_retrieved": 14,
+  "retrieved": [
+   "rationale-for-the-guidelines-overview",
+   "recommendations",
+   "guideline-implementation-table-6",
+   "health-care-associated-infections-hai-are-one-of-the-most-common-adverse-events-in-care-delivery-and-both-the-endemic-burden-and-the-occurrence-of-epidemics-are-a-major-public-health-problem-hais-have-a-significant-impact-on-morbidity-mortality-and-quality-of-life-and-present-an-economic-burden-at-the-societal-level-however-a-large-proportion-of-hai-are-preventable-and-there-is-a-growing-body-of-evidence-to-help-raise-awareness-of-the-global-burden-of-harm-caused-by-these-infections-3-4-including-strategies-to-reduce-their-spread-5",
+   "2-2-objectives-and-scope-of-the-guidelines",
+   "strengthening-implementation-of-the-ihr",
+   "very-few-publications-provide-sound-scientific-data-that-can-be-used-to-determine-which-components-are-essential-for-ipc-programmes-in-terms-of-effectiveness-in-reducing-the-risk-of-infection-at-the-national-or-facility-level-in-recent-years-a-range-of-regional-best-practice-or-policy-principles-have-been-developed-that-address-what-could-be-considered-as-core-components-of-ipc-programmes-at-the-national-and-or-facility-level-2-28-31-however-with-the-exception-of-the-original-2009-who-report-1-there-remains-a-major-gap-in-relation-to-the-availability-of-international-best-practice-principles-for-core-components-of-national-and-facility-level-ipc-programmes",
+   "rationale-for-the-good-practice-statement",
+   "rationale-for-the-recommendation-4-overview",
+   "remarks-4",
+   "recommendation-7",
+   "rationale-for-recommendation-2",
+   "summary-of-the-evidence-7-overview",
+   "conclusions-9"
+  ],
+  "secs": 117.3
+ },
+ {
+  "id": "A094",
+  "doc": "5d883081_WHO_Bacterial_Priority_Pathogens_List_2024_2026-09-11",
+  "question": "Which four governments or organizations provided financial support for the preparation of the WHO Bacterial Priority Pathogens List, 2024 report?",
+  "gold_node": "acknowledgements",
+  "gold_is_leaf": true,
+  "satisfying_targets": [
+   "acknowledgements"
+  ],
+  "matched": [
+   "acknowledgements"
+  ],
+  "hit": true,
+  "how": "walk",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "The section directly lists the governments or organizations that provided financial support for the report's preparation, answering the core of the query."
+  ],
+  "n_retrieved": 3,
+  "retrieved": [
+   "who-bacterial-priority-pathogens-list-2024-overview",
+   "acknowledgements",
+   "addressing-bacterial-priority-pathogens-through-innovation-and-r-d-of-new-drugs"
+  ],
+  "secs": 29.8
+ },
+ {
+  "id": "A095",
+  "doc": "5d883081_WHO_Bacterial_Priority_Pathogens_List_2024_2026-09-11",
+  "question": "What happened to the one BPPL Advisory Group member who submitted an incomplete conflict-of-interest declaration and, despite additional attempts, did not provide complete information?",
+  "gold_node": "evaluation-and-management-of-potential-conflicts-of-interest",
+  "gold_is_leaf": true,
+  "satisfying_targets": [
+   "evaluation-and-management-of-potential-conflicts-of-interest"
+  ],
+  "matched": [
+   "evaluation-and-management-of-potential-conflicts-of-interest"
+  ],
+  "hit": true,
+  "how": "walk",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "The section directly addresses the fate of a member who submitted an incomplete conflict-of-interest declaration and failed to provide complete information."
+  ],
+  "n_retrieved": 2,
+  "retrieved": [
+   "evaluation-and-management-of-potential-conflicts-of-interest",
+   "methods-overview"
+  ],
+  "secs": 37.9
+ },
+ {
+  "id": "A096",
+  "doc": "dda0c28e_Global_Antimicrobial_Resistance_and_Use_Surveillance_System_GLASS_Report_2022_2026-09-11",
+  "question": "According to the report, what was the median rate of methicillin-resistant Staphylococcus aureus (MRSA) among bloodstream infections reported by the 76 contributing countries, territories, and areas?",
+  "gold_node": "key-findings-and-public-health-implications",
+  "gold_is_leaf": true,
+  "satisfying_targets": [
+   "key-findings-and-public-health-implications"
+  ],
+  "matched": [
+   "key-findings-and-public-health-implications"
+  ],
+  "hit": true,
+  "how": "walk",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "The section directly provides the median rate for MRSA causing bloodstream infections reported by 76 CTAs, which is a key part of the query."
+  ],
+  "n_retrieved": 17,
+  "retrieved": [
+   "contents",
+   "foreword-overview",
+   "list-of-acronyms",
+   "summary-overview",
+   "key-findings-and-public-health-implications",
+   "considerations-for-further-actions",
+   "1-2-what-s-new-in-the-2022-report",
+   "1-3-key-findings-and-messages",
+   "2-1-glass-strategy-and-milestones-overview",
+   "3-progress-in-the-development-of-national-surveillance-systems-reporting-data-to-glass-amr-overview",
+   "fig-3-2-ctas-enrolled-in-glass-amr-that-reported-2016-2020-bacterial-identification-results-and-or-ast-results-for-bacteriologically-confirmed-infectious-syndromes-under-surveillance-in-2017-2021-data-calls",
+   "fig-3-5a-continued-progress-in-reporting-ast-results-to-glass-amr-for-selected-antimicrobial-groups-in-bloodstream-bcis-by-bacterial-pathogens-under-surveillance-2016-2020-0-20-40-60-0-100k-200k-300k-0-100-200-300-0-1000-2000-3000",
+   "fig-3-5d-progress-in-reporting-antimicrobial-susceptibility-test-results-to-glass-amr-for-selected-antimicrobial-groups-in-bacteriologically-confirmed-urinary-tract-bcis-by-bacterial-pathogens-under-surveillance-2016-2020-third-generation-cephalosporins-e-coli-0-100-0-2-5m-0-2500-0-25k-overview",
+   "fig-3-6a-bloodstream-infections-with-third-generation-cephalosporins-e-coli-or-methicillin-resistance-s-aureus",
+   "3-3-global-amr-data-overview",
+   "fig-3-7f-percentage-resistance-to-third-generation-cephalosporins-in-e-coli-and-percentage-methicillin-resistance-in-s-aureus-in-ctas-reporting-10-bloodstream-bcis-with-ast-results-compared-to-ctas-where-the-reported-numbers-per-million-population-were-above-the-75th-percentile-in-2020",
+   "fig-3-8b-percentage-resistance-to-third-generation-cephalosporins-in-e-coli-and-percentage-methicillin-resistance-in-s-aureus-in-ctas-reporting-10-bloodstream-bcis-with-ast-results-annually-2017-2020"
+  ],
+  "secs": 216.6
+ },
+ {
+  "id": "A097",
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "question": "In a study of health care workers caring for patients colonized with vancomycin-resistant enterococcus, what percentage of the workers contaminated their hands or gloves by touching the patient and the patient's environment?",
+  "gold_node": "7-transmission-of-pathogens-by-hands",
+  "gold_is_leaf": false,
+  "satisfying_targets": [
+   "7-transmission-of-pathogens-by-hands-overview"
+  ],
+  "matched": [
+   "7-transmission-of-pathogens-by-hands-overview"
+  ],
+  "hit": true,
+  "how": "walk",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "The section directly addresses the contamination rate for HCWs caring for patients with vancomycin-resistant enterococci (VRE) by touching the patient and environment."
+  ],
+  "n_retrieved": 1,
+  "retrieved": [
+   "7-transmission-of-pathogens-by-hands-overview"
+  ],
+  "secs": 216.9
+ },
+ {
+  "id": "A098",
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "question": "What percentage of inoculated rotavirus remained viable on hands 60 minutes after inoculation, according to the study cited in the guidelines?",
+  "gold_node": "7-transmission-of-pathogens-by-hands",
+  "gold_is_leaf": false,
+  "satisfying_targets": [
+   "7-transmission-of-pathogens-by-hands-overview"
+  ],
+  "matched": [
+   "7-transmission-of-pathogens-by-hands-overview"
+  ],
+  "hit": true,
+  "how": "walk",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "The section directly addresses the viability of rotavirus on hands at specific time points (20 and 60 minutes), which is exactly what the query asks for."
+  ],
+  "n_retrieved": 3,
+  "retrieved": [
+   "7-transmission-of-pathogens-by-hands-overview",
+   "basic-experimental-design-of-current-methods-to-test-the-efficacy-of-hand-hygiene-and-surgical-hand-preparation-formula",
+   "11-review-of-preparations-used-for-hand-hygiene-overview"
+  ],
+  "secs": 146.7
+ },
+ {
+  "id": "A099",
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "question": "According to a study described in the guidelines, fingers contaminated with norovirus could sequentially transfer the virus to how many clean surfaces?",
+  "gold_node": "7-transmission-of-pathogens-by-hands",
+  "gold_is_leaf": false,
+  "satisfying_targets": [
+   "7-transmission-of-pathogens-by-hands-overview"
+  ],
+  "matched": [
+   "7-transmission-of-pathogens-by-hands-overview"
+  ],
+  "hit": true,
+  "how": "rehydrated",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "The section directly answers the question by citing a specific study regarding norovirus transfer to clean surfaces."
+  ],
+  "n_retrieved": 3,
+  "retrieved": [
+   "7-transmission-of-pathogens-by-hands-overview",
+   "11-review-of-preparations-used-for-hand-hygiene-overview",
+   "23-practical-issues-and-potential-barriers-to-optimal-hand-hygiene-practices-overview"
+  ],
+  "secs": 130.2
+ },
+ {
+  "id": "A100",
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "question": "What type of soap and water should health care workers use to wash their hands after suspected or documented exposure to Bacillus anthracis-contaminated items, since alcohol-based handrub was found ineffective against a surrogate organism?",
+  "gold_node": "11-review-of-preparations-used-for-hand-hygiene",
+  "gold_is_leaf": false,
+  "satisfying_targets": [
+   "11-review-of-preparations-used-for-hand-hygiene-overview"
+  ],
+  "matched": [
+   "11-review-of-preparations-used-for-hand-hygiene-overview"
+  ],
+  "hit": true,
+  "how": "rehydrated",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "The section directly addresses handwashing after suspected or documented exposure to Bacillus anthracis-contaminated items and provides a specific recommendation regarding soap and water use versus al"
+  ],
+  "n_retrieved": 4,
+  "retrieved": [
+   "7-transmission-of-pathogens-by-hands-overview",
+   "11-review-of-preparations-used-for-hand-hygiene-overview",
+   "23-practical-issues-and-potential-barriers-to-optimal-hand-hygiene-practices-overview",
+   "what-other-key-measures-should-be-taken-to-prevent-and-control-clostridium-difficile"
+  ],
+  "secs": 170.0
+ }
+]

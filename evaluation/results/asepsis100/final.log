@@ -1,0 +1,65 @@
+[     0s] assets    Cropping assets of 2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_Prevent
+[     1s] captions  Captioning 12 asset(s) of 2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_
+[     1s] massage   Writing 2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_Prevention_and_Con
+[     1s] massage   Stamping golden labels on 16 chunk(s) of 2d6fb222_WHO_Guidelines_on_Core_Component
+  cd66435f-f825-44b6-b33e-88d6a2b3832d → /Users/fede/Desktop/VSCODEProjects/asepsis-prototype/knowledge_base/2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_Prevention_and_Control_Programmes_2026-09-11.md (12 assets, 1452 regions)
+[     1s] done-doc  
+[     1s] assets    Cropping assets of dda0c28e_Global_Antimicrobial_Resistance_and_Use_Surveillance_S
+[     2s] captions  Captioning 31 asset(s) of dda0c28e_Global_Antimicrobial_Resistance_and_Use_Surveil
+[     2s] massage   Writing dda0c28e_Global_Antimicrobial_Resistance_and_Use_Surveillance_System_GLASS
+[     2s] massage   Stamping golden labels on 13 chunk(s) of dda0c28e_Global_Antimicrobial_Resistance_
+  annotation-session-d9b1b1aa-5194-4b52-9bd0-874a96f5600c → /Users/fede/Desktop/VSCODEProjects/asepsis-prototype/knowledge_base/dda0c28e_Global_Antimicrobial_Resistance_and_Use_Surveillance_System_GLASS_Report_2022_2026-09-11.md (31 assets, 602 regions)
+[     2s] done-doc  
+[     2s] assets    Cropping assets of c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_202
+[     4s] captions  Captioning 165 asset(s) of c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_
+[     4s] massage   Writing c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11.md 
+[     4s] massage   Stamping golden labels on 31 chunk(s) of c023fe2a_WHO_Guidelines_on_Hand_Hygiene_i
+  annotation-session-dfd0c460-9b90-49d9-a132-12201b1e5a34 → /Users/fede/Desktop/VSCODEProjects/asepsis-prototype/knowledge_base/c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11.md (165 assets, 3544 regions)
+[     4s] done-doc  
+[     4s] assets    Cropping assets of e52f664f_MRSA_2014_hygiene_2026-09-01…
+[     4s] massage   Writing e52f664f_MRSA_2014_hygiene_2026-09-01.md with provenance pins…
+[     4s] massage   Stamping golden labels on 2 chunk(s) of e52f664f_MRSA_2014_hygiene_2026-09-01…
+  annotation-session-0e385a99-81d3-4f5f-aa65-48735379975f → /Users/fede/Desktop/VSCODEProjects/asepsis-prototype/knowledge_base/e52f664f_MRSA_2014_hygiene_2026-09-01.md (0 assets, 36 regions)
+[     4s] done-doc  
+[     4s] assets    Cropping assets of 5d883081_WHO_Bacterial_Priority_Pathogens_List_2024_2026-09-11…
+[     5s] captions  Captioning 73 asset(s) of 5d883081_WHO_Bacterial_Priority_Pathogens_List_2024_2026
+[     5s] massage   Writing 5d883081_WHO_Bacterial_Priority_Pathogens_List_2024_2026-09-11.md with pro
+[     5s] massage   Stamping golden labels on 13 chunk(s) of 5d883081_WHO_Bacterial_Priority_Pathogens
+  annotation-session-e466cb2f-0f33-4ebf-bb1c-aae711806370 → /Users/fede/Desktop/VSCODEProjects/asepsis-prototype/knowledge_base/5d883081_WHO_Bacterial_Priority_Pathogens_List_2024_2026-09-11.md (73 assets, 645 regions)
+[     5s] done-doc  
+[     5s] assets    Cropping assets of ddb35d27_41b50400-a607-11f1-8b82-5f5342bdc0ca…
+[     5s] captions  Captioning 1 asset(s) of ddb35d27_41b50400-a607-11f1-8b82-5f5342bdc0ca…
+[     5s] massage   Writing ddb35d27_41b50400-a607-11f1-8b82-5f5342bdc0ca.md with provenance pins…
+  annotation-session-7b6b56b9-8f7e-4469-b9b0-7497e960236a → /Users/fede/Desktop/VSCODEProjects/asepsis-prototype/knowledge_base/ddb35d27_41b50400-a607-11f1-8b82-5f5342bdc0ca.md (1 assets, 2 regions)
+[     5s] done-doc  
+
+Ingested 6 session(s) into /Users/fede/Desktop/VSCODEProjects/asepsis-prototype/knowledge_base/
+
+STAMPED 6 docs in 5s
+  WARN: c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11: 51 region(s) had no text layer (scanned pages?) — ingested without their text
+  WARN: c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11: 30 asset(s) grouped as 'Likely icons/broken infographics' — same-size uncaptioned runs, not described
+  WARN: 5d883081_WHO_Bacterial_Priority_Pathogens_List_2024_2026-09-11: 1 region(s) had no text layer (scanned pages?) — ingested without their text
+  WARN: 5d883081_WHO_Bacterial_Priority_Pathogens_List_2024_2026-09-11: 39 asset(s) grouped as 'Likely icons/broken infographics' — same-size uncaptioned runs, not described
+    [warn] 2 summaries fell back to the heuristic — retrieval quality will be degraded for those nodes
+  Indexing 2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_Prevention_and_Control_Programmes_2026-09-11...
+    → index/2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_Prevention_and_Control_Programmes_2026-09-11.json (1 top-level nodes, 176 leaves; 231 summaries generated, 0 reused)
+[index] 2d6fb222_WHO_Guidelines_on_Core_Components_of_    233 nodes  llm= 231 reused=   0  926s
+    [warn] 1 summaries fell back to the heuristic — retrieval quality will be degraded for those nodes
+  Indexing 5d883081_WHO_Bacterial_Priority_Pathogens_List_2024_2026-09-11...
+    → index/5d883081_WHO_Bacterial_Priority_Pathogens_List_2024_2026-09-11.json (1 top-level nodes, 86 leaves; 0 summaries generated, 120 reused)
+[index] 5d883081_WHO_Bacterial_Priority_Pathogens_List    121 nodes  llm=   0 reused= 120  0s
+  Indexing c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11...
+    → index/c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11.json (1 top-level nodes, 230 leaves; 290 summaries generated, 0 reused)
+[index] c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Hea    290 nodes  llm= 290 reused=   0  1527s
+    [warn] 1 summaries fell back to the heuristic — retrieval quality will be degraded for those nodes
+  Indexing dda0c28e_Global_Antimicrobial_Resistance_and_Use_Surveillance_System_GLASS_Report_2022_2026-09-11...
+    → index/dda0c28e_Global_Antimicrobial_Resistance_and_Use_Surveillance_System_GLASS_Report_2022_2026-09-11.json (1 top-level nodes, 96 leaves; 133 summaries generated, 0 reused)
+[index] dda0c28e_Global_Antimicrobial_Resistance_and_U    134 nodes  llm= 133 reused=   0  665s
+  Indexing ddb35d27_41b50400-a607-11f1-8b82-5f5342bdc0ca...
+    → index/ddb35d27_41b50400-a607-11f1-8b82-5f5342bdc0ca.json (1 top-level nodes, 1 leaves; 0 summaries generated, 2 reused)
+[index] ddb35d27_41b50400-a607-11f1-8b82-5f5342bdc0ca       2 nodes  llm=   0 reused=   2  0s
+  Indexing e52f664f_MRSA_2014_hygiene_2026-09-01...
+    → index/e52f664f_MRSA_2014_hygiene_2026-09-01.json (1 top-level nodes, 4 leaves; 5 summaries generated, 0 reused)
+[index] e52f664f_MRSA_2014_hygiene_2026-09-01               5 nodes  llm=   5 reused=   0  20s
+
+ALL DONE

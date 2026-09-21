@@ -1,0 +1,1252 @@
+[
+ {
+  "id": "A001",
+  "doc": "e52f664f_MRSA_2014_hygiene_2026-09-01",
+  "question": "According to the WHO news release, what was the average MRSA resistance rate among bacteria isolated in health-care facilities in Europe?",
+  "gold_node": "antimicrobial-resistance-and-good-hand-hygiene",
+  "gold_is_leaf": true,
+  "satisfying_targets": [
+   "antimicrobial-resistance-and-good-hand-hygiene"
+  ],
+  "matched": [
+   "antimicrobial-resistance-and-good-hand-hygiene"
+  ],
+  "hit": true,
+  "how": "walk",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "The section directly addresses the average MRSA resistance rate in Europe according to WHO data."
+  ],
+  "n_retrieved": 2,
+  "retrieved": [
+   "good-hand-hygiene-by-health-workers-protects-patients-from-drug-resistant-infections-overview",
+   "antimicrobial-resistance-and-good-hand-hygiene"
+  ],
+  "secs": 10.2
+ },
+ {
+  "id": "A002",
+  "doc": "e52f664f_MRSA_2014_hygiene_2026-09-01",
+  "question": "According to the WHO news release, how many health facilities registered under that year's \"SAVE LIVES: Clean Your Hands\" campaign?",
+  "gold_node": "5-key-moments",
+  "gold_is_leaf": true,
+  "satisfying_targets": [
+   "5-key-moments"
+  ],
+  "matched": [
+   "5-key-moments"
+  ],
+  "hit": true,
+  "how": "walk",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "The section directly answers how many health facilities registered for this year's campaign, which is a key part of the query."
+  ],
+  "n_retrieved": 1,
+  "retrieved": [
+   "5-key-moments"
+  ],
+  "secs": 11.6
+ },
+ {
+  "id": "A003",
+  "doc": "2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_Prevention_and_Control_Programmes_2026-09-11",
+  "question": "How many elements or components does a \"multimodal strategy\" consist of at minimum, and what number of elements is most common?",
+  "gold_node": "glossary-of-terms",
+  "gold_is_leaf": true,
+  "satisfying_targets": [
+   "glossary-of-terms"
+  ],
+  "matched": [
+   "glossary-of-terms"
+  ],
+  "hit": true,
+  "how": "walk",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "This section directly addresses both parts of the query: the minimum number of elements and the most common number of elements for a \"multimodal strategy\"."
+  ],
+  "n_retrieved": 8,
+  "retrieved": [
+   "guidelines-on-core-components-of-infection-prevention-and-control-programmes-at-the-national-and-acute-health-care-facility-level-overview",
+   "glossary-of-terms",
+   "rationale-for-the-recommendation-4-overview",
+   "remarks-4",
+   "background-4",
+   "research-gaps-6",
+   "background-5",
+   "background-10"
+  ],
+  "secs": 53.0
+ },
+ {
+  "id": "A004",
+  "doc": "2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_Prevention_and_Control_Programmes_2026-09-11",
+  "question": "According to the WHO guidelines, what percentage of patients in developing countries will acquire at least one health care-associated infection at any given time?",
+  "gold_node": "introduction",
+  "gold_is_leaf": true,
+  "satisfying_targets": [
+   "introduction"
+  ],
+  "matched": [
+   "introduction"
+  ],
+  "hit": true,
+  "how": "walk",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "The section directly addresses the percentage of patients in developing countries who will acquire at least one health care-associated infection (HAI), which is a key part of the query."
+  ],
+  "n_retrieved": 3,
+  "retrieved": [
+   "introduction",
+   "there-is-a-growing-body-of-evidence-on-the-global-burden-of-harm-caused-by-hai-as-well-as-the-strategies-necessary-for-its-reduction-4-in-2011-who-reported-that-3",
+   "background"
+  ],
+  "secs": 45.2
+ },
+ {
+  "id": "A005",
+  "doc": "2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_Prevention_and_Control_Programmes_2026-09-11",
+  "question": "According to estimates cited in the guidelines, approximately how many deaths per year were attributed to health care-associated infections in the United States of America?",
+  "gold_node": "there-is-a-growing-body-of-evidence-on-the-global-burden-of-harm-caused-by-hai-as-well-as-the-strategies-necessary-for-its-reduction-4-in-2011-who-reported-that-3",
+  "gold_is_leaf": true,
+  "satisfying_targets": [
+   "there-is-a-growing-body-of-evidence-on-the-global-burden-of-harm-caused-by-hai-as-well-as-the-strategies-necessary-for-its-reduction-4-in-2011-who-reported-that-3"
+  ],
+  "matched": [
+   "there-is-a-growing-body-of-evidence-on-the-global-burden-of-harm-caused-by-hai-as-well-as-the-strategies-necessary-for-its-reduction-4-in-2011-who-reported-that-3"
+  ],
+  "hit": true,
+  "how": "walk",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "The section provides specific data regarding deaths attributed to HAI in the United States of America."
+  ],
+  "n_retrieved": 2,
+  "retrieved": [
+   "there-is-a-growing-body-of-evidence-on-the-global-burden-of-harm-caused-by-hai-as-well-as-the-strategies-necessary-for-its-reduction-4-in-2011-who-reported-that-3",
+   "additional-factors-considered-when-formulating-the-recommendation-7-overview"
+  ],
+  "secs": 67.7
+ },
+ {
+  "id": "A006",
+  "doc": "2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_Prevention_and_Control_Programmes_2026-09-11",
+  "question": "According to a 2015 WHO/UNICEF global report cited in the guidelines, what percentage of health care facilities have no water source?",
+  "gold_node": "there-is-a-growing-body-of-evidence-on-the-global-burden-of-harm-caused-by-hai-as-well-as-the-strategies-necessary-for-its-reduction-4-in-2011-who-reported-that-3",
+  "gold_is_leaf": true,
+  "satisfying_targets": [
+   "there-is-a-growing-body-of-evidence-on-the-global-burden-of-harm-caused-by-hai-as-well-as-the-strategies-necessary-for-its-reduction-4-in-2011-who-reported-that-3"
+  ],
+  "matched": [
+   "there-is-a-growing-body-of-evidence-on-the-global-burden-of-harm-caused-by-hai-as-well-as-the-strategies-necessary-for-its-reduction-4-in-2011-who-reported-that-3"
+  ],
+  "hit": true,
+  "how": "walk",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "The section directly answers the query by citing a 2015 WHO/UNICEF global report and providing the specific percentage for health care facilities lacking a water source."
+  ],
+  "n_retrieved": 6,
+  "retrieved": [
+   "glossary-of-terms",
+   "guideline-implementation-table-8",
+   "health-care-associated-infections-hai-are-one-of-the-most-common-adverse-events-in-care-delivery-and-both-the-endemic-burden-and-the-occurrence-of-epidemics-are-a-major-public-health-problem-hais-have-a-significant-impact-on-morbidity-mortality-and-quality-of-life-and-present-an-economic-burden-at-the-societal-level-however-a-large-proportion-of-hai-are-preventable-and-there-is-a-growing-body-of-evidence-to-help-raise-awareness-of-the-global-burden-of-harm-caused-by-these-infections-3-4-including-strategies-to-reduce-their-spread-5",
+   "4-6-evidence-identification-and-retrieval-overview",
+   "there-is-a-growing-body-of-evidence-on-the-global-burden-of-harm-caused-by-hai-as-well-as-the-strategies-necessary-for-its-reduction-4-in-2011-who-reported-that-3",
+   "review-update-and-evaluation-of-the-recommendations"
+  ],
+  "secs": 108.4
+ },
+ {
+  "id": "A007",
+  "doc": "2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_Prevention_and_Control_Programmes_2026-09-11",
+  "question": "Considering increasing patient acuity and the multiple roles of the modern infection preventionist, what infection preventionist-to-bed ratio did the GDG suggest be considered, provided it is no less than one per 250 beds?",
+  "gold_node": "summary-of-the-evidence",
+  "gold_is_leaf": true,
+  "satisfying_targets": [
+   "summary-of-the-evidence"
+  ],
+  "matched": [
+   "summary-of-the-evidence"
+  ],
+  "hit": true,
+  "how": "walk",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "The section directly addresses the suggested ratio by the GDG in light of increasing acuity and multiple roles, providing a specific recommendation."
+  ],
+  "n_retrieved": 6,
+  "retrieved": [
+   "table-1-summary-of-ipc-core-components-and-key-remarks",
+   "core-component-1-infection-prevention-and-control-programmes-1a-health-care-facility-level",
+   "summary-of-the-evidence",
+   "background-8",
+   "research-gaps-10",
+   "rationale-for-the-recommendation-8"
+  ],
+  "secs": 76.3
+ },
+ {
+  "id": "A008",
+  "doc": "2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_Prevention_and_Control_Programmes_2026-09-11",
+  "question": "How many studies did the Guidelines Development Group evaluate as evidence when formulating the recommendation on IPC education and training at the health care facility level?",
+  "gold_node": "rationale-for-recommendation",
+  "gold_is_leaf": true,
+  "satisfying_targets": [
+   "rationale-for-recommendation"
+  ],
+  "matched": [
+   "rationale-for-recommendation"
+  ],
+  "hit": true,
+  "how": "walk",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "The section directly addresses the number of studies evaluated regarding IPC education and training evidence."
+  ],
+  "n_retrieved": 6,
+  "retrieved": [
+   "guideline-implementation-table-3",
+   "evaluation-of-the-evidence-and-recommendations-development-by-the-gdg",
+   "summary-of-the-evidence",
+   "rationale-for-the-recommendation",
+   "rationale-for-recommendation",
+   "summary-of-the-evidence-3-overview"
+  ],
+  "secs": 90.9
+ },
+ {
+  "id": "A009",
+  "doc": "2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_Prevention_and_Control_Programmes_2026-09-11",
+  "question": "What does the recommendation state should be performed to guide IPC interventions and detect outbreaks at the health care facility level?",
+  "gold_node": "recommendation-2",
+  "gold_is_leaf": true,
+  "satisfying_targets": [
+   "recommendation-2"
+  ],
+  "matched": [
+   "recommendation-2"
+  ],
+  "hit": true,
+  "how": "walk",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "The section directly addresses what should be performed to guide IPC interventions and detect outbreaks at the health care facility level by stating a specific recommendation."
+  ],
+  "n_retrieved": 9,
+  "retrieved": [
+   "guidelines-on-core-components-of-infection-prevention-and-control-programmes-at-the-national-and-acute-health-care-facility-level-overview",
+   "recommendations",
+   "guideline-implementation-overview",
+   "guideline-implementation-table-4",
+   "recommendation-2",
+   "rationale-for-the-recommendation-2",
+   "conclusions-4",
+   "additional-implementation-considerations-6",
+   "remarks-3"
+  ],
+  "secs": 75.1
+ },
+ {
+  "id": "A010",
+  "doc": "2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_Prevention_and_Control_Programmes_2026-09-11",
+  "question": "When agreeing on the strength of the recommendation on national HAI surveillance, how many GDG members felt it should be \"conditional\" rather than \"strong\" (and how many abstained)?",
+  "gold_node": "remarks-3",
+  "gold_is_leaf": true,
+  "satisfying_targets": [
+   "remarks-3"
+  ],
+  "matched": [
+   "remarks-3"
+  ],
+  "hit": true,
+  "how": "rehydrated",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "The section directly addresses how many GDG members felt the recommendation should be 'conditional' and how many abstained regarding the strength of the recommendation."
+  ],
+  "n_retrieved": 4,
+  "retrieved": [
+   "evaluation-of-the-evidence-and-recommendations-development-by-the-gdg",
+   "remarks-2-overview",
+   "remarks-3",
+   "background-3"
+  ],
+  "secs": 42.2
+ },
+ {
+  "id": "A011",
+  "doc": "2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_Prevention_and_Control_Programmes_2026-09-11",
+  "question": "How many studies did the GDG evaluate as evidence when formulating the recommendation on multimodal strategies at the health care facility level?",
+  "gold_node": "rationale-for-the-recommendation-4",
+  "gold_is_leaf": false,
+  "satisfying_targets": [
+   "rationale-for-the-recommendation-4-overview"
+  ],
+  "matched": [
+   "rationale-for-the-recommendation-4-overview"
+  ],
+  "hit": true,
+  "how": "walk",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "The section directly states the number of studies evaluated by the GDG when formulating the recommendation on multimodal strategies at the health care facility level."
+  ],
+  "n_retrieved": 7,
+  "retrieved": [
+   "4-6-1-systematic-review-facility-level-overview",
+   "evaluation-of-the-evidence-and-recommendations-development-by-the-gdg",
+   "rationale-for-the-recommendation",
+   "summary-of-the-evidence-3-overview",
+   "rationale-for-the-recommendation-4-overview",
+   "summary-of-the-evidence-5-overview",
+   "non-epoc-studies-5"
+  ],
+  "secs": 106.8
+ },
+ {
+  "id": "A012",
+  "doc": "2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_Prevention_and_Control_Programmes_2026-09-11",
+  "question": "According to a cost-effectiveness study cited in the guidelines, what was the estimated cost per patient of a central line-associated bloodstream infection?",
+  "gold_node": "additional-factors-considered-when-formulating-the-recommendation-7",
+  "gold_is_leaf": false,
+  "satisfying_targets": [
+   "additional-factors-considered-when-formulating-the-recommendation-7-overview"
+  ],
+  "matched": [
+   "additional-factors-considered-when-formulating-the-recommendation-7-overview"
+  ],
+  "hit": true,
+  "how": "rehydrated",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "The section directly provides the estimated cost per patient for a central line-associated bloodstream infection based on a cost-effectiveness study."
+  ],
+  "n_retrieved": 4,
+  "retrieved": [
+   "introduction",
+   "summary-of-the-evidence-4-overview",
+   "additional-factors-considered-when-formulating-the-recommendation-7-overview",
+   "references"
+  ],
+  "secs": 123.1
+ },
+ {
+  "id": "A013",
+  "doc": "2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_Prevention_and_Control_Programmes_2026-09-11",
+  "question": "What is the strength of recommendation and quality of evidence for the recommendation on monitoring/audit of IPC practices at the health care facility level?",
+  "gold_node": "recommendation-6",
+  "gold_is_leaf": true,
+  "satisfying_targets": [
+   "recommendation-6"
+  ],
+  "matched": [
+   "recommendation-6"
+  ],
+  "hit": true,
+  "how": "walk",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "This section directly addresses both the strength of recommendation and the quality of evidence for monitoring/auditing IPC practices at the health care facility level."
+  ],
+  "n_retrieved": 9,
+  "retrieved": [
+   "guidelines-on-core-components-of-infection-prevention-and-control-programmes-at-the-national-and-acute-health-care-facility-level-overview",
+   "methods",
+   "guideline-implementation-table-6",
+   "rationale-for-the-recommendation",
+   "rationale-for-the-recommendation-4-overview",
+   "recommendation-6",
+   "rationale-for-the-recommendation-6",
+   "conclusions-8",
+   "research-gaps-9"
+  ],
+  "secs": 87.0
+ },
+ {
+  "id": "A014",
+  "doc": "2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_Prevention_and_Control_Programmes_2026-09-11",
+  "question": "What did the panel recommend should be considered as a key performance indicator at the national level for national monitoring and evaluation of IPC?",
+  "gold_node": "recommendation-7",
+  "gold_is_leaf": true,
+  "satisfying_targets": [
+   "recommendation-7"
+  ],
+  "matched": [
+   "recommendation-7"
+  ],
+  "hit": true,
+  "how": "walk",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "The section directly addresses the panel's recommendation for a key performance indicator at the national level for IPC monitoring and evaluation."
+  ],
+  "n_retrieved": 11,
+  "retrieved": [
+   "guidelines-on-core-components-of-infection-prevention-and-control-programmes-at-the-national-and-acute-health-care-facility-level-overview",
+   "target-audience",
+   "guideline-implementation-table-6",
+   "rationale-for-the-recommendation",
+   "recommendation-3",
+   "conclusions-5",
+   "recommendation-7",
+   "rationale-for-recommendation-2",
+   "additional-factors-considered-when-formulating-the-recommendation-9",
+   "conclusions-9",
+   "additional-implementation-considerations-11"
+  ],
+  "secs": 91.6
+ },
+ {
+  "id": "A015",
+  "doc": "2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_Prevention_and_Control_Programmes_2026-09-11",
+  "question": "According to the WHO standard on facility design, what spacing between patient beds is recommended?",
+  "gold_node": "rationale-for-the-recommendation-7",
+  "gold_is_leaf": true,
+  "satisfying_targets": [
+   "rationale-for-the-recommendation-7"
+  ],
+  "matched": [
+   "rationale-for-the-recommendation-7"
+  ],
+  "hit": true,
+  "how": "rehydrated",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "The section directly addresses the recommended spacing between patients according to WHO standards, specifying a measurement."
+  ],
+  "n_retrieved": 6,
+  "retrieved": [
+   "contents",
+   "guideline-implementation-table-7",
+   "guideline-implementation-table-8",
+   "rationale-for-the-recommendation-7",
+   "background-9",
+   "rationale-for-the-recommendation-8"
+  ],
+  "secs": 76.8
+ },
+ {
+  "id": "A016",
+  "doc": "2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_Prevention_and_Control_Programmes_2026-09-11",
+  "question": "According to the WHO Guidelines on hand hygiene in health care, what is the minimum recommended sink-to-bed ratio in isolation rooms?",
+  "gold_node": "rationale-for-the-recommendation-8",
+  "gold_is_leaf": true,
+  "satisfying_targets": [
+   "rationale-for-the-recommendation-8"
+  ],
+  "matched": [
+   "rationale-for-the-recommendation-8"
+  ],
+  "hit": true,
+  "how": "walk",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "The section directly addresses the minimum sink-to-bed ratio in isolation rooms according to WHO guidelines."
+  ],
+  "n_retrieved": 4,
+  "retrieved": [
+   "guideline-implementation-table-8",
+   "general-remarks",
+   "background-9",
+   "rationale-for-the-recommendation-8"
+  ],
+  "secs": 75.1
+ },
+ {
+  "id": "A017",
+  "doc": "2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_Prevention_and_Control_Programmes_2026-09-11",
+  "question": "How often does WHO plan to establish a review period to update these guidelines?",
+  "gold_node": "review-update-and-evaluation-of-the-recommendations",
+  "gold_is_leaf": true,
+  "satisfying_targets": [
+   "review-update-and-evaluation-of-the-recommendations"
+  ],
+  "matched": [
+   "review-update-and-evaluation-of-the-recommendations"
+  ],
+  "hit": true,
+  "how": "walk",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "The section directly addresses how often WHO plans to establish a review period for the guidelines."
+  ],
+  "n_retrieved": 2,
+  "retrieved": [
+   "4-6-evidence-identification-and-retrieval-overview",
+   "review-update-and-evaluation-of-the-recommendations"
+  ],
+  "secs": 39.3
+ },
+ {
+  "id": "A018",
+  "doc": "5d883081_WHO_Bacterial_Priority_Pathogens_List_2024_2026-09-11",
+  "question": "According to the report, antibacterial resistance was associated with an estimated how many deaths globally in 2019?",
+  "gold_node": "executive-summary",
+  "gold_is_leaf": false,
+  "satisfying_targets": [
+   "executive-summary-overview"
+  ],
+  "matched": [
+   "executive-summary-overview"
+  ],
+  "hit": true,
+  "how": "walk",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "The section directly addresses the estimated number of deaths associated with antibacterial resistance in 2019."
+  ],
+  "n_retrieved": 7,
+  "retrieved": [
+   "executive-summary-overview",
+   "background",
+   "rationale-for-the-update",
+   "other-community-pathogens-of-high-priority",
+   "other-priority-pathogens",
+   "limitations",
+   "mortality"
+  ],
+  "secs": 67.1
+ },
+ {
+  "id": "A019",
+  "doc": "5d883081_WHO_Bacterial_Priority_Pathogens_List_2024_2026-09-11",
+  "question": "How many deaths in 2019 were estimated to be directly attributable to antibiotic-resistant bacteria, with how many additional associated deaths?",
+  "gold_node": "background",
+  "gold_is_leaf": true,
+  "satisfying_targets": [
+   "background"
+  ],
+  "matched": [
+   "background"
+  ],
+  "hit": true,
+  "how": "walk",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "The section directly addresses the number of deaths in 2019 attributable to antibiotic-resistant bacteria and the associated deaths."
+  ],
+  "n_retrieved": 7,
+  "retrieved": [
+   "executive-summary-overview",
+   "background",
+   "rationale-for-the-update",
+   "other-priority-pathogens",
+   "limitations",
+   "a2-1-1-mortality-overview",
+   "references-for-annexes-1-2"
+  ],
+  "secs": 69.8
+ },
+ {
+  "id": "A020",
+  "doc": "5d883081_WHO_Bacterial_Priority_Pathogens_List_2024_2026-09-11",
+  "question": "What decision-making method was used to develop the 2017 WHO Bacterial Priority Pathogens List (BPPL)?",
+  "gold_node": "methods",
+  "gold_is_leaf": false,
+  "satisfying_targets": [
+   "methods-overview"
+  ],
+  "matched": [
+   "methods-overview"
+  ],
+  "hit": true,
+  "how": "walk",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "The section directly states the decision-making method used for the 2017 WHO BPPL and explains what that method is."
+  ],
+  "n_retrieved": 15,
+  "retrieved": [
+   "contents",
+   "methods-overview",
+   "table-2-prioritization-criteria-definitions-and-levels",
+   "table-2-prioritization-criteria-definitions-and-levels-continued",
+   "determination-of-criteria-weights-2023-global-paprika-survey-overview",
+   "fig-2-pathogens-prioritized-in-the-2024-bppl-update-as-compared-with-the-2017-bppl-who-bppl-2017who-bppl-2024",
+   "fig-3-pooled-criteria-weights-results-from-the-global-paprikaa-survey",
+   "the-pathogens-for-the-2024-update-were-selected-in-two-stages-overview",
+   "a2-1-4-10-year-trend-of-resistance-overview",
+   "a2-2-1-transmissibility-overview",
+   "table-a2-6-transmission-levels-of-resistant-pathogens",
+   "a2-2-2-preventability-overview",
+   "a2-2-3-treatability-overview",
+   "a2-2-4-pipeline-overview",
+   "table-a3-1-summary-results-of-bacterial-pathogens-assessments-using-multiple-criteria-decision-analysis-mcda"
+  ],
+  "secs": 174.6
+ },
+ {
+  "id": "A021",
+  "doc": "5d883081_WHO_Bacterial_Priority_Pathogens_List_2024_2026-09-11",
+  "question": "According to the report, how many experts were ultimately selected to form the WHO Bacterial Priority Pathogens List Advisory Group, out of how many applications received?",
+  "gold_node": "methods",
+  "gold_is_leaf": false,
+  "satisfying_targets": [
+   "methods-overview"
+  ],
+  "matched": [
+   "methods-overview"
+  ],
+  "hit": true,
+  "how": "rehydrated",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "This section directly answers both parts of the query by stating the number of applications received and the number of experts selected."
+  ],
+  "n_retrieved": 4,
+  "retrieved": [
+   "acknowledgements",
+   "methods-overview",
+   "the-pathogens-for-the-2024-update-were-selected-in-two-stages-overview",
+   "the-pathogens-for-the-2024-update-were-selected-in-two-stages-figure-49"
+  ],
+  "secs": 63.6
+ },
+ {
+  "id": "A022",
+  "doc": "5d883081_WHO_Bacterial_Priority_Pathogens_List_2024_2026-09-11",
+  "question": "How many experts participated in the 2023 global PAPRIKA survey used to determine the weighting of the WHO BPPL 2024 prioritization criteria?",
+  "gold_node": "determination-of-criteria-weights-2023-global-paprika-survey",
+  "gold_is_leaf": false,
+  "satisfying_targets": [
+   "determination-of-criteria-weights-2023-global-paprika-survey-overview"
+  ],
+  "matched": [
+   "determination-of-criteria-weights-2023-global-paprika-survey-overview"
+  ],
+  "hit": true,
+  "how": "walk",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "The section directly answers the question by stating the number of experts who participated in the survey used to determine the criteria weights."
+  ],
+  "n_retrieved": 5,
+  "retrieved": [
+   "contents",
+   "acknowledgements",
+   "methods-overview",
+   "determination-of-criteria-weights-2023-global-paprika-survey-overview",
+   "the-pathogens-for-the-2024-update-were-selected-in-two-stages-overview"
+  ],
+  "secs": 71.0
+ },
+ {
+  "id": "A023",
+  "doc": "5d883081_WHO_Bacterial_Priority_Pathogens_List_2024_2026-09-11",
+  "question": "According to the independent assessment described in the report, how many disability-adjusted life years (DALYs) was rifampicin-resistant tuberculosis (RR-TB) responsible for globally in 2020?",
+  "gold_node": "independent-assessment-of-rr-tb",
+  "gold_is_leaf": true,
+  "satisfying_targets": [
+   "independent-assessment-of-rr-tb"
+  ],
+  "matched": [
+   "independent-assessment-of-rr-tb"
+  ],
+  "hit": true,
+  "how": "rehydrated",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "The section directly provides the figure for DALYs attributable to RR-TB globally in 2020 as requested by the query."
+  ],
+  "n_retrieved": 8,
+  "retrieved": [
+   "contents",
+   "abbreviations-table-1",
+   "rationale-for-the-update",
+   "independent-assessment-of-rr-tb",
+   "a2-1-3-non-fatal-health-burden-overview",
+   "table-a2-3-resistant-pathogens-by-yld-per-1-million-population",
+   "non-fatal-health-burden",
+   "table-a4-2-rr-tb-prioritization-criteria-definitions-criteria-used-for-the-independent-assessment-of-rr-tb"
+  ],
+  "secs": 86.6
+ },
+ {
+  "id": "A024",
+  "doc": "5d883081_WHO_Bacterial_Priority_Pathogens_List_2024_2026-09-11",
+  "question": "How many bacterial pathogen-drug combinations were identified, assessed, and ranked in the WHO Bacterial Priority Pathogens List, 2024 results?",
+  "gold_node": "results-who-bacterial-priority-pathogen-list-2024",
+  "gold_is_leaf": false,
+  "satisfying_targets": [
+   "results-who-bacterial-priority-pathogen-list-2024-overview"
+  ],
+  "matched": [
+   "results-who-bacterial-priority-pathogen-list-2024-overview"
+  ],
+  "hit": true,
+  "how": "walk",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "The section directly states the number of bacterial pathogen-drug combinations assessed and ranked for the 2024 list."
+  ],
+  "n_retrieved": 6,
+  "retrieved": [
+   "contents",
+   "results-who-bacterial-priority-pathogen-list-2024-overview",
+   "results-who-bacterial-priority-pathogen-list-2024-figure-28",
+   "results-who-bacterial-priority-pathogen-list-2024-figure-31",
+   "the-pathogens-for-the-2024-update-were-selected-in-two-stages-overview",
+   "table-a3-1-summary-results-of-bacterial-pathogens-assessments-using-multiple-criteria-decision-analysis-mcda"
+  ],
+  "secs": 64.0
+ },
+ {
+  "id": "A025",
+  "doc": "5d883081_WHO_Bacterial_Priority_Pathogens_List_2024_2026-09-11",
+  "question": "According to the Global Burden of Disease study cited in the report, approximately what percentage of the fatal burden attributed to AMR in high-income countries is linked to Staphylococcus aureus and E. coli combined?",
+  "gold_node": "methicillin-resistant-staphylococcus-aureus-mrsa-remains-a-high-priority",
+  "gold_is_leaf": true,
+  "satisfying_targets": [
+   "methicillin-resistant-staphylococcus-aureus-mrsa-remains-a-high-priority"
+  ],
+  "matched": [
+   "methicillin-resistant-staphylococcus-aureus-mrsa-remains-a-high-priority"
+  ],
+  "hit": true,
+  "how": "rehydrated",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "The section directly addresses the percentage of fatal burden attributed to AMR in high-income countries linked to S. aureus and E. coli combined, as requested by the query."
+  ],
+  "n_retrieved": 4,
+  "retrieved": [
+   "executive-summary-overview",
+   "methicillin-resistant-staphylococcus-aureus-mrsa-remains-a-high-priority",
+   "limitations",
+   "references-for-annexes-1-2"
+  ],
+  "secs": 38.4
+ },
+ {
+  "id": "A026",
+  "doc": "5d883081_WHO_Bacterial_Priority_Pathogens_List_2024_2026-09-11",
+  "question": "According to the report, how much is spent each year on research and development for new TB drugs and vaccines?",
+  "gold_node": "addressing-bacterial-priority-pathogens-through-innovation-and-r-d-of-new-drugs",
+  "gold_is_leaf": true,
+  "satisfying_targets": [
+   "addressing-bacterial-priority-pathogens-through-innovation-and-r-d-of-new-drugs"
+  ],
+  "matched": [
+   "addressing-bacterial-priority-pathogens-through-innovation-and-r-d-of-new-drugs"
+  ],
+  "hit": true,
+  "how": "walk",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "The section directly addresses the spending on R&D for new TB drugs and vaccines by providing a specific figure."
+  ],
+  "n_retrieved": 3,
+  "retrieved": [
+   "addressing-bacterial-priority-pathogens-through-innovation-and-r-d-of-new-drugs",
+   "the-pipeline-for-new-medicines-and-diagnostics-overview",
+   "table-a4-2-rr-tb-prioritization-criteria-definitions-criteria-used-for-the-independent-assessment-of-rr-tb"
+  ],
+  "secs": 54.9
+ },
+ {
+  "id": "A027",
+  "doc": "5d883081_WHO_Bacterial_Priority_Pathogens_List_2024_2026-09-11",
+  "question": "Above what percentile of the MCDA ranking score were pathogens classified into the \"critical\" priority tier?",
+  "gold_node": "the-pathogens-for-the-2024-update-were-selected-in-two-stages",
+  "gold_is_leaf": false,
+  "satisfying_targets": [
+   "the-pathogens-for-the-2024-update-were-selected-in-two-stages-overview"
+  ],
+  "matched": [
+   "the-pathogens-for-the-2024-update-were-selected-in-two-stages-overview"
+  ],
+  "hit": true,
+  "how": "walk",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "The section directly states the percentile threshold used to classify pathogens into the \"critical\" priority tier."
+  ],
+  "n_retrieved": 4,
+  "retrieved": [
+   "methods-overview",
+   "results-who-bacterial-priority-pathogen-list-2024-overview",
+   "the-pathogens-for-the-2024-update-were-selected-in-two-stages-overview",
+   "table-a3-1-summary-results-of-bacterial-pathogens-assessments-using-multiple-criteria-decision-analysis-mcda"
+  ],
+  "secs": 68.7
+ },
+ {
+  "id": "A028",
+  "doc": "5d883081_WHO_Bacterial_Priority_Pathogens_List_2024_2026-09-11",
+  "question": "How many systematic reviews were retrieved in the literature search used to assess the mortality criterion?",
+  "gold_node": "a2-1-1-mortality",
+  "gold_is_leaf": false,
+  "satisfying_targets": [
+   "a2-1-1-mortality-overview"
+  ],
+  "matched": [
+   "a2-1-1-mortality-overview"
+  ],
+  "hit": true,
+  "how": "rehydrated",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "The section directly answers how many systematic reviews were retrieved in the literature search used to assess mortality criteria by stating a specific number."
+  ],
+  "n_retrieved": 4,
+  "retrieved": [
+   "limitations",
+   "a2-1-1-mortality-overview",
+   "a2-2-1-transmissibility-overview",
+   "a2-2-3-treatability-overview"
+  ],
+  "secs": 43.8
+ },
+ {
+  "id": "A029",
+  "doc": "5d883081_WHO_Bacterial_Priority_Pathogens_List_2024_2026-09-11",
+  "question": "In the transmissibility criterion assessment, how many outbreak reports out of 5744 identified were ultimately included, and how many cases did they account for?",
+  "gold_node": "a2-2-1-transmissibility",
+  "gold_is_leaf": false,
+  "satisfying_targets": [
+   "a2-2-1-transmissibility-overview"
+  ],
+  "matched": [
+   "a2-2-1-transmissibility-overview"
+  ],
+  "hit": true,
+  "how": "walk",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "The section directly addresses the number of outbreak reports included out of 5744 and the corresponding case count for the first criterion domain (human-to-human outbreak capability)."
+  ],
+  "n_retrieved": 2,
+  "retrieved": [
+   "a2-2-1-transmissibility-overview",
+   "table-a2-5-summary-of-data-for-the-outbreak-capability-and-transmission-pathways-scores"
+  ],
+  "secs": 56.7
+ },
+ {
+  "id": "A030",
+  "doc": "dda0c28e_Global_Antimicrobial_Resistance_and_Use_Surveillance_System_GLASS_Report_2022_2026-09-11",
+  "question": "What is the ISBN of the electronic version of the Global Antimicrobial Resistance and Use Surveillance System (GLASS) Report 2022?",
+  "gold_node": "global-antimicrobial-resistance-and-use-surveillance-system-glass-report-2022",
+  "gold_is_leaf": false,
+  "satisfying_targets": [
+   "global-antimicrobial-resistance-and-use-surveillance-system-glass-report-2022-overview"
+  ],
+  "matched": [
+   "global-antimicrobial-resistance-and-use-surveillance-system-glass-report-2022-overview"
+  ],
+  "hit": true,
+  "how": "walk",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "The section directly provides the ISBN for the electronic version of the GLASS Report 2022."
+  ],
+  "n_retrieved": 2,
+  "retrieved": [
+   "global-antimicrobial-resistance-and-use-surveillance-system-glass-report-2022-overview",
+   "fig-4-1-status-of-implementation-of-national-amc-surveillance-systems-in-36-ctas-enrolled-in-glass-amc-as-of-december-2021"
+  ],
+  "secs": 21.8
+ },
+ {
+  "id": "A031",
+  "doc": "dda0c28e_Global_Antimicrobial_Resistance_and_Use_Surveillance_System_GLASS_Report_2022_2026-09-11",
+  "question": "In the GLASS report, what does the abbreviation \"DDD\" stand for?",
+  "gold_node": "1-2-what-s-new-in-the-2022-report",
+  "gold_is_leaf": true,
+  "satisfying_targets": [
+   "1-2-what-s-new-in-the-2022-report"
+  ],
+  "matched": [],
+  "hit": false,
+  "how": "-",
+  "target_status": [
+   "pruned"
+  ],
+  "target_reason": [
+   "Pruned because ancestor section '1 Introduction' was pruned."
+  ],
+  "n_retrieved": 5,
+  "retrieved": [
+   "list-of-acronyms",
+   "4-progress-in-the-development-of-national-surveillance-systems-reporting-data-to-glass-amc-overview",
+   "4-3-global-amc-data-overview",
+   "annex-2-methodology-for-the-measurement-and-surveillance-of-amc-overview",
+   "table-a2-list-of-indicators-used-in-the-report-to-describe-amc-overview"
+  ],
+  "secs": 44.5
+ },
+ {
+  "id": "A032",
+  "doc": "dda0c28e_Global_Antimicrobial_Resistance_and_Use_Surveillance_System_GLASS_Report_2022_2026-09-11",
+  "question": "According to Murray et al., how many deaths were estimated to be directly attributable to bacterial antimicrobial resistance (AMR) in 2019?",
+  "gold_node": "1-1-basic-facts-on-antimicrobial-resistance-amr",
+  "gold_is_leaf": true,
+  "satisfying_targets": [
+   "1-1-basic-facts-on-antimicrobial-resistance-amr"
+  ],
+  "matched": [
+   "1-1-basic-facts-on-antimicrobial-resistance-amr"
+  ],
+  "hit": true,
+  "how": "walk",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "The section directly addresses the estimated deaths attributable to bacterial AMR in 2019 according to Murray et al."
+  ],
+  "n_retrieved": 4,
+  "retrieved": [
+   "1-1-basic-facts-on-antimicrobial-resistance-amr",
+   "table-2-1-list-of-glass-technical-modules-with-the-year-of-publication-of-related-protocols-and-the-number-of-ctas-imp",
+   "2-4-mortality-due-to-amr",
+   "references"
+  ],
+  "secs": 54.7
+ },
+ {
+  "id": "A033",
+  "doc": "dda0c28e_Global_Antimicrobial_Resistance_and_Use_Surveillance_System_GLASS_Report_2022_2026-09-11",
+  "question": "How many countries, territories, and areas (CTAs) does the 2022 GLASS report consider in total, based on WHO legal status?",
+  "gold_node": "1-2-what-s-new-in-the-2022-report",
+  "gold_is_leaf": true,
+  "satisfying_targets": [
+   "1-2-what-s-new-in-the-2022-report"
+  ],
+  "matched": [
+   "1-2-what-s-new-in-the-2022-report"
+  ],
+  "hit": true,
+  "how": "rehydrated",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "The section directly answers the query by stating the total number of CTAs considered and specifying the basis for this count (WHO legal status)."
+  ],
+  "n_retrieved": 9,
+  "retrieved": [
+   "foreword-overview",
+   "list-of-acronyms",
+   "summary-overview",
+   "key-findings-and-public-health-implications",
+   "1-2-what-s-new-in-the-2022-report",
+   "2-1-glass-strategy-and-milestones-overview",
+   "fig-2-1-ctas-enrolled-in-glass-amr-and-or-glass-amc-2017-2019-2021-overview",
+   "table-2-1-list-of-glass-technical-modules-with-the-year-of-publication-of-related-protocols-and-the-number-of-ctas-imp",
+   "2-2-enhancing-quality-and-coverage-of-surveillance-to-estimate-the-magnitudeofamr"
+  ],
+  "secs": 101.3
+ },
+ {
+  "id": "A034",
+  "doc": "dda0c28e_Global_Antimicrobial_Resistance_and_Use_Surveillance_System_GLASS_Report_2022_2026-09-11",
+  "question": "In what year did the World Health Organization establish the Global Antimicrobial Resistance and Use Surveillance System (GLASS)?",
+  "gold_node": "2-1-glass-strategy-and-milestones",
+  "gold_is_leaf": false,
+  "satisfying_targets": [
+   "2-1-glass-strategy-and-milestones-overview"
+  ],
+  "matched": [
+   "2-1-glass-strategy-and-milestones-overview"
+  ],
+  "hit": true,
+  "how": "walk",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "The section directly answers the query by stating the year WHO established GLASS."
+  ],
+  "n_retrieved": 6,
+  "retrieved": [
+   "foreword-overview",
+   "list-of-acronyms",
+   "1-1-basic-facts-on-antimicrobial-resistance-amr",
+   "2-1-glass-strategy-and-milestones-overview",
+   "table-2-1-list-of-glass-technical-modules-with-the-year-of-publication-of-related-protocols-and-the-number-of-ctas-imp",
+   "references"
+  ],
+  "secs": 76.5
+ },
+ {
+  "id": "A035",
+  "doc": "dda0c28e_Global_Antimicrobial_Resistance_and_Use_Surveillance_System_GLASS_Report_2022_2026-09-11",
+  "question": "Through which network has WHO's GLASS protocol for assessing AMR-attributable mortality been implemented in selected countries in Africa and South-East Asia?",
+  "gold_node": "2-4-mortality-due-to-amr",
+  "gold_is_leaf": true,
+  "satisfying_targets": [
+   "2-4-mortality-due-to-amr"
+  ],
+  "matched": [
+   "2-4-mortality-due-to-amr"
+  ],
+  "hit": true,
+  "how": "walk",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "The section directly answers which network implemented WHO's GLASS protocol for assessing AMR-attributable mortality in Africa and South-East Asia."
+  ],
+  "n_retrieved": 4,
+  "retrieved": [
+   "collecting-and-compiling-data-for-this-report",
+   "fig-2-1-ctas-enrolled-in-glass-amr-and-or-glass-amc-2017-2019-2021-overview",
+   "table-2-1-list-of-glass-technical-modules-with-the-year-of-publication-of-related-protocols-and-the-number-of-ctas-imp",
+   "2-4-mortality-due-to-amr"
+  ],
+  "secs": 35.9
+ },
+ {
+  "id": "A036",
+  "doc": "dda0c28e_Global_Antimicrobial_Resistance_and_Use_Surveillance_System_GLASS_Report_2022_2026-09-11",
+  "question": "As of 31 December 2021, how many of the 216 countries, territories, and areas (CTAs) were enrolled in GLASS-AMR?",
+  "gold_node": "3-2-participation-and-coverage",
+  "gold_is_leaf": false,
+  "satisfying_targets": [
+   "3-2-participation-and-coverage-overview"
+  ],
+  "matched": [
+   "3-2-participation-and-coverage-overview"
+  ],
+  "hit": true,
+  "how": "walk",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "The section directly answers the core question by stating the number of CTAs enrolled as of December 31, 2021."
+  ],
+  "n_retrieved": 6,
+  "retrieved": [
+   "1-2-what-s-new-in-the-2022-report",
+   "1-3-key-findings-and-messages",
+   "2-1-glass-strategy-and-milestones-overview",
+   "fig-2-1-ctas-enrolled-in-glass-amr-and-or-glass-amc-2017-2019-2021-overview",
+   "2-2-enhancing-quality-and-coverage-of-surveillance-to-estimate-the-magnitudeofamr",
+   "3-2-participation-and-coverage-overview"
+  ],
+  "secs": 94.3
+ },
+ {
+  "id": "A037",
+  "doc": "dda0c28e_Global_Antimicrobial_Resistance_and_Use_Surveillance_System_GLASS_Report_2022_2026-09-11",
+  "question": "In the 2020 AMR data call, what percentage of total bacteriologically confirmed infections (BCIs) reported to GLASS-AMR were urinary tract infections?",
+  "gold_node": "3-3-global-amr-data",
+  "gold_is_leaf": false,
+  "satisfying_targets": [
+   "3-3-global-amr-data-overview"
+  ],
+  "matched": [],
+  "hit": false,
+  "how": "-",
+  "target_status": [
+   "pruned"
+  ],
+  "target_reason": [
+   "Not selected: the model judged this branch unlikely to answer the query when compared with its siblings."
+  ],
+  "n_retrieved": 23,
+  "retrieved": [
+   "contents",
+   "foreword-overview",
+   "summary-overview",
+   "key-findings-and-public-health-implications",
+   "1-2-what-s-new-in-the-2022-report",
+   "1-3-key-findings-and-messages",
+   "3-progress-in-the-development-of-national-surveillance-systems-reporting-data-to-glass-amr-overview",
+   "fig-3-2-ctas-enrolled-in-glass-amr-that-reported-2016-2020-bacterial-identification-results-and-or-ast-results-for-bacteriologically-confirmed-infectious-syndromes-under-surveillance-in-2017-2021-data-calls",
+   "fig-3-3-progress-in-reporting-of-bcis-and-ast-test-results-to-glass-amr-for-infectious-syndromes-under-surveillance-2016-2020-overview",
+   "fig-3-4-bcis-with-ast-results-reported-to-glass-amr-per-one-million-population-for-selected-infectious-syndromes-unde",
+   "fig-3-4-bcis-with-ast-results-reported-to-glass-amr-per-one-million-population-for-selected-infectious-syndromes-unde-2",
+   "fig-3-5b-progress-in-reporting-ast-results-to-glass-amr-for-selected-antimicrobial-groups-in-bacteriologically-confir",
+   "fig-3-5d-progress-in-reporting-antimicrobial-susceptibility-test-results-to-glass-amr-for-selected-antimicrobial-groups-in-bacteriologically-confirmed-urinary-tract-bcis-by-bacterial-pathogens-under-surveillance-2016-2020-third-generation-cephalosporins-e-coli-0-100-0-2-5m-0-2500-0-25k-overview",
+   "fig-3-5d-progress-in-reporting-antimicrobial-susceptibility-test-results-to-glass-amr-for-selected-antimicrobial-grou",
+   "fig-3-5d-continued-progress-in-reporting-antimicrobial-susceptibility-test-results-to-glass-amr-for-selected-antimicrobial-groups-in-bacteriologically-confirmed-urinary-tract-bcis-by-bacterial-pathogens-under-surveillance-2016-2020-umber-0-20-40-60-0-500k-1m-1-5m-0-500-1000-1500-0-10k-20k-30k-overview",
+   "fig-3-6a-bloodstream-infections-with-third-generation-cephalosporins-e-coli-or-methicillin-resistance-s-aureus",
+   "note-most-ctas-reporting-higher-coverage-for-these-infection-antibacterial-combinations-per-million-population-in-2020",
+   "fig-3-6c-salmonella-spp-gastrointestinal-infections-with-fluoroquinolone-susceptibility-test-results-and-k-pneumoniae-urinary-tract-infections-with-sulfonamides-and-trimethoprim-ast-results-reported-to-glass-amr-per-one-million-population-2016-2018-2020-overview",
+   "fig-3-6c-salmonella-spp-gastrointestinal-infections-with-fluoroquinolone-susceptibility-test-results-and-k-pneumon",
+   "fig-3-6c-salmonella-spp-gastrointestinal-infections-with-fluoroquinolone-susceptibility-test-results-and-k-pneumon-2",
+   "table-3-1-numbers-of-bcis-bcis-with-ast-results-for-any-antibacterial-and-ctas-reporting-bcis-in-2020",
+   "fig-3-7j-percentage-resistance-to-antimicrobials-under-surveillance-in-e-coli-in-all-ctas-reporting-10-e-coli-urinary-tract-infections-with-ast-results-compared-to-ctas-where-the-reported-number-per-million-population-was-above-the-75th-percentile-in-2020",
+   "fig-3-8e-percentage-resistance-to-selected-antimicrobials-in-ctas-reporting-10-urinary-tract-bcis-infections-with-ast-results-annually-2017-2020"
+  ],
+  "secs": 272.6
+ },
+ {
+  "id": "A038",
+  "doc": "dda0c28e_Global_Antimicrobial_Resistance_and_Use_Surveillance_System_GLASS_Report_2022_2026-09-11",
+  "question": "Between 2017 and 2020, how did the median percentage of methicillin resistance in Staphylococcus aureus (MRSA) change, according to the GLASS-AMR time series data?",
+  "gold_node": "3-3-2-time-series-of-resistance-to-selected-antibacterials-2017-2020",
+  "gold_is_leaf": true,
+  "satisfying_targets": [
+   "3-3-2-time-series-of-resistance-to-selected-antibacterials-2017-2020"
+  ],
+  "matched": [
+   "3-3-2-time-series-of-resistance-to-selected-antibacterials-2017-2020"
+  ],
+  "hit": true,
+  "how": "walk",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "The section directly addresses the change in median percentage resistance for methicillin resistance in Staphylococcus aureus (MRSA) between 2017 and 2020."
+  ],
+  "n_retrieved": 14,
+  "retrieved": [
+   "contents",
+   "list-of-acronyms",
+   "1-3-key-findings-and-messages",
+   "3-progress-in-the-development-of-national-surveillance-systems-reporting-data-to-glass-amr-overview",
+   "fig-3-2-ctas-enrolled-in-glass-amr-that-reported-2016-2020-bacterial-identification-results-and-or-ast-results-for-bacteriologically-confirmed-infectious-syndromes-under-surveillance-in-2017-2021-data-calls",
+   "fig-3-5a-continued-progress-in-reporting-ast-results-to-glass-amr-for-selected-antimicrobial-groups-in-bloodstream-bcis-by-bacterial-pathogens-under-surveillance-2016-2020-0-20-40-60-0-100k-200k-300k-0-100-200-300-0-1000-2000-3000",
+   "fig-3-5b-progress-in-reporting-ast-results-to-glass-amr-for-selected-antimicrobial-groups-in-bacteriologically-confirmed-gastrointestinal-bcis-by-bacterial-pathogens-under-surveillance-2016-2020-overview",
+   "fig-3-5b-progress-in-reporting-ast-results-to-glass-amr-for-selected-antimicrobial-groups-in-bacteriologically-confir",
+   "fig-3-7f-percentage-resistance-to-third-generation-cephalosporins-in-e-coli-and-percentage-methicillin-resistance-in-s-aureus-in-ctas-reporting-10-bloodstream-bcis-with-ast-results-compared-to-ctas-where-the-reported-numbers-per-million-population-were-above-the-75th-percentile-in-2020",
+   "3-3-2-time-series-of-resistance-to-selected-antibacterials-2017-2020",
+   "fig-3-8b-percentage-resistance-to-third-generation-cephalosporins-in-e-coli-and-percentage-methicillin-resistance-in-s-aureus-in-ctas-reporting-10-bloodstream-bcis-with-ast-results-annually-2017-2020",
+   "table-a1-bacterial-pathogen-and-antibiotic-combinations-under-glass-amr-surveillance-overview",
+   "table-a1-bacterial-pathogen-and-antibiotic-combinations-under-glass-amr-surveillance-table-13",
+   "table-a1-continued-bacterial-pathogen-and-antibiotic-combinations-under-glass-amr-surveillance"
+  ],
+  "secs": 223.2
+ },
+ {
+  "id": "A039",
+  "doc": "dda0c28e_Global_Antimicrobial_Resistance_and_Use_Surveillance_System_GLASS_Report_2022_2026-09-11",
+  "question": "What percentage of CTAs reporting to GLASS-AMC had fully established the nomination of a body to lead national AMC surveillance, as of the 2021 status report?",
+  "gold_node": "4-1-implementation-indicators",
+  "gold_is_leaf": false,
+  "satisfying_targets": [
+   "4-1-implementation-indicators-overview"
+  ],
+  "matched": [
+   "4-1-implementation-indicators-overview"
+  ],
+  "hit": true,
+  "how": "walk",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "The section directly addresses the percentage of CTAs reporting to GLASS-AMC that had fully established the nomination of a body to lead national AMC surveillance as of 2021."
+  ],
+  "n_retrieved": 10,
+  "retrieved": [
+   "key-findings-and-public-health-implications",
+   "1-2-what-s-new-in-the-2022-report",
+   "1-3-key-findings-and-messages",
+   "2-1-glass-strategy-and-milestones-overview",
+   "enrolment-status-by-end-of-2021",
+   "table-2-1-list-of-glass-technical-modules-with-the-year-of-publication-of-related-protocols-and-the-number-of-ctas-imp",
+   "fig-3-1-implementation-status-quality-assurance-and-standards-of-national-amr-surveillance-systems-at-the-time-of-the-2021-data-call-for-ctas-reporting-to-glass-amr",
+   "3-2-participation-and-coverage-overview",
+   "4-progress-in-the-development-of-national-surveillance-systems-reporting-data-to-glass-amc-overview",
+   "4-1-implementation-indicators-overview"
+  ],
+  "secs": 154.7
+ },
+ {
+  "id": "A040",
+  "doc": "dda0c28e_Global_Antimicrobial_Resistance_and_Use_Surveillance_System_GLASS_Report_2022_2026-09-11",
+  "question": "Of the 36 CTAs enrolled in GLASS-AMC by the end of 2021, how many reported antibacterial consumption data?",
+  "gold_node": "4-2-participation-and-coverage",
+  "gold_is_leaf": false,
+  "satisfying_targets": [
+   "4-2-participation-and-coverage-overview"
+  ],
+  "matched": [
+   "4-2-participation-and-coverage-overview"
+  ],
+  "hit": true,
+  "how": "walk",
+  "target_status": [
+   "retrieved"
+  ],
+  "target_reason": [
+   "The section directly answers the core quantitative part of the query by stating how many CTAs reported antibacterial consumption data out of the total enrolled."
+  ],
+  "n_retrieved": 12,
+  "retrieved": [
+   "key-findings-and-public-health-implications",
+   "1-2-what-s-new-in-the-2022-report",
+   "1-3-key-findings-and-messages",
+   "2-1-glass-strategy-and-milestones-overview",
+   "enrolment-status-by-end-of-2021",
+   "table-2-1-list-of-glass-technical-modules-with-the-year-of-publication-of-related-protocols-and-the-number-of-ctas-imp",
+   "4-progress-in-the-development-of-national-surveillance-systems-reporting-data-to-glass-amc-overview",
+   "4-1-implementation-indicators-overview",
+   "4-2-participation-and-coverage-overview",
+   "table-4-1-coverage-of-the-surveillance-systems-data-sources-levels-of-stratification-by-health-care-sectors-and-leve",
+   "table-4-1-coverage-of-the-surveillance-systems-data-sources-levels-of-stratification-by-health-care-sectors-and-leve-2",
+   "4-3-global-amc-data-overview"
+  ],
+  "secs": 199.3
+ }
+]

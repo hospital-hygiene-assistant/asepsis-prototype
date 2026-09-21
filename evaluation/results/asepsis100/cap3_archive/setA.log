@@ -1,0 +1,127 @@
+  [prune] e52f664f_MRSA_2014_hygiene_2026-09-01: 1/4 leaves after pruning
+  [rehydrate] e52f664f_MRSA_2014_hygiene_2026-09-01: 2 leaf(s) re-queued by lexical match: good-hand-hygiene-by-health-workers-protects-patients-from-drug-resistant-infections-overview, 5-key-moments
+[  1/100     10s] A001 HIT  walk        n=2      10s  antimicrobial-resistance-and-good-hand-hygie
+  [prune] e52f664f_MRSA_2014_hygiene_2026-09-01: 2/4 leaves after pruning
+  [rehydrate] e52f664f_MRSA_2014_hygiene_2026-09-01: 1 leaf(s) re-queued by lexical match: antimicrobial-resistance-and-good-hand-hygiene
+[  2/100     22s] A002 HIT  walk        n=1      12s  5-key-moments
+  [prune] 2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_Prevention_and_Control_Programmes_2026-09-11: 5/176 leaves after pruning
+  [rehydrate] 2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_Prevention_and_Control_Programmes_2026-09-11: 3 leaf(s) re-queued by lexical match: research-gaps-6, background-5, background-10
+[  3/100     75s] A003 HIT  walk        n=8      53s  glossary-of-terms
+  [prune] 2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_Prevention_and_Control_Programmes_2026-09-11: 2/176 leaves after pruning
+  [rehydrate] 2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_Prevention_and_Control_Programmes_2026-09-11: 3 leaf(s) re-queued by lexical match: background, remarks-2-overview, summary-of-the-evidence-8
+[  4/100    120s] A004 HIT  walk        n=3      45s  introduction
+    [prune] selection failed under 'Guidelines on Core Components of Infection Prevention and Control Programmes at the National and Acute Health Care Facility Level > Executive Summary > Guideline implementation': Could not parse JSON from model response: '{"keep": ["id=tables", "reason": "The tables section mentions surveillance systems for HAIs, which is likely where quantitative estimates like annual deaths would be found."]}' — keeping all
+  [prune] 2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_Prevention_and_Control_Programmes_2026-09-11: 5/176 leaves after pruning
+  [rehydrate] 2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_Prevention_and_Control_Programmes_2026-09-11: 3 leaf(s) re-queued by lexical match: additional-factors-considered-when-formulating-the-recommendation-7-overview, acronyms-table-1, glossary-of-terms
+[  5/100    188s] A005 HIT  walk        n=2      68s  there-is-a-growing-body-of-evidence-on-the-g
+  [prune] 2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_Prevention_and_Control_Programmes_2026-09-11: 7/176 leaves after pruning
+  [rehydrate] 2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_Prevention_and_Control_Programmes_2026-09-11: 3 leaf(s) re-queued by lexical match: glossary-of-terms, 4-6-evidence-identification-and-retrieval-overview, review-update-and-evaluation-of-the-recommendations
+[  6/100    296s] A006 HIT  walk        n=6     108s  there-is-a-growing-body-of-evidence-on-the-g
+  [prune] 2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_Prevention_and_Control_Programmes_2026-09-11: 3/176 leaves after pruning
+  [rehydrate] 2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_Prevention_and_Control_Programmes_2026-09-11: 3 leaf(s) re-queued by lexical match: background-8, rationale-for-the-recommendation-8, research-gaps-10
+[  7/100    372s] A007 HIT  walk        n=6      76s  summary-of-the-evidence
+  [prune] 2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_Prevention_and_Control_Programmes_2026-09-11: 5/176 leaves after pruning
+  [rehydrate] 2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_Prevention_and_Control_Programmes_2026-09-11: 3 leaf(s) re-queued by lexical match: rationale-for-the-recommendation, guideline-implementation-table-3, remarks-5
+[  8/100    463s] A008 HIT  walk        n=6      91s  rationale-for-recommendation
+  [prune] 2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_Prevention_and_Control_Programmes_2026-09-11: 6/176 leaves after pruning
+  [rehydrate] 2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_Prevention_and_Control_Programmes_2026-09-11: 3 leaf(s) re-queued by lexical match: rationale-for-the-recommendation-2, additional-implementation-considerations-6, remarks-3
+[  9/100    538s] A009 HIT  walk        n=9      75s  recommendation-2
+  [prune] 2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_Prevention_and_Control_Programmes_2026-09-11: 3/176 leaves after pruning
+  [rehydrate] 2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_Prevention_and_Control_Programmes_2026-09-11: 3 leaf(s) re-queued by lexical match: remarks-3, background-3, remarks-2-overview
+[ 10/100    581s] A010 HIT  rehydrated  n=4      42s  remarks-3
+  [prune] 2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_Prevention_and_Control_Programmes_2026-09-11: 6/176 leaves after pruning
+  [rehydrate] 2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_Prevention_and_Control_Programmes_2026-09-11: 3 leaf(s) re-queued by lexical match: remarks-5, rationale-for-the-recommendation, summary-of-the-evidence-3-overview
+[ 11/100    687s] A011 HIT  walk        n=7     107s  rationale-for-the-recommendation-4-overview
+  [prune] 2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_Prevention_and_Control_Programmes_2026-09-11: 3/176 leaves after pruning
+  [rehydrate] 2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_Prevention_and_Control_Programmes_2026-09-11: 3 leaf(s) re-queued by lexical match: additional-factors-considered-when-formulating-the-recommendation-7-overview, summary-of-the-evidence-4-overview, summary-of-the-evidence-6-overview
+[ 12/100    810s] A012 HIT  rehydrated  n=4     123s  additional-factors-considered-when-formulati
+  [prune] 2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_Prevention_and_Control_Programmes_2026-09-11: 6/176 leaves after pruning
+  [rehydrate] 2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_Prevention_and_Control_Programmes_2026-09-11: 3 leaf(s) re-queued by lexical match: rationale-for-the-recommendation-4-overview, research-gaps-9, rationale-for-the-recommendation
+[ 13/100    897s] A013 HIT  walk        n=9      87s  recommendation-6
+  [prune] 2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_Prevention_and_Control_Programmes_2026-09-11: 8/176 leaves after pruning
+  [rehydrate] 2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_Prevention_and_Control_Programmes_2026-09-11: 3 leaf(s) re-queued by lexical match: additional-implementation-considerations-11, rationale-for-the-recommendation, additional-factors-considered-when-formulating-the-recommendation-9
+[ 14/100    989s] A014 HIT  walk        n=11     92s  recommendation-7
+  [prune] 2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_Prevention_and_Control_Programmes_2026-09-11: 5/176 leaves after pruning
+  [rehydrate] 2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_Prevention_and_Control_Programmes_2026-09-11: 3 leaf(s) re-queued by lexical match: rationale-for-the-recommendation-7, guideline-implementation-table-7, background-9
+[ 15/100   1066s] A015 HIT  rehydrated  n=6      77s  rationale-for-the-recommendation-7
+    [prune] selection failed under 'Guidelines on Core Components of Infection Prevention and Control Programmes at the National and Acute Health Care Facility Level > Executive Summary': Could not parse JSON from model response: '{"keep": ["id=guideline-implementation", "reason": "This section mentions built environment standards like WHO WASH guidelines, which might contain information on sink-to-bed ratios."]}' — keeping all
+  [prune] 2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_Prevention_and_Control_Programmes_2026-09-11: 8/176 leaves after pruning
+  [rehydrate] 2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_Prevention_and_Control_Programmes_2026-09-11: 3 leaf(s) re-queued by lexical match: background-9, summary-of-the-evidence-8, general-remarks
+[ 16/100   1141s] A016 HIT  walk        n=4      75s  rationale-for-the-recommendation-8
+  [prune] 2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_Prevention_and_Control_Programmes_2026-09-11: 1/176 leaves after pruning
+  [rehydrate] 2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_Prevention_and_Control_Programmes_2026-09-11: 3 leaf(s) re-queued by lexical match: 4-6-evidence-identification-and-retrieval-overview, additional-implementation-considerations-8, methods
+[ 17/100   1180s] A017 HIT  walk        n=2      39s  review-update-and-evaluation-of-the-recommen
+  [prune] 5d883081_WHO_Bacterial_Priority_Pathogens_List_2024_2026-09-11: 4/86 leaves after pruning
+  [rehydrate] 5d883081_WHO_Bacterial_Priority_Pathogens_List_2024_2026-09-11: 3 leaf(s) re-queued by lexical match: other-priority-pathogens, mortality, other-community-pathogens-of-high-priority
+[ 18/100   1247s] A018 HIT  walk        n=7      67s  executive-summary-overview
+  [prune] 5d883081_WHO_Bacterial_Priority_Pathogens_List_2024_2026-09-11: 5/86 leaves after pruning
+  [rehydrate] 5d883081_WHO_Bacterial_Priority_Pathogens_List_2024_2026-09-11: 3 leaf(s) re-queued by lexical match: other-priority-pathogens, background-2, a2-1-1-mortality-overview
+[ 19/100   1317s] A019 HIT  walk        n=7      70s  background
+  [prune] 5d883081_WHO_Bacterial_Priority_Pathogens_List_2024_2026-09-11: 16/86 leaves after pruning
+  [rehydrate] 5d883081_WHO_Bacterial_Priority_Pathogens_List_2024_2026-09-11: 3 leaf(s) re-queued by lexical match: the-pathogens-for-the-2024-update-were-selected-in-two-stages-overview, implementation-and-policy-considerations-overview, determination-of-the-preliminary-list-of-pathogens-to-be-prioritized
+[ 20/100   1492s] A020 HIT  walk        n=15    175s  methods-overview
+  [prune] 5d883081_WHO_Bacterial_Priority_Pathogens_List_2024_2026-09-11: 3/86 leaves after pruning
+  [rehydrate] 5d883081_WHO_Bacterial_Priority_Pathogens_List_2024_2026-09-11: 3 leaf(s) re-queued by lexical match: methods-overview, acknowledgements, fig-4-who-bacterial-priority-pathogens-list-2024
+[ 21/100   1556s] A021 HIT  rehydrated  n=4      64s  methods-overview
+  [prune] 5d883081_WHO_Bacterial_Priority_Pathogens_List_2024_2026-09-11: 5/86 leaves after pruning
+  [rehydrate] 5d883081_WHO_Bacterial_Priority_Pathogens_List_2024_2026-09-11: 3 leaf(s) re-queued by lexical match: methods-overview, acknowledgements, implementation-and-policy-considerations-overview
+[ 22/100   1627s] A022 HIT  walk        n=5      71s  determination-of-criteria-weights-2023-globa
+  [prune] 5d883081_WHO_Bacterial_Priority_Pathogens_List_2024_2026-09-11: 5/86 leaves after pruning
+  [rehydrate] 5d883081_WHO_Bacterial_Priority_Pathogens_List_2024_2026-09-11: 3 leaf(s) re-queued by lexical match: independent-assessment-of-rr-tb, rationale-for-the-update, abbreviations-table-1
+[ 23/100   1713s] A023 HIT  rehydrated  n=8      87s  independent-assessment-of-rr-tb
+  [prune] 5d883081_WHO_Bacterial_Priority_Pathogens_List_2024_2026-09-11: 3/86 leaves after pruning
+  [rehydrate] 5d883081_WHO_Bacterial_Priority_Pathogens_List_2024_2026-09-11: 3 leaf(s) re-queued by lexical match: the-pathogens-for-the-2024-update-were-selected-in-two-stages-overview, contents, results-who-bacterial-priority-pathogen-list-2024-figure-28
+[ 24/100   1777s] A024 HIT  walk        n=6      64s  results-who-bacterial-priority-pathogen-list
+  [prune] 5d883081_WHO_Bacterial_Priority_Pathogens_List_2024_2026-09-11: 2/86 leaves after pruning
+  [rehydrate] 5d883081_WHO_Bacterial_Priority_Pathogens_List_2024_2026-09-11: 3 leaf(s) re-queued by lexical match: methicillin-resistant-staphylococcus-aureus-mrsa-remains-a-high-priority, other-community-pathogens-of-high-priority, executive-summary-overview
+[ 25/100   1816s] A025 HIT  rehydrated  n=4      38s  methicillin-resistant-staphylococcus-aureus-
+  [prune] 5d883081_WHO_Bacterial_Priority_Pathogens_List_2024_2026-09-11: 1/86 leaves after pruning
+  [rehydrate] 5d883081_WHO_Bacterial_Priority_Pathogens_List_2024_2026-09-11: 3 leaf(s) re-queued by lexical match: diagnosis, table-a4-2-rr-tb-prioritization-criteria-definitions-criteria-used-for-the-independent-assessment-of-rr-tb, the-pipeline-for-new-medicines-and-diagnostics-overview
+[ 26/100   1870s] A026 HIT  walk        n=3      55s  addressing-bacterial-priority-pathogens-thro
+  [prune] 5d883081_WHO_Bacterial_Priority_Pathogens_List_2024_2026-09-11: 5/86 leaves after pruning
+  [rehydrate] 5d883081_WHO_Bacterial_Priority_Pathogens_List_2024_2026-09-11: 3 leaf(s) re-queued by lexical match: results-who-bacterial-priority-pathogen-list-2024-overview, methods-overview, results-who-bacterial-priority-pathogen-list-2024-figure-28
+[ 27/100   1939s] A027 HIT  walk        n=4      69s  the-pathogens-for-the-2024-update-were-selec
+  [prune] 5d883081_WHO_Bacterial_Priority_Pathogens_List_2024_2026-09-11: 1/86 leaves after pruning
+  [rehydrate] 5d883081_WHO_Bacterial_Priority_Pathogens_List_2024_2026-09-11: 3 leaf(s) re-queued by lexical match: a2-1-1-mortality-overview, a2-2-3-treatability-overview, limitations
+[ 28/100   1983s] A028 HIT  rehydrated  n=4      44s  a2-1-1-mortality-overview
+  [prune] 5d883081_WHO_Bacterial_Priority_Pathogens_List_2024_2026-09-11: 2/86 leaves after pruning
+  [rehydrate] 5d883081_WHO_Bacterial_Priority_Pathogens_List_2024_2026-09-11: 3 leaf(s) re-queued by lexical match: limitations, table-a4-2-rr-tb-prioritization-criteria-definitions-criteria-used-for-the-independent-assessment-of-rr-tb, application-of-mcda-to-rr-tb
+[ 29/100   2040s] A029 HIT  walk        n=2      57s  a2-2-1-transmissibility-overview
+  [prune] dda0c28e_Global_Antimicrobial_Resistance_and_Use_Surveillance_System_GLASS_Report_2022_2026-09-11: 1/96 leaves after pruning
+  [rehydrate] dda0c28e_Global_Antimicrobial_Resistance_and_Use_Surveillance_System_GLASS_Report_2022_2026-09-11: 3 leaf(s) re-queued by lexical match: annex-2-methodology-for-the-measurement-and-surveillance-of-amc-overview, fig-4-4-relative-consumption-of-antibacterials-atc-j01-a07aa-p01ab-by-route-of-administration-in-26-ctas-in-2020-overview, fig-4-1-status-of-implementation-of-national-amc-surveillance-systems-in-36-ctas-enrolled-in-glass-amc-as-of-december-2021
+[ 30/100   2061s] A030 HIT  walk        n=2      22s  global-antimicrobial-resistance-and-use-surv
+  [prune] dda0c28e_Global_Antimicrobial_Resistance_and_Use_Surveillance_System_GLASS_Report_2022_2026-09-11: 2/96 leaves after pruning
+  [rehydrate] dda0c28e_Global_Antimicrobial_Resistance_and_Use_Surveillance_System_GLASS_Report_2022_2026-09-11: 3 leaf(s) re-queued by lexical match: 4-progress-in-the-development-of-national-surveillance-systems-reporting-data-to-glass-amc-overview, table-a2-list-of-indicators-used-in-the-report-to-describe-amc-overview, 4-3-global-amc-data-overview
+[ 31/100   2106s] A031 MISS -           n=5      44s  1-2-what-s-new-in-the-2022-report
+  [prune] dda0c28e_Global_Antimicrobial_Resistance_and_Use_Surveillance_System_GLASS_Report_2022_2026-09-11: 2/96 leaves after pruning
+  [rehydrate] dda0c28e_Global_Antimicrobial_Resistance_and_Use_Surveillance_System_GLASS_Report_2022_2026-09-11: 3 leaf(s) re-queued by lexical match: 2-4-mortality-due-to-amr, table-2-1-list-of-glass-technical-modules-with-the-year-of-publication-of-related-protocols-and-the-number-of-ctas-imp, 1-3-key-findings-and-messages
+[ 32/100   2161s] A032 HIT  walk        n=4      55s  1-1-basic-facts-on-antimicrobial-resistance-
+  [prune] dda0c28e_Global_Antimicrobial_Resistance_and_Use_Surveillance_System_GLASS_Report_2022_2026-09-11: 6/96 leaves after pruning
+  [rehydrate] dda0c28e_Global_Antimicrobial_Resistance_and_Use_Surveillance_System_GLASS_Report_2022_2026-09-11: 3 leaf(s) re-queued by lexical match: 1-2-what-s-new-in-the-2022-report, summary-overview, list-of-acronyms
+[ 33/100   2262s] A033 HIT  rehydrated  n=9     101s  1-2-what-s-new-in-the-2022-report
+  [prune] dda0c28e_Global_Antimicrobial_Resistance_and_Use_Surveillance_System_GLASS_Report_2022_2026-09-11: 4/96 leaves after pruning
+  [rehydrate] dda0c28e_Global_Antimicrobial_Resistance_and_Use_Surveillance_System_GLASS_Report_2022_2026-09-11: 3 leaf(s) re-queued by lexical match: references, list-of-acronyms, world-health-organization-2022
+[ 34/100   2338s] A034 HIT  walk        n=6      76s  2-1-glass-strategy-and-milestones-overview
+  [prune] dda0c28e_Global_Antimicrobial_Resistance_and_Use_Surveillance_System_GLASS_Report_2022_2026-09-11: 1/96 leaves after pruning
+  [rehydrate] dda0c28e_Global_Antimicrobial_Resistance_and_Use_Surveillance_System_GLASS_Report_2022_2026-09-11: 3 leaf(s) re-queued by lexical match: fig-2-1-ctas-enrolled-in-glass-amr-and-or-glass-amc-2017-2019-2021-overview, table-2-1-list-of-glass-technical-modules-with-the-year-of-publication-of-related-protocols-and-the-number-of-ctas-imp, collecting-and-compiling-data-for-this-report
+[ 35/100   2374s] A035 HIT  walk        n=4      36s  2-4-mortality-due-to-amr
+    [prune] ignoring unknown id 'fig-2-1-ctas-enrolled-in-glass-amr-and/or-glass-amc-2017-2019-2021' from the model
+  [prune] dda0c28e_Global_Antimicrobial_Resistance_and_Use_Surveillance_System_GLASS_Report_2022_2026-09-11: 4/96 leaves after pruning
+  [rehydrate] dda0c28e_Global_Antimicrobial_Resistance_and_Use_Surveillance_System_GLASS_Report_2022_2026-09-11: 3 leaf(s) re-queued by lexical match: 1-2-what-s-new-in-the-2022-report, fig-4-1-status-of-implementation-of-national-amc-surveillance-systems-in-36-ctas-enrolled-in-glass-amc-as-of-december-2021, fig-2-1-ctas-enrolled-in-glass-amr-and-or-glass-amc-2017-2019-2021-overview
+[ 36/100   2469s] A036 HIT  walk        n=6      94s  3-2-participation-and-coverage-overview
+  [prune] dda0c28e_Global_Antimicrobial_Resistance_and_Use_Surveillance_System_GLASS_Report_2022_2026-09-11: 21/96 leaves after pruning
+  [rehydrate] dda0c28e_Global_Antimicrobial_Resistance_and_Use_Surveillance_System_GLASS_Report_2022_2026-09-11: 3 leaf(s) re-queued by lexical match: fig-3-2-ctas-enrolled-in-glass-amr-that-reported-2016-2020-bacterial-identification-results-and-or-ast-results-for-bacteriologically-confirmed-infectious-syndromes-under-surveillance-in-2017-2021-data-calls, fig-3-5c-progress-in-reporting-ast-results-to-glass-amr-for-selected-antimicrobial-groups-in-bacteriologically-confir, fig-3-5b-progress-in-reporting-ast-results-to-glass-amr-for-selected-antimicrobial-groups-in-bacteriologically-confir
+[ 37/100   2741s] A037 MISS -           n=23    273s  3-3-global-amr-data-overview
+    [prune] ignoring unknown id 'fig-3-5d-progress-in-reporting-antimicrobial-susceptibility-test-results-to-glass-amr-for-selected-antimicrobial-groups-in-bacteriologically-confirmed-urinary-tract-' from the model
+  [prune] dda0c28e_Global_Antimicrobial_Resistance_and_Use_Surveillance_System_GLASS_Report_2022_2026-09-11: 12/96 leaves after pruning
+  [rehydrate] dda0c28e_Global_Antimicrobial_Resistance_and_Use_Surveillance_System_GLASS_Report_2022_2026-09-11: 3 leaf(s) re-queued by lexical match: 1-3-key-findings-and-messages, fig-3-7f-percentage-resistance-to-third-generation-cephalosporins-in-e-coli-and-percentage-methicillin-resistance-in-s-aureus-in-ctas-reporting-10-bloodstream-bcis-with-ast-results-compared-to-ctas-where-the-reported-numbers-per-million-population-were-above-the-75th-percentile-in-2020, list-of-acronyms
+[ 38/100   2965s] A038 HIT  walk        n=14    223s  3-3-2-time-series-of-resistance-to-selected-
+  [prune] dda0c28e_Global_Antimicrobial_Resistance_and_Use_Surveillance_System_GLASS_Report_2022_2026-09-11: 9/96 leaves after pruning
+  [rehydrate] dda0c28e_Global_Antimicrobial_Resistance_and_Use_Surveillance_System_GLASS_Report_2022_2026-09-11: 3 leaf(s) re-queued by lexical match: key-findings-and-public-health-implications, 4-progress-in-the-development-of-national-surveillance-systems-reporting-data-to-glass-amc-overview, 1-2-what-s-new-in-the-2022-report
+[ 39/100   3119s] A039 HIT  walk        n=10    155s  4-1-implementation-indicators-overview
+    [prune] ignoring unknown id '2-3-enhancing-quality-and-coverage-of-surveillance-to-estimate-the-magnitude-ofamc-and-use' from the model
+  [prune] dda0c28e_Global_Antimicrobial_Resistance_and_Use_Surveillance_System_GLASS_Report_2022_2026-09-11: 11/96 leaves after pruning
+  [rehydrate] dda0c28e_Global_Antimicrobial_Resistance_and_Use_Surveillance_System_GLASS_Report_2022_2026-09-11: 3 leaf(s) re-queued by lexical match: key-findings-and-public-health-implications, 4-progress-in-the-development-of-national-surveillance-systems-reporting-data-to-glass-amc-overview, 4-3-global-amc-data-overview
+[ 40/100   3318s] A040 HIT  walk        n=12    199s  4-2-participation-and-coverage-overview
+  [prune] dda0c28e_Global_Antimicrobial_Resistance_and_Use_Surveillance_System_GLASS_Report_2022_2026-09-11: 14/96 leaves after pruning
+  [rehydrate] dda0c28e_Global_Antimicrobial_Resistance_and_Use_Surveillance_System_GLASS_Report_2022_2026-09-11: 3 leaf(s) re-queued by lexical match: fig-4-2-total-consumption-by-antimicrobial-classes-in-26-ctas-in-2020-expressed-as-ddd-per-1000-inhabitants-per-day, fig-4-3-total-consumption-of-antibacterials-atc-j01-a07aa-p01a-by-pharmacological-subgroup-atc3-in-26-ctas-in-2020-expressed-as-ddd-per-1000-inhabitants-per-day, table-4-2-continued-antibacterial-substances-that-made-up-75-du75-of-oral-consumption-in-26-ctas-in-2020
