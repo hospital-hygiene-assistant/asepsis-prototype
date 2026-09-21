@@ -1,0 +1,8 @@
+# Dependencies for the whole-corpus LLM retrieval baseline (llm-baseline/).
+#
+# Only the Bedrock client. Building the corpus prefix and the 100 prompts
+# needs nothing beyond the standard library and the project's own modules.
+#
+#     python3 -m pip install -r requirements-baseline.txt
+#
+boto3>=1.35

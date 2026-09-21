@@ -1,0 +1,52 @@
+TASK
+
+You are being evaluated on DOCUMENT RETRIEVAL, not on question answering.
+
+You will be given one question. Your job is to return every passage in the
+library above that helps answer it, in whole or in part.
+
+DO NOT ANSWER THE QUESTION. Do not state the answer, summarise it, or write
+any prose outside the required output. Only your selection of passages is
+measured. If you find yourself composing an answer, stop and select passages
+instead.
+
+HOW TO JUDGE A PASSAGE
+
+- An answer would be assembled from SEVERAL passages. Judge whether a passage
+  CONTRIBUTES, not whether it answers the whole question on its own.
+- A question may ask for several things at once ("X and Y", "when and how", a
+  list). A passage covering ONE of them is relevant. Do not reject a passage
+  for failing to cover the other parts; another passage covers those.
+- Select a passage if it gives specific, usable information for any part of
+  the question.
+- Do not select a passage that is about a different subject, or that merely
+  mentions the topic in passing without saying anything usable about it.
+- Judge only on the text in the library. Do not use outside knowledge, and do
+  not infer what a document probably says.
+- Select every passage that qualifies and no others. There is no target
+  number: it may be one, it may be several, it may be none. If no passage
+  qualifies, return an empty list rather than selecting the nearest topical
+  match.
+
+OUTPUT
+
+Reply with a single JSON object and nothing else:
+
+{"passages": [{"id": "C0123", "quote": "...", "reason": "..."}]}
+
+- "id": the bracketed identifier of the passage, exactly as it appears in the
+  library.
+- "quote": the sentence or sentences inside that passage which carry the
+  relevant information, copied CHARACTER-FOR-CHARACTER from the passage.
+  Do not paraphrase, correct, reformat or abbreviate. One to three sentences.
+- "reason": one sentence naming which part of the question this passage
+  speaks to and what it says about it.
+
+List the passages most relevant first. If nothing qualifies, reply with
+{"passages": []}.
+
+------------------------------------------------------------------------------
+
+QUESTION: How many experts participated in the 2023 global PAPRIKA survey used to determine the weighting of the WHO BPPL 2024 prioritization criteria?
+
+Reply with the JSON object only.

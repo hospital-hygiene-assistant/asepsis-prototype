@@ -1,0 +1,95 @@
+{
+  "_comment": "Bedrock settings for the whole-corpus LLM retrieval baseline. GPT-5.6 Luna is INFERENCE_PROFILE-only, and prompt caching for it is Responses-API-only (Converse supports the model but not its cache), so the runner posts to the OpenAI-compatible /openai/v1/responses path on bedrock-runtime with an explicit cache breakpoint.",
+  "model_id": "us.openai.gpt-5.6-luna",
+  "region": "us-east-1",
+  "reasoning_effort": "high",
+  "max_output_tokens": 8192,
+  "read_timeout_s": 900,
+  "connect_timeout_s": 30,
+  "max_attempts": 3,
+  "prompt_cache": true,
+  "_pricing_comment": "USD per million tokens, from the GPT-5.6 Luna model card (Geo CRIS / us. profile). Bedrock charges a LONG-CONTEXT tier above 272K input tokens, and this corpus is ~445K, so the long rates apply to every call. The global. profile is about 9 percent cheaper if cross-region routing is acceptable.",
+  "pricing_usd_per_mtok": {
+    "short": {
+      "input": 0.22,
+      "cache_write": 0.275,
+      "cache_read": 0.022,
+      "output": 1.32
+    },
+    "long": {
+      "input": 0.44,
+      "cache_write": 0.55,
+      "cache_read": 0.044,
+      "output": 1.98
+    }
+  },
+  "_auth_comment": "A Bedrock API key goes in the environment as AWS_BEARER_TOKEN_BEDROCK; boto3 picks it up. Standard AWS credentials or a profile also work. No key is ever written into this file or into any prompt.",
+  "queries_csv": "evaluation/queries/asepsis_100.csv",
+  "corpus_context": "llm-baseline/corpus_context.txt",
+  "instructions": "llm-baseline/instructions.txt",
+  "prompts_dir": "llm-baseline/prompts",
+  "results_dir": "llm-baseline/results",
+  "base_url": "https://bedrock-runtime.us-east-1.amazonaws.com/openai/v1",
+  "prompt_cache_key": "asepsis-baseline:corpus-28ac3b47",
+  "prompt_cache_ttl": "30m",
+  "long_context_threshold_tokens": 272000,
+  "pricing_usd_per_mtok_global_profile": {
+    "short": {
+      "input": 0.2,
+      "cache_write": 0.25,
+      "cache_read": 0.02,
+      "output": 1.2
+    },
+    "long": {
+      "input": 0.4,
+      "cache_write": 0.5,
+      "cache_read": 0.04,
+      "output": 1.8
+    }
+  },
+  "provider": "bedrock",
+  "providers": {
+    "bedrock": {
+      "base_url": "https://bedrock-runtime.us-east-1.amazonaws.com/openai/v1",
+      "model_id": "us.openai.gpt-5.6-luna",
+      "auth_env": "AWS_BEARER_TOKEN_BEDROCK",
+      "_note": "Bedrock adds a 10 percent fee over OpenAI list. Blocked on this account: entitlement reports AUTHORIZED but every inference API returns 403.",
+      "pricing_usd_per_mtok": {
+        "short": {
+          "input": 0.22,
+          "cache_write": 0.275,
+          "cache_read": 0.022,
+          "output": 1.32
+        },
+        "long": {
+          "input": 0.44,
+          "cache_write": 0.55,
+          "cache_read": 0.044,
+          "output": 1.98
+        }
+      }
+    },
+    "openai": {
+      "base_url": "https://api.openai.com/v1",
+      "model_id": "gpt-5.6-luna",
+      "auth_env": "OPENAI_API_KEY",
+      "_note": "The same model at list price. 1,050,000-token context. Long-context tier above 272K input: 2x input, 1.5x output.",
+      "pricing_usd_per_mtok": {
+        "short": {
+          "input": 0.2,
+          "cache_write": 0.25,
+          "cache_read": 0.02,
+          "output": 1.2
+        },
+        "long": {
+          "input": 0.4,
+          "cache_write": 0.5,
+          "cache_read": 0.04,
+          "output": 1.8
+        }
+      }
+    }
+  },
+  "min_interval_s": 57,
+  "_rate_limit_note": "OpenAI Tier limit measured on this account: 500,000 tokens per minute for gpt-5.6-luna, and CACHED tokens count toward it. At ~444,850 tokens per call that allows roughly one call per 54s, so calls are paced at 57s. Raising the account's usage tier is what shortens the run."
+}

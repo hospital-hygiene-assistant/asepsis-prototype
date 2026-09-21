@@ -1,0 +1,802 @@
+{
+ "A001": {
+  "doc": "e52f664f_MRSA_2014_hygiene_2026-09-01",
+  "gold_node_id": "antimicrobial-resistance-and-good-hand-hygiene",
+  "target_leaf": "antimicrobial-resistance-and-good-hand-hygiene",
+  "chunk_id": "C0587",
+  "section_level": false,
+  "label": "golden-1"
+ },
+ "A002": {
+  "doc": "e52f664f_MRSA_2014_hygiene_2026-09-01",
+  "gold_node_id": "5-key-moments",
+  "target_leaf": "5-key-moments",
+  "chunk_id": "C0588",
+  "section_level": false,
+  "label": "golden-2"
+ },
+ "A003": {
+  "doc": "2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_Prevention_and_Control_Programmes_2026-09-11",
+  "gold_node_id": "glossary-of-terms",
+  "target_leaf": "glossary-of-terms",
+  "chunk_id": "C0010",
+  "section_level": false,
+  "label": "golden-3"
+ },
+ "A004": {
+  "doc": "2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_Prevention_and_Control_Programmes_2026-09-11",
+  "gold_node_id": "introduction",
+  "target_leaf": "introduction",
+  "chunk_id": "C0014",
+  "section_level": false,
+  "label": "golden-4"
+ },
+ "A005": {
+  "doc": "2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_Prevention_and_Control_Programmes_2026-09-11",
+  "gold_node_id": "there-is-a-growing-body-of-evidence-on-the-global-burden-of-harm-caused-by-hai-as-well-as-the-strategies-necessary-for-its-reduction-4-in-2011-who-reported-that-3",
+  "target_leaf": "there-is-a-growing-body-of-evidence-on-the-global-burden-of-harm-caused-by-hai-as-well-as-the-strategies-necessary-for-its-reduction-4-in-2011-who-reported-that-3",
+  "chunk_id": "C0050",
+  "section_level": false,
+  "label": "golden-5"
+ },
+ "A006": {
+  "doc": "2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_Prevention_and_Control_Programmes_2026-09-11",
+  "gold_node_id": "there-is-a-growing-body-of-evidence-on-the-global-burden-of-harm-caused-by-hai-as-well-as-the-strategies-necessary-for-its-reduction-4-in-2011-who-reported-that-3",
+  "target_leaf": "there-is-a-growing-body-of-evidence-on-the-global-burden-of-harm-caused-by-hai-as-well-as-the-strategies-necessary-for-its-reduction-4-in-2011-who-reported-that-3",
+  "chunk_id": "C0050",
+  "section_level": false,
+  "label": "golden-6"
+ },
+ "A007": {
+  "doc": "2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_Prevention_and_Control_Programmes_2026-09-11",
+  "gold_node_id": "summary-of-the-evidence",
+  "target_leaf": "summary-of-the-evidence",
+  "chunk_id": "C0054",
+  "section_level": false,
+  "label": "golden-7"
+ },
+ "A008": {
+  "doc": "2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_Prevention_and_Control_Programmes_2026-09-11",
+  "gold_node_id": "rationale-for-recommendation",
+  "target_leaf": "rationale-for-recommendation",
+  "chunk_id": "C0072",
+  "section_level": false,
+  "label": "golden-8"
+ },
+ "A009": {
+  "doc": "2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_Prevention_and_Control_Programmes_2026-09-11",
+  "gold_node_id": "recommendation-2",
+  "target_leaf": "recommendation-2",
+  "chunk_id": "C0085",
+  "section_level": false,
+  "label": "golden-9"
+ },
+ "A010": {
+  "doc": "2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_Prevention_and_Control_Programmes_2026-09-11",
+  "gold_node_id": "remarks-3",
+  "target_leaf": "remarks-3",
+  "chunk_id": "C0097",
+  "section_level": false,
+  "label": "golden-10"
+ },
+ "A011": {
+  "doc": "2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_Prevention_and_Control_Programmes_2026-09-11",
+  "gold_node_id": "rationale-for-the-recommendation-4",
+  "target_leaf": "rationale-for-the-recommendation-4-overview",
+  "chunk_id": "C0107",
+  "section_level": true,
+  "label": "golden-11"
+ },
+ "A012": {
+  "doc": "2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_Prevention_and_Control_Programmes_2026-09-11",
+  "gold_node_id": "additional-factors-considered-when-formulating-the-recommendation-7",
+  "target_leaf": "additional-factors-considered-when-formulating-the-recommendation-7-overview",
+  "chunk_id": "C0123",
+  "section_level": true,
+  "label": "golden-12"
+ },
+ "A013": {
+  "doc": "2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_Prevention_and_Control_Programmes_2026-09-11",
+  "gold_node_id": "recommendation-6",
+  "target_leaf": "recommendation-6",
+  "chunk_id": "C0128",
+  "section_level": false,
+  "label": "golden-13"
+ },
+ "A014": {
+  "doc": "2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_Prevention_and_Control_Programmes_2026-09-11",
+  "gold_node_id": "recommendation-7",
+  "target_leaf": "recommendation-7",
+  "chunk_id": "C0138",
+  "section_level": false,
+  "label": "golden-14"
+ },
+ "A015": {
+  "doc": "2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_Prevention_and_Control_Programmes_2026-09-11",
+  "gold_node_id": "rationale-for-the-recommendation-7",
+  "target_leaf": "rationale-for-the-recommendation-7",
+  "chunk_id": "C0148",
+  "section_level": false,
+  "label": "golden-15"
+ },
+ "A016": {
+  "doc": "2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_Prevention_and_Control_Programmes_2026-09-11",
+  "gold_node_id": "rationale-for-the-recommendation-8",
+  "target_leaf": "rationale-for-the-recommendation-8",
+  "chunk_id": "C0158",
+  "section_level": false,
+  "label": "golden-16"
+ },
+ "A017": {
+  "doc": "2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_Prevention_and_Control_Programmes_2026-09-11",
+  "gold_node_id": "review-update-and-evaluation-of-the-recommendations",
+  "target_leaf": "review-update-and-evaluation-of-the-recommendations",
+  "chunk_id": "C0167",
+  "section_level": false,
+  "label": "golden-17"
+ },
+ "A018": {
+  "doc": "5d883081_WHO_Bacterial_Priority_Pathogens_List_2024_2026-09-11",
+  "gold_node_id": "executive-summary",
+  "target_leaf": "executive-summary-overview",
+  "chunk_id": "C0180",
+  "section_level": true,
+  "label": "golden-18"
+ },
+ "A019": {
+  "doc": "5d883081_WHO_Bacterial_Priority_Pathogens_List_2024_2026-09-11",
+  "gold_node_id": "background",
+  "target_leaf": "background",
+  "chunk_id": "C0182",
+  "section_level": false,
+  "label": "golden-19"
+ },
+ "A020": {
+  "doc": "5d883081_WHO_Bacterial_Priority_Pathogens_List_2024_2026-09-11",
+  "gold_node_id": "methods",
+  "target_leaf": "methods-overview",
+  "chunk_id": "C0186",
+  "section_level": true,
+  "label": "golden-20"
+ },
+ "A021": {
+  "doc": "5d883081_WHO_Bacterial_Priority_Pathogens_List_2024_2026-09-11",
+  "gold_node_id": "methods",
+  "target_leaf": "methods-overview",
+  "chunk_id": "C0186",
+  "section_level": true,
+  "label": "golden-21"
+ },
+ "A022": {
+  "doc": "5d883081_WHO_Bacterial_Priority_Pathogens_List_2024_2026-09-11",
+  "gold_node_id": "determination-of-criteria-weights-2023-global-paprika-survey",
+  "target_leaf": "determination-of-criteria-weights-2023-global-paprika-survey-overview",
+  "chunk_id": "C0191",
+  "section_level": true,
+  "label": "golden-22"
+ },
+ "A023": {
+  "doc": "5d883081_WHO_Bacterial_Priority_Pathogens_List_2024_2026-09-11",
+  "gold_node_id": "independent-assessment-of-rr-tb",
+  "target_leaf": "independent-assessment-of-rr-tb",
+  "chunk_id": "C0194",
+  "section_level": false,
+  "label": "golden-23"
+ },
+ "A024": {
+  "doc": "5d883081_WHO_Bacterial_Priority_Pathogens_List_2024_2026-09-11",
+  "gold_node_id": "results-who-bacterial-priority-pathogen-list-2024",
+  "target_leaf": "results-who-bacterial-priority-pathogen-list-2024-overview",
+  "chunk_id": "C0196",
+  "section_level": true,
+  "label": "golden-24"
+ },
+ "A025": {
+  "doc": "5d883081_WHO_Bacterial_Priority_Pathogens_List_2024_2026-09-11",
+  "gold_node_id": "methicillin-resistant-staphylococcus-aureus-mrsa-remains-a-high-priority",
+  "target_leaf": "methicillin-resistant-staphylococcus-aureus-mrsa-remains-a-high-priority",
+  "chunk_id": "C0206",
+  "section_level": false,
+  "label": "golden-25"
+ },
+ "A026": {
+  "doc": "5d883081_WHO_Bacterial_Priority_Pathogens_List_2024_2026-09-11",
+  "gold_node_id": "addressing-bacterial-priority-pathogens-through-innovation-and-r-d-of-new-drugs",
+  "target_leaf": "addressing-bacterial-priority-pathogens-through-innovation-and-r-d-of-new-drugs",
+  "chunk_id": "C0211",
+  "section_level": false,
+  "label": "golden-26"
+ },
+ "A027": {
+  "doc": "5d883081_WHO_Bacterial_Priority_Pathogens_List_2024_2026-09-11",
+  "gold_node_id": "the-pathogens-for-the-2024-update-were-selected-in-two-stages",
+  "target_leaf": "the-pathogens-for-the-2024-update-were-selected-in-two-stages-overview",
+  "chunk_id": "C0214",
+  "section_level": true,
+  "label": "golden-27"
+ },
+ "A028": {
+  "doc": "5d883081_WHO_Bacterial_Priority_Pathogens_List_2024_2026-09-11",
+  "gold_node_id": "a2-1-1-mortality",
+  "target_leaf": "a2-1-1-mortality-overview",
+  "chunk_id": "C0221",
+  "section_level": true,
+  "label": "golden-28"
+ },
+ "A029": {
+  "doc": "5d883081_WHO_Bacterial_Priority_Pathogens_List_2024_2026-09-11",
+  "gold_node_id": "a2-2-1-transmissibility",
+  "target_leaf": "a2-2-1-transmissibility-overview",
+  "chunk_id": "C0229",
+  "section_level": true,
+  "label": "golden-29"
+ },
+ "A030": {
+  "doc": "dda0c28e_Global_Antimicrobial_Resistance_and_Use_Surveillance_System_GLASS_Report_2022_2026-09-11",
+  "gold_node_id": "global-antimicrobial-resistance-and-use-surveillance-system-glass-report-2022",
+  "target_leaf": "global-antimicrobial-resistance-and-use-surveillance-system-glass-report-2022-overview",
+  "chunk_id": "C0490",
+  "section_level": true,
+  "label": "golden-30"
+ },
+ "A031": {
+  "doc": "dda0c28e_Global_Antimicrobial_Resistance_and_Use_Surveillance_System_GLASS_Report_2022_2026-09-11",
+  "gold_node_id": "1-2-what-s-new-in-the-2022-report",
+  "target_leaf": "1-2-what-s-new-in-the-2022-report",
+  "chunk_id": "C0504",
+  "section_level": false,
+  "label": "golden-31"
+ },
+ "A032": {
+  "doc": "dda0c28e_Global_Antimicrobial_Resistance_and_Use_Surveillance_System_GLASS_Report_2022_2026-09-11",
+  "gold_node_id": "1-1-basic-facts-on-antimicrobial-resistance-amr",
+  "target_leaf": "1-1-basic-facts-on-antimicrobial-resistance-amr",
+  "chunk_id": "C0503",
+  "section_level": false,
+  "label": "golden-32"
+ },
+ "A033": {
+  "doc": "dda0c28e_Global_Antimicrobial_Resistance_and_Use_Surveillance_System_GLASS_Report_2022_2026-09-11",
+  "gold_node_id": "1-2-what-s-new-in-the-2022-report",
+  "target_leaf": "1-2-what-s-new-in-the-2022-report",
+  "chunk_id": "C0504",
+  "section_level": false,
+  "label": "golden-33"
+ },
+ "A034": {
+  "doc": "dda0c28e_Global_Antimicrobial_Resistance_and_Use_Surveillance_System_GLASS_Report_2022_2026-09-11",
+  "gold_node_id": "2-1-glass-strategy-and-milestones",
+  "target_leaf": "2-1-glass-strategy-and-milestones-overview",
+  "chunk_id": "C0506",
+  "section_level": true,
+  "label": "golden-34"
+ },
+ "A035": {
+  "doc": "dda0c28e_Global_Antimicrobial_Resistance_and_Use_Surveillance_System_GLASS_Report_2022_2026-09-11",
+  "gold_node_id": "2-4-mortality-due-to-amr",
+  "target_leaf": "2-4-mortality-due-to-amr",
+  "chunk_id": "C0515",
+  "section_level": false,
+  "label": "golden-35"
+ },
+ "A036": {
+  "doc": "dda0c28e_Global_Antimicrobial_Resistance_and_Use_Surveillance_System_GLASS_Report_2022_2026-09-11",
+  "gold_node_id": "3-2-participation-and-coverage",
+  "target_leaf": "3-2-participation-and-coverage-overview",
+  "chunk_id": "C0519",
+  "section_level": true,
+  "label": "golden-36"
+ },
+ "A037": {
+  "doc": "dda0c28e_Global_Antimicrobial_Resistance_and_Use_Surveillance_System_GLASS_Report_2022_2026-09-11",
+  "gold_node_id": "3-3-global-amr-data",
+  "target_leaf": "3-3-global-amr-data-overview",
+  "chunk_id": "C0542",
+  "section_level": true,
+  "label": "golden-37"
+ },
+ "A038": {
+  "doc": "dda0c28e_Global_Antimicrobial_Resistance_and_Use_Surveillance_System_GLASS_Report_2022_2026-09-11",
+  "gold_node_id": "3-3-2-time-series-of-resistance-to-selected-antibacterials-2017-2020",
+  "target_leaf": "3-3-2-time-series-of-resistance-to-selected-antibacterials-2017-2020",
+  "chunk_id": "C0554",
+  "section_level": false,
+  "label": "golden-38"
+ },
+ "A039": {
+  "doc": "dda0c28e_Global_Antimicrobial_Resistance_and_Use_Surveillance_System_GLASS_Report_2022_2026-09-11",
+  "gold_node_id": "4-1-implementation-indicators",
+  "target_leaf": "4-1-implementation-indicators-overview",
+  "chunk_id": "C0560",
+  "section_level": true,
+  "label": "golden-39"
+ },
+ "A040": {
+  "doc": "dda0c28e_Global_Antimicrobial_Resistance_and_Use_Surveillance_System_GLASS_Report_2022_2026-09-11",
+  "gold_node_id": "4-2-participation-and-coverage",
+  "target_leaf": "4-2-participation-and-coverage-overview",
+  "chunk_id": "C0562",
+  "section_level": true,
+  "label": "golden-40"
+ },
+ "A041": {
+  "doc": "dda0c28e_Global_Antimicrobial_Resistance_and_Use_Surveillance_System_GLASS_Report_2022_2026-09-11",
+  "gold_node_id": "4-3-global-amc-data",
+  "target_leaf": "4-3-global-amc-data-overview",
+  "chunk_id": "C0565",
+  "section_level": true,
+  "label": "golden-41"
+ },
+ "A042": {
+  "doc": "dda0c28e_Global_Antimicrobial_Resistance_and_Use_Surveillance_System_GLASS_Report_2022_2026-09-11",
+  "gold_node_id": "4-3-global-amc-data",
+  "target_leaf": "4-3-global-amc-data-overview",
+  "chunk_id": "C0565",
+  "section_level": true,
+  "label": "golden-42"
+ },
+ "A043": {
+  "doc": "dda0c28e_Global_Antimicrobial_Resistance_and_Use_Surveillance_System_GLASS_Report_2022_2026-09-11",
+  "gold_node_id": "table-a2-list-of-indicators-used-in-the-report-to-describe-amc-table-16",
+  "target_leaf": "table-a2-list-of-indicators-used-in-the-report-to-describe-amc-table-16",
+  "chunk_id": "C0584",
+  "section_level": false,
+  "label": "golden-43"
+ },
+ "A044": {
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "gold_node_id": "1-definition-of-terms",
+  "target_leaf": "1-definition-of-terms",
+  "chunk_id": "C0265",
+  "section_level": false,
+  "label": "golden-44"
+ },
+ "A045": {
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "gold_node_id": "1-definition-of-terms",
+  "target_leaf": "1-definition-of-terms",
+  "chunk_id": "C0265",
+  "section_level": false,
+  "label": "golden-45"
+ },
+ "A046": {
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "gold_node_id": "3-the-burden-of-health-care-associated-infection",
+  "target_leaf": "3-the-burden-of-health-care-associated-infection-overview",
+  "chunk_id": "C0268",
+  "section_level": true,
+  "label": "golden-46"
+ },
+ "A047": {
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "gold_node_id": "3-the-burden-of-health-care-associated-infection",
+  "target_leaf": "3-the-burden-of-health-care-associated-infection-overview",
+  "chunk_id": "C0268",
+  "section_level": true,
+  "label": "golden-47"
+ },
+ "A048": {
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "gold_node_id": "4-historical-perspective-on-hand-hygiene-in-health-care",
+  "target_leaf": "4-historical-perspective-on-hand-hygiene-in-health-care",
+  "chunk_id": "C0270",
+  "section_level": false,
+  "label": "golden-48"
+ },
+ "A049": {
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "gold_node_id": "5-normal-bacterial-flora-on-hands",
+  "target_leaf": "5-normal-bacterial-flora-on-hands",
+  "chunk_id": "C0271",
+  "section_level": false,
+  "label": "golden-49"
+ },
+ "A050": {
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "gold_node_id": "6-physiology-of-normal-skin",
+  "target_leaf": "6-physiology-of-normal-skin-overview",
+  "chunk_id": "C0272",
+  "section_level": true,
+  "label": "golden-50"
+ },
+ "A051": {
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "gold_node_id": "8-models-of-hand-transmission",
+  "target_leaf": "8-models-of-hand-transmission",
+  "chunk_id": "C0284",
+  "section_level": false,
+  "label": "golden-51"
+ },
+ "A052": {
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "gold_node_id": "9-relationship-between-hand-hygiene-and-the-acquisition-of-health-care-associated-pathogens",
+  "target_leaf": "9-relationship-between-hand-hygiene-and-the-acquisition-of-health-care-associated-pathogens",
+  "chunk_id": "C0285",
+  "section_level": false,
+  "label": "golden-52"
+ },
+ "A053": {
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "gold_node_id": "10-methods-to-evaluate-the-antimicrobial-efficacy-of-handrub-and-handwash-agents-and-formulations-for-surgical-hand-preparation",
+  "target_leaf": "10-methods-to-evaluate-the-antimicrobial-efficacy-of-handrub-and-handwash-agents-and-formulations-for-surgical-hand-preparation-overview",
+  "chunk_id": "C0286",
+  "section_level": true,
+  "label": "golden-53"
+ },
+ "A054": {
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "gold_node_id": "11-review-of-preparations-used-for-hand-hygiene",
+  "target_leaf": "11-review-of-preparations-used-for-hand-hygiene-overview",
+  "chunk_id": "C0288",
+  "section_level": true,
+  "label": "golden-54"
+ },
+ "A055": {
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "gold_node_id": "11-review-of-preparations-used-for-hand-hygiene",
+  "target_leaf": "11-review-of-preparations-used-for-hand-hygiene-overview",
+  "chunk_id": "C0288",
+  "section_level": true,
+  "label": "golden-55"
+ },
+ "A056": {
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "gold_node_id": "11-review-of-preparations-used-for-hand-hygiene",
+  "target_leaf": "11-review-of-preparations-used-for-hand-hygiene-overview",
+  "chunk_id": "C0288",
+  "section_level": true,
+  "label": "golden-56"
+ },
+ "A057": {
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "gold_node_id": "11-review-of-preparations-used-for-hand-hygiene",
+  "target_leaf": "11-review-of-preparations-used-for-hand-hygiene-overview",
+  "chunk_id": "C0288",
+  "section_level": true,
+  "label": "golden-57"
+ },
+ "A058": {
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "gold_node_id": "11-review-of-preparations-used-for-hand-hygiene",
+  "target_leaf": "11-review-of-preparations-used-for-hand-hygiene-overview",
+  "chunk_id": "C0288",
+  "section_level": true,
+  "label": "golden-58"
+ },
+ "A059": {
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "gold_node_id": "12-who-recommended-handrub-formulations",
+  "target_leaf": "12-who-recommended-handrub-formulations",
+  "chunk_id": "C0301",
+  "section_level": false,
+  "label": "golden-59"
+ },
+ "A060": {
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "gold_node_id": "12-who-recommended-handrub-formulations",
+  "target_leaf": "12-who-recommended-handrub-formulations",
+  "chunk_id": "C0301",
+  "section_level": false,
+  "label": "golden-60"
+ },
+ "A061": {
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "gold_node_id": "13-surgical-hand-preparation-state-of-the-art",
+  "target_leaf": "13-surgical-hand-preparation-state-of-the-art-overview",
+  "chunk_id": "C0302",
+  "section_level": true,
+  "label": "golden-61"
+ },
+ "A062": {
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "gold_node_id": "13-surgical-hand-preparation-state-of-the-art",
+  "target_leaf": "13-surgical-hand-preparation-state-of-the-art-overview",
+  "chunk_id": "C0302",
+  "section_level": true,
+  "label": "golden-62"
+ },
+ "A063": {
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "gold_node_id": "13-surgical-hand-preparation-state-of-the-art",
+  "target_leaf": "13-surgical-hand-preparation-state-of-the-art-overview",
+  "chunk_id": "C0302",
+  "section_level": true,
+  "label": "golden-63"
+ },
+ "A064": {
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "gold_node_id": "14-skin-reactions-related-to-hand-hygiene",
+  "target_leaf": "14-skin-reactions-related-to-hand-hygiene",
+  "chunk_id": "C0307",
+  "section_level": false,
+  "label": "golden-64"
+ },
+ "A065": {
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "gold_node_id": "16-hand-hygiene-practices-among-health-care-workers-and-adherence-to-recommendations",
+  "target_leaf": "16-hand-hygiene-practices-among-health-care-workers-and-adherence-to-recommendations-overview",
+  "chunk_id": "C0309",
+  "section_level": true,
+  "label": "golden-65"
+ },
+ "A066": {
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "gold_node_id": "17-religious-and-cultural-aspects-of-hand-hygiene",
+  "target_leaf": "17-religious-and-cultural-aspects-of-hand-hygiene-overview",
+  "chunk_id": "C0321",
+  "section_level": true,
+  "label": "golden-66"
+ },
+ "A067": {
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "gold_node_id": "18-behavioural-considerations",
+  "target_leaf": "18-behavioural-considerations",
+  "chunk_id": "C0325",
+  "section_level": false,
+  "label": "golden-67"
+ },
+ "A068": {
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "gold_node_id": "21-the-who-multimodal-hand-hygiene-improvement-strategy",
+  "target_leaf": "21-the-who-multimodal-hand-hygiene-improvement-strategy-overview",
+  "chunk_id": "C0333",
+  "section_level": true,
+  "label": "golden-68"
+ },
+ "A069": {
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "gold_node_id": "21-the-who-multimodal-hand-hygiene-improvement-strategy",
+  "target_leaf": "21-the-who-multimodal-hand-hygiene-improvement-strategy-overview",
+  "chunk_id": "C0333",
+  "section_level": true,
+  "label": "golden-69"
+ },
+ "A070": {
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "gold_node_id": "21-the-who-multimodal-hand-hygiene-improvement-strategy",
+  "target_leaf": "21-the-who-multimodal-hand-hygiene-improvement-strategy-overview",
+  "chunk_id": "C0333",
+  "section_level": true,
+  "label": "golden-70"
+ },
+ "A071": {
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "gold_node_id": "21-the-who-multimodal-hand-hygiene-improvement-strategy",
+  "target_leaf": "21-the-who-multimodal-hand-hygiene-improvement-strategy-overview",
+  "chunk_id": "C0333",
+  "section_level": true,
+  "label": "golden-71"
+ },
+ "A072": {
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "gold_node_id": "22-impact-of-improved-hand-hygiene",
+  "target_leaf": "22-impact-of-improved-hand-hygiene-overview",
+  "chunk_id": "C0354",
+  "section_level": true,
+  "label": "golden-72"
+ },
+ "A073": {
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "gold_node_id": "23-practical-issues-and-potential-barriers-to-optimal-hand-hygiene-practices",
+  "target_leaf": "23-practical-issues-and-potential-barriers-to-optimal-hand-hygiene-practices-overview",
+  "chunk_id": "C0357",
+  "section_level": true,
+  "label": "golden-73"
+ },
+ "A074": {
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "gold_node_id": "23-practical-issues-and-potential-barriers-to-optimal-hand-hygiene-practices",
+  "target_leaf": "23-practical-issues-and-potential-barriers-to-optimal-hand-hygiene-practices-overview",
+  "chunk_id": "C0357",
+  "section_level": true,
+  "label": "golden-74"
+ },
+ "A075": {
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "gold_node_id": "23-practical-issues-and-potential-barriers-to-optimal-hand-hygiene-practices",
+  "target_leaf": "23-practical-issues-and-potential-barriers-to-optimal-hand-hygiene-practices-overview",
+  "chunk_id": "C0357",
+  "section_level": true,
+  "label": "golden-75"
+ },
+ "A076": {
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "gold_node_id": "23-practical-issues-and-potential-barriers-to-optimal-hand-hygiene-practices",
+  "target_leaf": "23-practical-issues-and-potential-barriers-to-optimal-hand-hygiene-practices-overview",
+  "chunk_id": "C0357",
+  "section_level": true,
+  "label": "golden-76"
+ },
+ "A077": {
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "gold_node_id": "ranking-system-for-evidence",
+  "target_leaf": "ranking-system-for-evidence-overview",
+  "chunk_id": "C0387",
+  "section_level": true,
+  "label": "golden-77"
+ },
+ "A078": {
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "gold_node_id": "3-recommendations-for-surgical-hand-preparation",
+  "target_leaf": "3-recommendations-for-surgical-hand-preparation",
+  "chunk_id": "C0390",
+  "section_level": false,
+  "label": "golden-78"
+ },
+ "A079": {
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "gold_node_id": "13-surgical-hand-preparation-state-of-the-art",
+  "target_leaf": "13-surgical-hand-preparation-state-of-the-art-overview",
+  "chunk_id": "C0302",
+  "section_level": true,
+  "label": "golden-79"
+ },
+ "A080": {
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "gold_node_id": "1-hand-hygiene-as-a-performance-indicator",
+  "target_leaf": "1-hand-hygiene-as-a-performance-indicator-overview",
+  "chunk_id": "C0410",
+  "section_level": true,
+  "label": "golden-80"
+ },
+ "A081": {
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "gold_node_id": "3-assessing-the-economic-impact-of-hand-hygiene-promotion",
+  "target_leaf": "3-assessing-the-economic-impact-of-hand-hygiene-promotion-overview",
+  "chunk_id": "C0416",
+  "section_level": true,
+  "label": "golden-81"
+ },
+ "A082": {
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "gold_node_id": "3-assessing-the-economic-impact-of-hand-hygiene-promotion",
+  "target_leaf": "3-assessing-the-economic-impact-of-hand-hygiene-promotion-overview",
+  "chunk_id": "C0416",
+  "section_level": true,
+  "label": "golden-82"
+ },
+ "A083": {
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "gold_node_id": "4-public-campaigning-who-and-the-mass-media",
+  "target_leaf": "4-public-campaigning-who-and-the-mass-media",
+  "chunk_id": "C0423",
+  "section_level": false,
+  "label": "golden-83"
+ },
+ "A084": {
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "gold_node_id": "8-nationally-driven-hand-hygiene-improvement-in-health-care",
+  "target_leaf": "8-nationally-driven-hand-hygiene-improvement-in-health-care",
+  "chunk_id": "C0427",
+  "section_level": false,
+  "label": "golden-84"
+ },
+ "A085": {
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "gold_node_id": "2-patient-empowerment-and-health-care",
+  "target_leaf": "2-patient-empowerment-and-health-care",
+  "chunk_id": "C0439",
+  "section_level": false,
+  "label": "golden-85"
+ },
+ "A086": {
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "gold_node_id": "6-who-global-survey-of-patient-experiences",
+  "target_leaf": "6-who-global-survey-of-patient-experiences",
+  "chunk_id": "C0443",
+  "section_level": false,
+  "label": "golden-86"
+ },
+ "A087": {
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "gold_node_id": "guidelines-for-hand-hygiene-prepared-by-various-other-agencies-both-prior-to-and-after-the-publication-of-the-advanced-draft-of-these-guidelines-are-currently-available-an-analysis-of-recommendations-in-guidelines-produced-by-16-countries-was-published-in-2001-635-however-several-guidelines-included-in-the-analysis-were-not-formal-publications-agreed-upon-nationally-or-sub-nationally-and-the-level-of-details-provided-could-be-expanded-more-extensively-this-section-examines-the-scope-approaches-and-recommendations-of-some-national-and-sub-national-guidelines",
+  "target_leaf": "guidelines-for-hand-hygiene-prepared-by-various-other-agencies-both-prior-to-and-after-the-publication-of-the-advanced-draft-of-these-guidelines-are-currently-available-an-analysis-of-recommendations-in-guidelines-produced-by-16-countries-was-published-in-2001-635-however-several-guidelines-included-in-the-analysis-were-not-formal-publications-agreed-upon-nationally-or-sub-nationally-and-the-level-of-details-provided-could-be-expanded-more-extensively-this-section-examines-the-scope-approaches-and-recommendations-of-some-national-and-sub-national-guidelines-overview",
+  "chunk_id": "C0449",
+  "section_level": true,
+  "label": "golden-87"
+ },
+ "A088": {
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "gold_node_id": "what-is-clostridium-difficile",
+  "target_leaf": "what-is-clostridium-difficile",
+  "chunk_id": "C0459",
+  "section_level": false,
+  "label": "golden-88"
+ },
+ "A089": {
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "gold_node_id": "appendix-4-monitoring-hand-hygiene-by-direct-methods",
+  "target_leaf": "appendix-4-monitoring-hand-hygiene-by-direct-methods",
+  "chunk_id": "C0474",
+  "section_level": false,
+  "label": "golden-89"
+ },
+ "A090": {
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "gold_node_id": "appendix-4-monitoring-hand-hygiene-by-direct-methods",
+  "target_leaf": "appendix-4-monitoring-hand-hygiene-by-direct-methods",
+  "chunk_id": "C0474",
+  "section_level": false,
+  "label": "golden-90"
+ },
+ "A091": {
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "gold_node_id": "appendix-6-who-global-survey-of-patient-experiences-in-hand-hygiene-improvement",
+  "target_leaf": "appendix-6-who-global-survey-of-patient-experiences-in-hand-hygiene-improvement-overview",
+  "chunk_id": "C0478",
+  "section_level": true,
+  "label": "golden-91"
+ },
+ "A092": {
+  "doc": "2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_Prevention_and_Control_Programmes_2026-09-11",
+  "gold_node_id": "4-3-guidelines-development-group",
+  "target_leaf": "4-3-guidelines-development-group",
+  "chunk_id": "C0035",
+  "section_level": false,
+  "label": "golden-92"
+ },
+ "A093": {
+  "doc": "2d6fb222_WHO_Guidelines_on_Core_Components_of_Infection_Prevention_and_Control_Programmes_2026-09-11",
+  "gold_node_id": "rationale-for-the-good-practice-statement",
+  "target_leaf": "rationale-for-the-good-practice-statement",
+  "chunk_id": "C0061",
+  "section_level": false,
+  "label": "golden-93"
+ },
+ "A094": {
+  "doc": "5d883081_WHO_Bacterial_Priority_Pathogens_List_2024_2026-09-11",
+  "gold_node_id": "acknowledgements",
+  "target_leaf": "acknowledgements",
+  "chunk_id": "C0177",
+  "section_level": false,
+  "label": "golden-94"
+ },
+ "A095": {
+  "doc": "5d883081_WHO_Bacterial_Priority_Pathogens_List_2024_2026-09-11",
+  "gold_node_id": "evaluation-and-management-of-potential-conflicts-of-interest",
+  "target_leaf": "evaluation-and-management-of-potential-conflicts-of-interest",
+  "chunk_id": "C0178",
+  "section_level": false,
+  "label": "golden-95"
+ },
+ "A096": {
+  "doc": "dda0c28e_Global_Antimicrobial_Resistance_and_Use_Surveillance_System_GLASS_Report_2022_2026-09-11",
+  "gold_node_id": "key-findings-and-public-health-implications",
+  "target_leaf": "key-findings-and-public-health-implications",
+  "chunk_id": "C0501",
+  "section_level": false,
+  "label": "golden-96"
+ },
+ "A097": {
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "gold_node_id": "7-transmission-of-pathogens-by-hands",
+  "target_leaf": "7-transmission-of-pathogens-by-hands-overview",
+  "chunk_id": "C0274",
+  "section_level": true,
+  "label": "golden-97"
+ },
+ "A098": {
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "gold_node_id": "7-transmission-of-pathogens-by-hands",
+  "target_leaf": "7-transmission-of-pathogens-by-hands-overview",
+  "chunk_id": "C0274",
+  "section_level": true,
+  "label": "golden-98"
+ },
+ "A099": {
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "gold_node_id": "7-transmission-of-pathogens-by-hands",
+  "target_leaf": "7-transmission-of-pathogens-by-hands-overview",
+  "chunk_id": "C0274",
+  "section_level": true,
+  "label": "golden-99"
+ },
+ "A100": {
+  "doc": "c023fe2a_WHO_Guidelines_on_Hand_Hygiene_in_Health_Care_2009_2026-09-11",
+  "gold_node_id": "11-review-of-preparations-used-for-hand-hygiene",
+  "target_leaf": "11-review-of-preparations-used-for-hand-hygiene-overview",
+  "chunk_id": "C0288",
+  "section_level": true,
+  "label": "golden-100"
+ }
+}
