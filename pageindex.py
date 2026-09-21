@@ -1902,9 +1902,17 @@ class DocCandidates:
 
 
 # How many pruned leaves a strong lexical match may reinstate, per document.
-# Small on purpose: this is a safety net for the summary walk's blind spot,
-# not a second retrieval strategy competing with it.
-LEXICAL_RESCUE_LEAVES = 3
+# A safety net for the summary walk's blind spot, not a second retrieval
+# strategy competing with it — but the net has to be wide enough to catch
+# what the walk drops. Measured over 40 queries: both misses had the gold
+# ranked 4th and 5th among the PRUNED leaves by the same BM25 the rescue
+# uses, so a cap of 3 excluded them by one and two places respectively.
+#
+# 5 is chosen to match the k at which the lexical-only baseline is quoted
+# (recall@5), so the assembled system and the baseline are allowed the same
+# number of lexical picks and the comparison is like-for-like. It costs at
+# most 2 extra leaf evaluations per document per query.
+LEXICAL_RESCUE_LEAVES = 5
 
 
 def _rehydrate_pruned_leaves(

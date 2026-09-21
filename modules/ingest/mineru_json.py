@@ -64,7 +64,8 @@ PDF_DIR = KB_DIR / "sources"                 # stable home for the source PDFs
 OUT_DIR = ROOT / ".mineru_out"               # crops + caption cache
 CONFIG_PATH = ROOT / ".mineru.json"
 SOURCES_MANIFEST = KB_DIR / ".sources.json"
-# {doc_id: {page: [label, ...]}} — see evaluation/golden_from_csv.py.
+# {doc_id: {node_id: [label, ...]}} — the chunk verified to contain each
+# question's answer. Node-keyed on purpose; see load_golden.
 GOLDEN_PATH = KB_DIR / ".golden.json"
 
 STATE_NAME = "final_state.json"
@@ -123,19 +124,20 @@ def set_source_dir(path: str) -> None:
                            encoding="utf-8")
 
 
-def load_golden(stem: str) -> dict[int, list[str]]:
-    """This document's golden labels, as {1-based page: [label, ...]}.
+def load_golden(stem: str) -> dict[str, list[str]]:
+    """This document's golden labels, as {node_id: [label, ...]}.
 
-    Eval questions name a document and a page, so the labels are stamped onto
-    every chunk whose pin covers that page — which is a recall set, not a
-    single answer: a page routinely spans several chunks, and which of them
-    holds the answer is exactly what the eval is measuring.
+    Keyed by NODE, not by page. A question cites a page, but a page spans
+    several chunks, so stamping every chunk that covers it marks passages that
+    do not contain the answer — and a recall measured against those is
+    measuring the wrong thing. The mapping from question to node is settled by
+    reading the passage; this only applies it.
     """
     try:
         raw = json.loads(GOLDEN_PATH.read_text(encoding="utf-8")).get(stem, {})
     except Exception:
         return {}
-    return {int(page): list(labels) for page, labels in raw.items()}
+    return {str(node): list(labels) for node, labels in raw.items()}
 
 
 def _load_sources() -> dict:
@@ -517,27 +519,18 @@ def build_markdown(regions: list[Region], assets: list[_Asset], stem: str,
     from modules.ingest._massage import (_asset_pin, _caption_heading,
                                          _section_pin)
 
-    def with_golden(pin_lines: list[str], prov) -> list[str]:
-        """Append `golden: ...` to a pin whose chunk covers a labelled page.
+    def with_golden(pin_lines: list[str], node_id: str) -> list[str]:
+        """Append `golden: ...` to the pin of a node named in the label map.
 
         Inserted rather than passed to the pin emitters so the two ingest
         paths keep writing byte-identical pins for everything else — this is
         an eval annotation, not a change to the pin format.
         """
-        if not golden or prov is None:
-            return pin_lines
-        pages = set()
-        if isinstance(prov, dict):
-            if prov.get("page"):
-                pages.add(int(prov["page"]))
-            pages.update(int(p) for p in (prov.get("regions") or {}))
-        else:                                   # an _Asset
-            pages.add(int(prov.page))
-        labels = sorted({l for p in pages for l in golden.get(p, [])})
+        labels = golden.get(node_id) if golden else None
         if not labels:
             return pin_lines
         out = list(pin_lines)
-        out.insert(out.index("```", 1), f"golden: {', '.join(labels)}")
+        out.insert(out.index("```", 1), f"golden: {', '.join(sorted(labels))}")
         return out
 
     assets_by_index = {}
@@ -693,10 +686,10 @@ def build_markdown(regions: list[Region], assets: list[_Asset], stem: str,
             pins_at[line_idx] = with_golden(_asset_pin(
                 node_id, stem, payload,
                 f"{asset_url_base}/{Path(payload.image).name}", OCR_SCALE),
-                payload)
+                node_id)
         else:
             pins_at[line_idx] = with_golden(
-                _section_pin(node_id, stem, payload, OCR_SCALE), payload)
+                _section_pin(node_id, stem, payload, OCR_SCALE), node_id)
 
     out = text.split("\n")
     for line_idx in sorted(pins_at, reverse=True):
@@ -847,13 +840,13 @@ def _ingest(sessions: list[Path], root: Path | None, progress=None) -> dict:
             _describe(assets, warnings, stem, _caption_progress)
 
         report("massage", stem, i, f"Writing {stem}.md with provenance pins…")
-        golden = load_golden(stem)
+        golden = load_golden(stem)   # {node_id: [label, ...]}
         markdown = build_markdown(regions, assets, stem,
                                   asset_url_base=f"/assets/{stem}",
                                   golden=golden)
         if golden:
             report("massage", stem, i,
-                   f"Stamping golden labels on {len(golden)} page(s) of {stem}…")
+                   f"Stamping golden labels on {len(golden)} chunk(s) of {stem}…")
         if assets:
             asset_dir = KB_DIR / "assets" / stem
             asset_dir.mkdir(parents=True, exist_ok=True)

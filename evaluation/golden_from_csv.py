@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import csv
 import json
+import re
 import sys
 from pathlib import Path
 
@@ -33,10 +34,20 @@ def doc_ids() -> list[str]:
     return sorted(p.stem for p in KB_DIR.glob("*.md"))
 
 
+def _norm(name: str) -> str:
+    """Filenames survive a round trip through the extraction pipeline with
+    their punctuation rewritten: "MRSA; 2014, hygiene_2026-09-01.pdf" becomes
+    the doc id "e52f664f_MRSA_2014_hygiene_2026-09-01". Compare on the same
+    sanitisation the ingest module applies, or a row silently goes unmatched
+    and its questions are dropped from the labels."""
+    return re.sub(r"[^A-Za-z0-9]+", "_", Path(name.strip()).stem).strip("_").lower()
+
+
 def match_doc(name: str, ids: list[str]) -> str | None:
-    stem = Path(name.strip()).stem
+    stem = _norm(name)
     for doc_id in ids:
-        if doc_id == stem or doc_id.endswith(stem):
+        norm_id = _norm(doc_id)
+        if norm_id == stem or norm_id.endswith("_" + stem) or norm_id.endswith(stem):
             return doc_id
     return None
 
