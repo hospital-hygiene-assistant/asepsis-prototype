@@ -1,0 +1,222 @@
+{
+  "formatVersion": 2,
+  "doc": "e52f664f_MRSA_2014_hygiene_2026-09-01",
+  "summaryModel": "gemma4:e4b",
+  "summaryPromptVersion": 2003,
+  "nodes": [
+    {
+      "nodeId": "good-hand-hygiene-by-health-workers-protects-patients-from-drug-resistant-infections",
+      "title": "Good hand hygiene by health workers protects patients from drug resistant infections",
+      "headingLevel": 1,
+      "lineIdx": 0,
+      "summary": "This section emphasizes that good hand hygiene by health workers protects patients from drug resistant infections, noting that healthcare-associated infections often spread via hands and can affect at least 7 in high-income and 10 in low-/middle-income countries among hospitalized patients. It details that performing hand hygiene at 5 key moments—before touching a patient, before clean/aseptic procedures, after contact with body fluids, after touching a patient, and after touching surroundings—is crucial. The section also mentions WHO's \"SAVE LIVES: Clean Your Hands\" campaign and provides contact information for Glenn Thomas in Geneva.",
+      "isLeaf": false,
+      "synthetic": false,
+      "parentTitle": null,
+      "content": null,
+      "pin": {
+        "id": "good-hand-hygiene-by-health-workers-protects-patients-from-drug-resistant-infections",
+        "kind": "section",
+        "doc": "e52f664f_MRSA_2014_hygiene_2026-09-01",
+        "page": 1,
+        "bbox": [
+          74.1,
+          445.3,
+          1101.9,
+          792.2
+        ],
+        "regions": [
+          [
+            1,
+            70.5,
+            827.8,
+            1114.8,
+            1461.9
+          ],
+          [
+            2,
+            71.3,
+            117.3,
+            1088.2,
+            222.4
+          ]
+        ],
+        "scale": 2.0
+      },
+      "contentHash": "754a41421149b236d3cde36c6d3e18e1bb2a8e404e1aeca6d9f9c0d2e0678467",
+      "summarySource": "llm",
+      "summaryModel": "gemma4:e4b",
+      "summaryPromptVersion": 2003,
+      "children": [
+        {
+          "nodeId": "good-hand-hygiene-by-health-workers-protects-patients-from-drug-resistant-infections-overview",
+          "title": "Good hand hygiene by health workers protects patients from drug resistant infections — Overview",
+          "headingLevel": 2,
+          "lineIdx": 0,
+          "summary": "This 2 May 2014 WHO news release urges health workers to practice good hand hygiene on Hand Hygiene Day (5 May) to prevent infections in health facilities. It notes that healthcare-associated infections often occur via hands and that among hospitalized patients, at least 7 in high-income and 10 in low-/middle-income countries acquire such infections, rising to around 30 per 100 in ICUs.",
+          "isLeaf": true,
+          "synthetic": true,
+          "parentTitle": "Good hand hygiene by health workers protects patients from drug resistant infections",
+          "content": "2 May 2014 | News release | Geneva | Reading time: 3 min (729 words)\n\nالعربية\n\n中文\n\nFrançais\n\nРусский\n\nEspañol\n\nNews release\n\n2 May 2014 | Geneva - On Hand Hygiene Day (5 May), WHO urges health workers to practice good hand hygiene when caring for patients, to protect them from contracting infections in health facilities. Initial results from a new WHO global survey confirm that these infections are often resistant to the antibiotics used to treat them.\n\nHealthcare-associated infections usually occur when germs are transferred by health-care providers’ hands touching the patient. Of every 100 hospitalized patients, at least 7 in highincome and 10 in low-/middle-income countries will acquire a healthcare-associated infection. Among critically ill and vulnerable patients in intensive care units, that figure rises to around 30 per 100 . Every year, hundreds of millions of patients around the world are affected by healthcare-associated infections, a high proportion of which is caused by germs that are resistant to antimicrobial drugs.\n\nWhen patients are infected with germs that do not respond well to antibiotics, they generally have worse clinical outcomes, cost more to treat and are more likely to die than other patients.",
+          "pin": {
+            "id": "good-hand-hygiene-by-health-workers-protects-patients-from-drug-resistant-infections",
+            "kind": "section",
+            "doc": "e52f664f_MRSA_2014_hygiene_2026-09-01",
+            "page": 1,
+            "bbox": [
+              74.1,
+              445.3,
+              1101.9,
+              792.2
+            ],
+            "regions": [
+              [
+                1,
+                70.5,
+                827.8,
+                1114.8,
+                1461.9
+              ],
+              [
+                2,
+                71.3,
+                117.3,
+                1088.2,
+                222.4
+              ]
+            ],
+            "scale": 2.0
+          },
+          "contentHash": "8b05f8b99549f69bb6780629b70e2ce7e5c2177845e4cce79517efe3a6026359",
+          "summarySource": "llm",
+          "summaryModel": "gemma4:e4b",
+          "summaryPromptVersion": 2003,
+          "children": []
+        },
+        {
+          "nodeId": "antimicrobial-resistance-and-good-hand-hygiene",
+          "title": "Antimicrobial resistance and good hand hygiene",
+          "headingLevel": 2,
+          "lineIdx": 32,
+          "summary": "A WHO global report documented high rates of antimicrobial resistance in bacteria causing infections like urinary tract infection, pneumonia, and bloodstream infections worldwide. Resistance is frequent in healthcare facilities; for MRSA, rates were 44% in Latin America, 40% in West African countries, and 38% in Europe. Good hand hygiene by health workers reduces these resistant germs, especially MRSA.",
+          "isLeaf": true,
+          "synthetic": false,
+          "parentTitle": null,
+          "content": "Earlier this week, WHO issued a major global report on antimicrobial resistance documenting high rates of resistance in bacteria that cause common infections (e.g. urinary tract infection, surgical site infections, pneumonia and bloodstream infections) in all regions of the world.\n\nThe initial results of the global survey confirm that resistance is very frequent in bacteria isolated in health-care facilities; for instance, for a devastating bug called Methicillinresistant Staphylococcus aureus (MRSA), it is as high as 44%, 40% and 38% on average in Latin America, West African countries, and Europe respectively.\n\n“There is clear scientific evidence that good hand hygiene by health workers reduces healthcare-associated infections caused by resistant germs, in particular by MRSA,” says Professor Benedetta Allegranzi, technical lead of the WHO Clean Care is Safer Care programme and of the activities planned for Hand Hygiene Day.",
+          "pin": {
+            "id": "antimicrobial-resistance-and-good-hand-hygiene",
+            "kind": "section",
+            "doc": "e52f664f_MRSA_2014_hygiene_2026-09-01",
+            "page": 2,
+            "bbox": [
+              72.0,
+              261.3,
+              950.7,
+              305.9
+            ],
+            "regions": [
+              [
+                2,
+                71.3,
+                341.9,
+                1120.6,
+                822.0
+              ]
+            ],
+            "scale": 2.0,
+            "golden": "golden-1"
+          },
+          "contentHash": "ecf97d2be314844ba5d4ab72a2c3ed8f4516cdcf174aaa8de5e70df23dd5bf85",
+          "summarySource": "llm",
+          "summaryModel": "gemma4:e4b",
+          "summaryPromptVersion": 2003,
+          "children": []
+        },
+        {
+          "nodeId": "5-key-moments",
+          "title": "5 key moments",
+          "headingLevel": 2,
+          "lineIdx": 51,
+          "summary": "The passage details that health workers must perform hand hygiene at 5 key moments to protect patients from drug resistant infections. These moments are before touching a patient, before clean and aseptic procedures, after contact with body fluids, after touching a patient, and after touching patient surroundings. The \"SAVE LIVES: Clean Your Hands\" campaign involves over 1100 health facilities registering this year.",
+          "isLeaf": true,
+          "synthetic": false,
+          "parentTitle": null,
+          "content": "Health workers can play a vital role to protect patients from infections that are difficult to treat by performing hand hygiene at 5 key moments, preferably by using an alcohol-based rub or by hand washing with soap and water if hands are visibly dirty.\n\nThe ‘5 Moments’ for hand hygiene are:\n\nbefore touching a patient.\n\nbefore clean and aseptic procedures (e.g. Inserting devices such as catheters).\n\nafter contact with body fluids.\n\nafter touching a patient.\n\nafter touching patient surroundings.\n\nThe use of alcohol-based hand rub products is a key factor to achieve improvement because they can be promptly used at the point of care when hand hygiene is needed to ensure patient safety and they have higher antimicrobial effect than soap and water.\n\n“Although the development of new antibiotics is vital to provide new treatment options, strengthening hand hygiene and other infection control best practices has the potential to stop antimicrobial resistance. Preventing the transmission and spread of the germs, avoids\n\ninfections and the related treatment constraints and patient suffering,” says Dr. Edward Kelley, Director, Service Delivery and Safety which hosts the Clean Care is Safer Care programme.\n\nFor this year’s “SAVE LIVES: Clean Your Hands” campaign, the Call to Action is “No action today; no cure tomorrow – make sure the WHO ‘5 Moments’ are part of protecting your patients from resistant germs.” Under this year’s campaign, more than 1100 health facilities have registered, committing to practice good hand hygiene, joining more than 16 000 health facilities in 168 countries that have committed in previous years.\n\n“This continuous increase of participation shows that hand hygiene efforts continue to be prioritized and sustained worldwide, especially when combined with other important goals such as combating antimicrobial resistance,” says Professor Didier Pittet, Director of the WHO Collaborating Centre on Patient Safety (Infection Control) at the University of Geneva Hospitals.\n\nThrough the \"SAVE LIVES: Clean Your Hands\" campaign, WHO will continue to work with countries to highlight the issue of antimicrobial resistance and to promote the role that hand hygiene can play in preventing the spread of resistant germs. Final results of the surveys mentioned will be updated as more data is processed. This will allow reacting with further actions in the field of infection prevention and control, surveillance, antibiotic use optimization, and the prevention of surgical site infections.",
+          "pin": {
+            "id": "5-key-moments",
+            "kind": "section",
+            "doc": "e52f664f_MRSA_2014_hygiene_2026-09-01",
+            "page": 2,
+            "bbox": [
+              73.4,
+              858.2,
+              357.7,
+              899.2
+            ],
+            "regions": [
+              [
+                2,
+                71.3,
+                939.3,
+                1118.4,
+                1544.7
+              ],
+              [
+                3,
+                71.3,
+                116.6,
+                1115.6,
+                873.1
+              ]
+            ],
+            "scale": 2.0,
+            "golden": "golden-2"
+          },
+          "contentHash": "36b24d2b4e85312d84696f18b802a3e087a44547f83c8fd26404d44d39ea45d9",
+          "summarySource": "llm",
+          "summaryModel": "gemma4:e4b",
+          "summaryPromptVersion": 2003,
+          "children": []
+        },
+        {
+          "nodeId": "for-more-information-contact",
+          "title": "For more information contact:",
+          "headingLevel": 2,
+          "lineIdx": 90,
+          "summary": "This section provides contact information for Glenn Thomas, WHO Communications Officer in Geneva. The provided details include a telephone number of +41 22 791 39 83, mobile number +41 79 509 06 77, and email thomasg@who.int.",
+          "isLeaf": true,
+          "synthetic": false,
+          "parentTitle": null,
+          "content": "Glenn Thomas\n\nWHO, Geneva\n\nCommunications Officer\n\nTelephone: +41 22 791 39 83\n\nMobile.: +41 79 509 06 77\n\nEmail:thomasg@who.int",
+          "pin": {
+            "id": "for-more-information-contact",
+            "kind": "section",
+            "doc": "e52f664f_MRSA_2014_hygiene_2026-09-01",
+            "page": 3,
+            "bbox": [
+              73.4,
+              909.8,
+              506.0,
+              944.4
+            ],
+            "regions": [
+              [
+                3,
+                72.7,
+                981.8,
+                405.2,
+                1197.0
+              ]
+            ],
+            "scale": 2.0
+          },
+          "contentHash": "51ad286f40bc5673aae9dc9e266b9e3e42544a3591059ad7b1babb9f82521cdf",
+          "summarySource": "llm",
+          "summaryModel": "gemma4:e4b",
+          "summaryPromptVersion": 2003,
+          "children": []
+        }
+      ]
+    }
+  ]
+}

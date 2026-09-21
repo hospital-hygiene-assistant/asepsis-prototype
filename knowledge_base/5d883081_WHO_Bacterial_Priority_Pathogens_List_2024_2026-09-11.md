@@ -295,7 +295,6 @@ doc: 5d883081_WHO_Bacterial_Priority_Pathogens_List_2024_2026-09-11
 page: 15
 bbox: [149.7, 130.3, 390.9, 169.9]
 scale: 2.0
-golden: golden-19
 ```
 
 ### Background
@@ -331,7 +330,6 @@ page: 15
 bbox: [148.3, 919.3, 391.6, 945.2]
 regions: [[15, 145.4, 956.0, 1043.7, 1487.3]]
 scale: 2.0
-golden: golden-19
 ```
 
 AMR is an evolving threat that challenges the effectiveness of existing treatments. R&D of new antibacterial agents have not kept pace with the rapid evolution of resistance, leaving a substantial gap in the ability to properly address the unmet needs of patients (5,11). Quantifying the global burden of ABR is complex due to the limited availability of high-quality data, and continuous assessment is necessary as knowledge and evidence evolve (1). Global data gaps were acknowledged as limitations in the 2017 WHO BPPL, which emphasized the need for further research and data to better understand the extent of ABR in specific contexts (3).
@@ -350,7 +348,6 @@ page: 16
 bbox: [148.3, 128.9, 298.7, 154.8]
 regions: [[16, 146.1, 165.6, 1041.6, 600.4]]
 scale: 2.0
-golden: golden-20
 ```
 
 The purpose of the BPPL 2024 is to guide resource allocation, guide and promote R&D of novel antibacterial agents and support development of effective strategies to prevent, control and treat infections caused by priority pathogens. This update addresses only ABR bacterial phenotypes for which there is the greatest unmet need and that result in the highest, most significant public health burden.
@@ -377,7 +374,6 @@ page: 16
 bbox: [149.0, 624.8, 327.5, 651.5]
 regions: [[16, 149.0, 661.6, 1040.8, 939.4]]
 scale: 2.0
-golden: golden-20
 ```
 
 The intended readership of this document includes:
@@ -461,7 +457,6 @@ page: 17
 bbox: [149.7, 577.3, 249.1, 673.1]
 regions: [[17, 148.3, 577.3, 249.1, 1519.6]]
 scale: 2.0
-golden: golden-21
 ```
 
 9 small graphics of near-identical size (9 on page 17) that layout detection reported as figures. None carries a caption, so they are most likely icons or fragments of one infographic rather than figures in their own right. They are not described.
@@ -609,7 +604,6 @@ page: 20
 bbox: [147.6, 127.4, 804.0, 155.5]
 regions: [[20, 145.4, 165.6, 1043.0, 444.2]]
 scale: 2.0
-golden: golden-22
 ```
 
 In this update, five pathogens–antibiotic combinations that were included in the 2017 version were removed based on evidence and expert consensus: clarithromycin-resistant Helicobacter pylori, fluoroquinolone-resistant Campylobacter spp., penicillin-non-susceptible Streptococcus pneumoniae, third-generation cephalosporin-resistant Providencia spp. and vancomycin-intermediate and -resistant S. aureus.
@@ -626,7 +620,7 @@ page: 20
 bbox: [147.6, 468.6, 768.7, 496.0]
 regions: [[20, 145.4, 506.1, 1043.0, 1556.4], [22, 147.6, 1010.0, 985.4, 1153.2], [23, 146.1, 128.9, 1043.0, 358.5]]
 scale: 2.0
-golden: golden-22, golden-23
+golden: golden-22
 ```
 
 Pathogen–antibiotic combinations were described and assessed against eight defined criteria (attributes), based on current evidence (see Table 2 for prioritization criteria, definitions, and levels). The weights of the assessment criteria were determined according to the PAPRIKA method, in a participatory blinded survey designed with 1000minds® software (19). A total of 79 experts from all six WHO regions participated in the survey, representing an 80% response rate from the initial invitation to 100 experts. Participants were selected to ensure diverse geography, gender and expertise. The participants responded subjectively to a series of simple questions based on their expert knowledge. They focused on two criteria or attributes of two pathogens at a time, involving a trade-off while keeping other criteria constant. Blinding techniques were applied to reduce bias and enhance reliability. (Note: As RR-TB was evaluated independently, it was not included in the global survey). The results of the global PAPRIKA survey were the basis for assigning criteria weights. There was a strong consensus among participants, as indicated by a Spearman rank correlation coefficient2 of 0.9, and Kendall’s coefficient of concordance (W)3 of 0.9 (see Fig. 3).
@@ -728,7 +722,6 @@ page: 23
 bbox: [147.6, 819.2, 452.8, 845.8]
 regions: [[23, 146.1, 855.9, 1043.0, 1337.5]]
 scale: 2.0
-golden: golden-23
 ```
 
 Later in the study, the BPPL Advisory Group requested the application of MCDA criteria used for assessing other pathogens to evaluate and prioritize RR-TB, acknowledging the limitations. While most of the attributes of MCDA could be applied directly to assessment of RR-TB, some adaptations were required to account for the chronic nature of RR-TB, its transmission through the air in communities and the fact that the disease is treated with a combination of four or more drugs for at least 6 months. Most of the data on the RR-TB disease burden and trends were provided by WHO from its surveillance projects, and reports rather than a systematic literature review were used (14,20).
@@ -838,7 +831,6 @@ page: 24
 bbox: [170.6, 457.1, 441.2, 727.8]
 regions: [[24, 170.6, 455.0, 1027.9, 731.4], [25, 146.1, 182.1, 1042.3, 464.3]]
 scale: 2.0
-golden: golden-24
 ```
 
 #### Box 1. Operational definitions of priority categories in the 2024 WHO BPPL
@@ -853,7 +845,6 @@ page: 24
 bbox: [170.6, 457.1, 441.2, 727.8]
 image: /assets/5d883081_WHO_Bacterial_Priority_Pathogens_List_2024_2026-09-11/figure_27.png
 scale: 2.0
-golden: golden-24
 ```
 
 ![figure 27](/assets/5d883081_WHO_Bacterial_Priority_Pathogens_List_2024_2026-09-11/figure_27.png)
@@ -872,7 +863,6 @@ page: 24
 bbox: [460.7, 456.4, 739.2, 731.4]
 image: /assets/5d883081_WHO_Bacterial_Priority_Pathogens_List_2024_2026-09-11/figure_28.png
 scale: 2.0
-golden: golden-24
 ```
 
 ![figure 28](/assets/5d883081_WHO_Bacterial_Priority_Pathogens_List_2024_2026-09-11/figure_28.png)
@@ -891,7 +881,6 @@ page: 24
 bbox: [750.0, 455.0, 1027.9, 731.4]
 image: /assets/5d883081_WHO_Bacterial_Priority_Pathogens_List_2024_2026-09-11/figure_29.png
 scale: 2.0
-golden: golden-24
 ```
 
 ![figure 29](/assets/5d883081_WHO_Bacterial_Priority_Pathogens_List_2024_2026-09-11/figure_29.png)
@@ -997,7 +986,6 @@ page: 26
 bbox: [147.6, 1387.2, 462.1, 1414.5]
 regions: [[26, 145.4, 1423.9, 1043.7, 1547.7], [27, 146.1, 128.9, 1042.3, 227.5]]
 scale: 2.0
-golden: golden-25
 ```
 
 In this update, RR-TB was included as a critical priority. RR-TB poses significant additional challenges to those of drug-susceptible (DS)-TB in terms of diagnosis, treatment, clinical management and overall public health response. Capacity to detect resistance to rifampicin and to most anti-TB medicines remains severely limited worldwide (14). Treatment regimens for RR-TB are orders of magnitude more expensive and toxic than those used for DS-TB, leading to high rates of patient loss to follow-up before
@@ -1029,7 +1017,6 @@ page: 27
 bbox: [147.6, 603.3, 584.5, 631.3]
 regions: [[27, 145.4, 640.7, 1043.7, 1572.9], [28, 145.4, 129.6, 1043.0, 972.5]]
 scale: 2.0
-golden: golden-25
 ```
 
 The updated WHO BPPL ranking reflects a notable increase in recognition of “community” pathogens, indicating their growing resistance to treatments and the substantial burden they pose, particularly in LMIC. The increase in the priority of community pathogens has important implications for public health and R&D and reflects growing concern about these pathogens and their resistance to antibiotics.
@@ -1125,7 +1112,6 @@ page: 31
 bbox: [147.6, 683.9, 819.1, 710.5]
 regions: [[31, 145.4, 720.6, 1042.3, 1371.4], [32, 145.4, 128.9, 1043.0, 1187.1]]
 scale: 2.0
-golden: golden-26
 ```
 
 Ensuring equitable global access to both innovative and existing quality-assured antibiotics is crucial for combatting bacterial infections, including those caused by resistant bacterial pathogens. This requires a comprehensive approach to both supply- and demand-side barriers to access. Optimizing antibiotic production, strengthening the global supply chain, ensuring stringent and efficient regulatory pathways, implementing robust and effective procurement schemes, and establishing efficient and resilient distribution channels are key considerations. Ensuring patient education and awareness, optimizing drug portfolios, and translating them into policy and practice are also important. The specific challenges faced by LMIC should be addressed, including access to antibiotics as part of universal health coverage and improving health-care systems. Substandard and falsified antibiotics are pervasive in many settings and are also an impediment to accessing high-quality medicines.
@@ -1476,7 +1462,6 @@ doc: 5d883081_WHO_Bacterial_Priority_Pathogens_List_2024_2026-09-11
 page: 43
 bbox: [148.3, 128.1, 408.8, 154.8]
 scale: 2.0
-golden: golden-28
 ```
 
 #### A2.1.1 Mortality
@@ -1530,7 +1515,6 @@ page: 43
 bbox: [151.2, 1074.8, 1037.2, 1458.5]
 image: /assets/5d883081_WHO_Bacterial_Priority_Pathogens_List_2024_2026-09-11/table_4.png
 scale: 2.0
-golden: golden-28
 ```
 
 | Low(< 5%) | Low-medium(5-10%) | Medium(11-20%) | Medium-high(21-30%) | High(> 30%) |
@@ -1810,7 +1794,6 @@ page: 48
 bbox: [152.6, 570.1, 1036.5, 908.5]
 regions: [[48, 152.6, 570.1, 1036.5, 908.5], [49, 151.2, 188.6, 1038.0, 1071.9]]
 scale: 2.0
-golden: golden-29
 ```
 
 ###### Table A2.5. Summary of data for the outbreak capability and transmission pathways scores
@@ -1825,7 +1808,6 @@ page: 48
 bbox: [152.6, 570.1, 1036.5, 908.5]
 image: /assets/5d883081_WHO_Bacterial_Priority_Pathogens_List_2024_2026-09-11/table_8.png
 scale: 2.0
-golden: golden-29
 ```
 
 | Domain 1: Outbreak capability score (OC) | Domain 2: Transmission pathways score (TP) |
