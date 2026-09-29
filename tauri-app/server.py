@@ -22,6 +22,7 @@ sys.path.insert(0, str(ROOT))
 import choices as app_choices
 import config as app_config
 import debug_cache as app_debug_cache
+import demo_replay as app_demo
 import runlog as app_runlog
 import synthesis as app_synthesis
 import tokens as app_tokens
@@ -275,6 +276,13 @@ async def _no_cache(request, call_next):
     edits. Disabling caching keeps every launch on the latest UI.
     """
     response = await call_next(request)
+    if request.url.path.startswith("/assets/"):
+        # Ingested figures never change under a given path (a re-ingest rewrites
+        # them, and StaticFiles' ETag/Last-Modified catches that). "no-cache" =
+        # revalidate, so a reopen costs a 304 per figure instead of re-sending a
+        # document's ~15 MB of PNGs.
+        response.headers["Cache-Control"] = "no-cache"
+        return response
     response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
     response.headers["Pragma"] = "no-cache"
     response.headers["Expires"] = "0"
@@ -944,6 +952,22 @@ def get_documents():
             "tree": tree,
         })
     return JSONResponse(docs)
+
+
+@app.get("/api/demo/cases")
+def get_demo_cases():
+    """Recorded evaluation questions for the Demo tab. Read-only; no model call."""
+    if not app_demo.available():
+        return JSONResponse({"available": False, "cases": []})
+    return JSONResponse({"available": True, "cases": app_demo.list_cases()})
+
+
+@app.get("/api/demo/case/{case_id}")
+def get_demo_case(case_id: str):
+    case = app_demo.get_case(case_id) if app_demo.available() else None
+    if case is None:
+        return JSONResponse({"error": f"No recorded case '{case_id}'"}, status_code=404)
+    return JSONResponse(case)
 
 
 @app.get("/api/document/{stem}/full")

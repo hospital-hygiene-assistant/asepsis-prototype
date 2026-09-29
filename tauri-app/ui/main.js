@@ -2070,7 +2070,11 @@ async function openDocViewer(stem, targetTitle = null) {
 
   titleEl.textContent = (stem || 'Document').replace(/_/g, ' ');
   tocEl.innerHTML = '';
-  bodyEl.innerHTML = '<div class="empty-msg">Loading…</div>';
+  releaseDocScrollPin(bodyEl);
+  const wasShowing = bodyEl.dataset.stem === stem && bodyEl.childElementCount > 0;
+  // A document already rendered in this reader stays in the DOM: re-parsing and
+  // re-laying-out a 1 MB guideline on every open is the cost, not the fetch.
+  if (!wasShowing) bodyEl.innerHTML = '<div class="empty-msg">Loading…</div>';
   modal.hidden = false;
 
   let doc;
@@ -2078,17 +2082,29 @@ async function openDocViewer(stem, targetTitle = null) {
     doc = await apiGet(`/api/document/${encodeURIComponent(stem)}/full`);
   } catch (e) {
     bodyEl.innerHTML = `<div class="empty-msg">Could not load document: ${escHtml(e.message)}</div>`;
+    delete bodyEl.dataset.stem;
     return;
   }
 
-  const html = (typeof marked !== 'undefined')
-    ? (marked.parse ? marked.parse(doc.markdown) : marked(doc.markdown))
-    : `<pre>${escHtml(doc.markdown)}</pre>`;
-  bodyEl.innerHTML = html;
-
-  // Provenance pins → chips; the header checkbox is the single toggle.
-  const pinCount = decoratePinBlocks(bodyEl, stem);
-  initPinToggle(bodyEl, pinCount);
+  // Reuse only when the markdown is byte-identical, so a re-ingest is never
+  // shown stale.
+  const reuse = wasShowing && bodyEl._md === doc.markdown;
+  if (!reuse) {
+    // Let "Loading…" paint before the synchronous parse + layout.
+    // (rAF never fires in a hidden window, hence the timeout.)
+    await new Promise(r => { requestAnimationFrame(() => r()); setTimeout(r, 50); });
+    const html = (typeof marked !== 'undefined')
+      ? (marked.parse ? marked.parse(doc.markdown) : marked(doc.markdown))
+      : `<pre>${escHtml(doc.markdown)}</pre>`;
+    // decoding="async": figures decode off the main thread instead of stalling
+    // the first paint (marked escapes "<img" inside code, so this only hits tags).
+    bodyEl.innerHTML = html.replace(/<img /g, '<img decoding="async" ');
+    bodyEl.dataset.stem = stem;
+    bodyEl._md = doc.markdown;
+    // Provenance pins → chips; the header checkbox is the single toggle.
+    bodyEl._pinCount = decoratePinBlocks(bodyEl, stem);
+  }
+  initPinToggle(bodyEl, bodyEl._pinCount || 0);
 
   // Anchor ids + TOC (with verdict colors mirrored).
   const docV = getDocVerdicts(stem);
@@ -2119,17 +2135,68 @@ async function openDocViewer(stem, targetTitle = null) {
   decorateDocVerdicts(bodyEl, stem);
 
   if (targetTitle) {
-    const want = slugify(targetTitle);
+    // Synthetic overview leaves are titled "<parent heading> — Overview"; the
+    // markdown only has the parent heading, so without this they matched
+    // nothing and the reader opened at the top of the document.
+    const want = slugify(String(targetTitle).replace(/\s+—\s+Overview$/, ''));
     let match = bodyEl.querySelector(`#${CSS.escape(want)}`);
     if (!match) match = Array.from(headings).find(h => slugify(h.textContent).startsWith(want));
-    if (match) requestAnimationFrame(() => match.scrollIntoView({ behavior: 'auto', block: 'start' }));
-    else bodyEl.scrollTop = 0;
+    // Figure/table leaves are ##### / ###### headings, outside the TOC's h1–h4.
+    if (!match) match = Array.from(bodyEl.querySelectorAll('h5, h6'))
+      .find(h => slugify(h.textContent).startsWith(want));
+    if (match) pinDocScrollTo(bodyEl, match);   // measuring forces the layout it needs
+    else setDocScroll(bodyEl, 0);
+  } else if (reuse && bodyEl.dataset.scroll) {
+    // Reopened where the reader left off.
+    setDocScroll(bodyEl, Number(bodyEl.dataset.scroll) || 0);
   } else {
-    bodyEl.scrollTop = 0;
+    setDocScroll(bodyEl, 0);
   }
 }
 
+/** An instant jump — never animated (see .doc-modal-content in style.css). */
+function setDocScroll(bodyEl, top) {
+  bodyEl.scrollTo({ top, behavior: 'instant' });
+}
+
+/** Scroll a heading into view and keep it there while figures above it finish
+ *  loading (WebKit has no scroll anchoring, so each one would otherwise push the
+ *  target away). Releases on the first user scroll/key/click, or after 4 s. */
+function pinDocScrollTo(bodyEl, target) {
+  releaseDocScrollPin(bodyEl);
+  const align = () => {
+    // Rects are measured through the modal's opening scale animation; dividing
+    // by the live scale turns them back into scroll pixels (at 0.99 a heading
+    // 6,000 px down landed 60 px short).
+    const box = bodyEl.getBoundingClientRect();
+    const scale = bodyEl.offsetHeight ? box.height / bodyEl.offsetHeight : 1;
+    const off = (target.getBoundingClientRect().top - box.top) / (scale || 1) - 12;
+    if (Math.abs(off) > 1) setDocScroll(bodyEl, bodyEl.scrollTop + off);
+  };
+  align();
+  const settle = setTimeout(align, 350);                  // once the open animation ends
+  const release = () => { clearTimeout(settle); releaseDocScrollPin(bodyEl); };
+  const timer = setTimeout(release, 4000);
+  bodyEl.addEventListener('load', align, true);           // <img> load doesn't bubble
+  ['wheel', 'touchstart', 'keydown', 'mousedown'].forEach(ev =>
+    bodyEl.addEventListener(ev, release, { once: true, passive: true }));
+  bodyEl._scrollPin = { align, release, timer };
+}
+
+function releaseDocScrollPin(bodyEl) {
+  const p = bodyEl._scrollPin;
+  if (!p) return;
+  clearTimeout(p.timer);
+  bodyEl.removeEventListener('load', p.align, true);
+  ['wheel', 'touchstart', 'keydown', 'mousedown'].forEach(ev =>
+    bodyEl.removeEventListener(ev, p.release));
+  bodyEl._scrollPin = null;
+}
+
 function closeDocViewer() {
+  const bodyEl = document.getElementById('doc-modal-content');
+  releaseDocScrollPin(bodyEl);
+  bodyEl.dataset.scroll = String(bodyEl.scrollTop);       // display:none would reset it
   document.getElementById('doc-modal').hidden = true;
   state.docViewerStem = null;
 }

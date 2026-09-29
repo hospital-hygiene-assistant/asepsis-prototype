@@ -8,6 +8,7 @@
   <link rel="stylesheet" href="/static/style.css">
   <link rel="stylesheet" href="/static/chat.css">
   <link rel="stylesheet" href="/static/tutorial.css">
+  <link rel="stylesheet" href="/static/demo.css">
   <script src="/static/d3.v7.min.js"></script>
 </head>
 <body>
@@ -192,6 +193,8 @@
           <div id="chat-messages"></div>
         </div>
 
+        <!-- Recorded runs: instant replays of the committed evaluation (demo.js). -->
+        <div id="chat-demo-bar" class="choice-bar demo-bar" hidden></div>
         <div id="chat-choice-bar" class="choice-bar" hidden></div>
 
         <!-- Two intents, stated rather than guessed at: keep talking over the
@@ -503,6 +506,7 @@
 <script src="/static/main.js"></script>
 <script src="/static/choices.js"></script>
 <script src="/static/chat.js"></script>
+<script src="/static/demo.js"></script>
 <script src="/static/tutorial.js"></script>
 </body>
 </html>
